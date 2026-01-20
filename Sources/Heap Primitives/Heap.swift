@@ -179,11 +179,411 @@ public struct Heap<Element: ~Copyable & __HeapOrdering>: ~Copyable {
     }
 
     // Note: No deinit needed - Storage handles cleanup
+
+    // MARK: - Bounded (declared here to fix Swift compiler bug with ~Copyable in extensions)
+
+    /// A fixed-capacity, heap-allocated min-max heap with bounded capacity.
+    ///
+    /// `Heap.Bounded` allocates storage upfront and uses token-preserving `Outcome`
+    /// types for push operations that can overflow. This ensures elements are never
+    /// lost on failure per [API-ERR-005/006].
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// var heap = try Heap<Int>.Bounded(capacity: 10)
+    /// switch heap.push(42) {
+    /// case .inserted:
+    ///     print("Element inserted")
+    /// case .overflow(let element):
+    ///     print("Overflow - element \(element) returned")
+    /// }
+    /// ```
+    ///
+    /// ## Overflow Handling
+    ///
+    /// Unlike variants that throw on overflow, `Heap.Bounded` returns an `Outcome`
+    /// that preserves the element:
+    ///
+    /// - `.inserted`: Element was successfully added
+    /// - `.overflow(Element)`: Heap was full, element returned to caller
+    ///
+    /// This pattern prevents element loss when pushing `~Copyable` types.
+    @safe
+    public struct Bounded: ~Copyable {
+        @usableFromInline
+        var _storage: Storage
+
+        /// Cached pointer to element storage.
+        @usableFromInline
+        var _cachedPtr: UnsafeMutablePointer<Element>
+
+        /// The maximum number of elements the heap can hold.
+        public let capacity: Int
+
+        /// Creates a heap with the specified capacity.
+        ///
+        /// - Parameter capacity: Maximum number of elements. Must be non-negative.
+        /// - Throws: ``Heap/Bounded/Error/invalidCapacity`` if capacity is negative.
+        @inlinable
+        public init(capacity: Int) throws(__Heap.Bounded.Error) {
+            guard capacity >= 0 else {
+                throw .invalidCapacity
+            }
+
+            self._storage = Storage.create(minimumCapacity: capacity)
+            unsafe (self._cachedPtr = _storage._elementsPointer)
+            self.capacity = capacity
+        }
+
+        // Note: No deinit needed - Storage handles cleanup
+
+        // MARK: - Push Outcome (declared in struct body per MEM-COPY-006)
+
+        /// Outcome of a push operation on a bounded heap.
+        ///
+        /// This type preserves the element on overflow, preventing element loss
+        /// when pushing `~Copyable` types per [API-ERR-005/006].
+        public enum Push: ~Copyable {
+            /// Outcome of pushing an element.
+            public enum Outcome: ~Copyable {
+                /// The element was successfully inserted.
+                case inserted
+                /// The heap was full; the element is returned to the caller.
+                case overflow(Element)
+            }
+        }
+    }
+
+    // MARK: - Inline (declared here to fix Swift compiler bug with ~Copyable in extensions)
+
+    /// A fixed-capacity, inline-storage min-max heap with compile-time capacity.
+    ///
+    /// `Heap.Inline` stores elements directly within the struct's memory layout,
+    /// requiring no heap allocation. The capacity is specified as a compile-time
+    /// generic parameter.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// var heap = Heap<Int>.Inline<8>()
+    /// switch heap.push(42) {
+    /// case .inserted:
+    ///     print("Element inserted")
+    /// case .overflow(let element):
+    ///     print("Overflow - element \(element) returned")
+    /// }
+    /// ```
+    ///
+    /// - Note: This type is declared inside `Heap` (not in an extension) due to a
+    ///   Swift compiler bug where nested types with value generic parameters declared
+    ///   in extensions do not properly inherit `~Copyable` constraints from the outer type.
+    public struct Inline<let capacity: Int>: ~Copyable {
+        /// Maximum element stride supported by inline storage (64 bytes per slot).
+        @usableFromInline
+        static var _maxStride: Int { 64 }
+
+        /// Raw byte storage. Each slot is 64 bytes (8 Ints on 64-bit).
+        @usableFromInline
+        var _storage: InlineArray<capacity, (Int, Int, Int, Int, Int, Int, Int, Int)>
+
+        @usableFromInline
+        var _count: Int
+
+        /// Workaround for Swift compiler bug where deinit element cleanup
+        /// fails for ~Copyable structs that contain only value-type properties.
+        /// Adding a reference type property (`AnyObject?`) fixes the bug.
+        /// See: https://github.com/swiftlang/swift/issues/86652
+        @usableFromInline
+        var _deinitWorkaround: AnyObject? = nil
+
+        /// Creates an empty inline heap.
+        @inlinable
+        public init() {
+            precondition(
+                MemoryLayout<Element>.stride <= Self._maxStride,
+                "Element stride (\(MemoryLayout<Element>.stride)) exceeds inline storage slot size (\(Self._maxStride) bytes). Use Heap.Bounded instead."
+            )
+            precondition(
+                MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment,
+                "Element alignment (\(MemoryLayout<Element>.alignment)) exceeds inline storage alignment (\(MemoryLayout<Int>.alignment)). Use Heap.Bounded instead."
+            )
+            self._storage = InlineArray(repeating: (0, 0, 0, 0, 0, 0, 0, 0))
+            self._count = 0
+        }
+
+        deinit {
+            let count = _count
+            guard count > 0 else { return }
+
+            let stride = MemoryLayout<Element>.stride
+
+            unsafe Swift.withUnsafePointer(to: _storage) { storagePtr in
+                let basePtr = UnsafeMutableRawPointer(mutating: UnsafeRawPointer(storagePtr))
+                for i in 0..<count {
+                    let elementPtr = unsafe (basePtr + i * stride)
+                        .assumingMemoryBound(to: Element.self)
+                    unsafe elementPtr.deinitialize(count: 1)
+                }
+            }
+        }
+
+        /// Returns a mutable pointer to the element at the given index.
+        @usableFromInline
+        @unsafe
+        mutating func _pointerToElement(at index: Int) -> UnsafeMutablePointer<Element> {
+            let stride = MemoryLayout<Element>.stride
+            return unsafe Swift.withUnsafeMutablePointer(to: &_storage) { storagePtr in
+                let basePtr = UnsafeMutableRawPointer(storagePtr)
+                let elementPtr = unsafe (basePtr + index * stride)
+                    .assumingMemoryBound(to: Element.self)
+                return unsafe elementPtr
+            }
+        }
+
+        /// Returns a read-only pointer to the element at the given index.
+        @usableFromInline
+        @unsafe
+        func _readPointerToElement(at index: Int) -> UnsafePointer<Element> {
+            let stride = MemoryLayout<Element>.stride
+            return unsafe Swift.withUnsafePointer(to: _storage) { storagePtr in
+                let basePtr = unsafe UnsafeRawPointer(storagePtr)
+                let elementPtr = unsafe (basePtr + index * stride)
+                    .assumingMemoryBound(to: Element.self)
+                return unsafe elementPtr
+            }
+        }
+
+        // MARK: - Push Outcome (declared in struct body per MEM-COPY-006)
+
+        /// Outcome of a push operation on an inline heap.
+        ///
+        /// This type preserves the element on overflow, preventing element loss
+        /// when pushing `~Copyable` types per [API-ERR-005/006].
+        public enum Push: ~Copyable {
+            /// Outcome of pushing an element.
+            public enum Outcome: ~Copyable {
+                /// The element was successfully inserted.
+                case inserted
+                /// The heap was full; the element is returned to the caller.
+                case overflow(Element)
+            }
+        }
+    }
+
+    // MARK: - Small (declared here to fix Swift compiler bug with ~Copyable in extensions)
+
+    /// A min-max heap with small-buffer optimization (SmallVec pattern).
+    ///
+    /// `Heap.Small` stores up to `inlineCapacity` elements in inline storage,
+    /// then automatically spills to heap storage when that capacity is exceeded.
+    /// Push operations never fail - the heap grows automatically.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// var heap = Heap<Int>.Small<4>()  // Inline up to 4 elements
+    /// heap.push(1)  // Inline
+    /// heap.push(2)  // Inline
+    /// heap.push(3)  // Inline
+    /// heap.push(4)  // Inline
+    /// heap.push(5)  // Spills to heap, moves all elements
+    /// ```
+    ///
+    /// ## Non-Copyable
+    ///
+    /// `Heap.Small` is unconditionally `~Copyable` (move-only) because it requires
+    /// a deinitializer to clean up inline storage.
+    ///
+    /// - Note: This type is declared inside `Heap` (not in an extension) due to a
+    ///   Swift compiler bug where nested types with value generic parameters declared
+    ///   in extensions do not properly inherit `~Copyable` constraints from the outer type.
+    @safe
+    public struct Small<let inlineCapacity: Int>: ~Copyable {
+        /// Maximum element stride supported by inline storage (64 bytes per slot).
+        @usableFromInline
+        static var _maxStride: Int { 64 }
+
+        /// Raw byte storage for inline elements. Each slot is 64 bytes (8 Ints on 64-bit).
+        @usableFromInline
+        var _inline: InlineArray<inlineCapacity, (Int, Int, Int, Int, Int, Int, Int, Int)>
+
+        /// Current element count (valid elements in either inline or heap storage).
+        @usableFromInline
+        var _count: Int
+
+        /// Heap storage when spilled. Nil when using inline storage.
+        @usableFromInline
+        var _heap: Storage?
+
+        /// Cached pointer to heap elements. Only valid when _heap is non-nil.
+        @usableFromInline
+        var _heapPtr: UnsafeMutablePointer<Element>?
+
+        /// Creates an empty small heap.
+        @inlinable
+        public init() {
+            precondition(
+                MemoryLayout<Element>.stride <= Self._maxStride,
+                "Element stride (\(MemoryLayout<Element>.stride)) exceeds inline storage slot size (\(Self._maxStride) bytes). Use Heap.Bounded instead."
+            )
+            precondition(
+                MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment,
+                "Element alignment (\(MemoryLayout<Element>.alignment)) exceeds inline storage alignment (\(MemoryLayout<Int>.alignment)). Use Heap.Bounded instead."
+            )
+            self._inline = InlineArray(repeating: (0, 0, 0, 0, 0, 0, 0, 0))
+            self._count = 0
+            self._heap = nil
+            self._heapPtr = nil
+        }
+
+        deinit {
+            let count = _count
+            guard count > 0 else { return }
+
+            if let heap = _heap {
+                // Elements are on heap - Storage handles cleanup via its deinit
+                heap.header = count
+            } else {
+                // Elements are inline - clean up manually
+                let stride = MemoryLayout<Element>.stride
+                unsafe Swift.withUnsafeBytes(of: _inline) { bytes in
+                    let basePtr = unsafe UnsafeMutableRawPointer(mutating: bytes.baseAddress!)
+                    for i in 0..<count {
+                        let elementPtr = unsafe (basePtr + i * stride)
+                            .assumingMemoryBound(to: Element.self)
+                        unsafe elementPtr.deinitialize(count: 1)
+                    }
+                }
+            }
+        }
+
+        /// Whether the heap is currently using heap storage.
+        @inlinable
+        public var isSpilled: Bool { _heap != nil }
+
+        // MARK: - Internal Helpers
+
+        /// Returns a mutable pointer to the inline element at the given index.
+        @usableFromInline
+        @unsafe
+        mutating func _inlinePointerToElement(at index: Int) -> UnsafeMutablePointer<Element> {
+            let stride = MemoryLayout<Element>.stride
+            return unsafe Swift.withUnsafeMutablePointer(to: &_inline) { storagePtr in
+                let basePtr = UnsafeMutableRawPointer(storagePtr)
+                let elementPtr = unsafe (basePtr + index * stride)
+                    .assumingMemoryBound(to: Element.self)
+                return unsafe elementPtr
+            }
+        }
+
+        /// Returns a read-only pointer to the inline element at the given index.
+        @usableFromInline
+        @unsafe
+        func _inlineReadPointerToElement(at index: Int) -> UnsafePointer<Element> {
+            let stride = MemoryLayout<Element>.stride
+            return unsafe Swift.withUnsafePointer(to: _inline) { storagePtr in
+                let basePtr = unsafe UnsafeRawPointer(storagePtr)
+                let elementPtr = unsafe (basePtr + index * stride)
+                    .assumingMemoryBound(to: Element.self)
+                return unsafe elementPtr
+            }
+        }
+
+        /// Spills inline storage to heap.
+        @usableFromInline
+        mutating func _spillToHeap(minimumCapacity: Int) {
+            precondition(_heap == nil, "Already spilled")
+
+            // Create heap storage with growth factor
+            let newCapacity = Swift.max(minimumCapacity, inlineCapacity * 2, 8)
+            let newStorage = Storage.create(minimumCapacity: newCapacity)
+            newStorage.header = _count
+
+            // Move elements from inline to heap
+            let stride = MemoryLayout<Element>.stride
+            _ = unsafe Swift.withUnsafeBytes(of: _inline) { bytes in
+                unsafe newStorage.withUnsafeMutablePointerToElements { heapPtr in
+                    let inlineBase = UnsafeMutableRawPointer(mutating: bytes.baseAddress!)
+                    for i in 0..<_count {
+                        let inlineElement = unsafe (inlineBase + i * stride)
+                            .assumingMemoryBound(to: Element.self)
+                        unsafe (heapPtr + i).initialize(to: inlineElement.move())
+                    }
+                }
+            }
+
+            _heap = newStorage
+            unsafe (_heapPtr = newStorage._elementsPointer)
+        }
+    }
+
+    // MARK: - Position
+
+    /// Which position in the heap to operate on (min or max).
+    public enum Position: Sendable, Equatable {
+        /// The minimum element.
+        case min
+        /// The maximum element.
+        case max
+    }
 }
 
 // MARK: - Conditional Copyable
 
 extension Heap: Copyable where Element: Copyable {}
+
+/// `Heap.Bounded` is `Copyable` when its elements are `Copyable`.
+extension Heap.Bounded: Copyable where Element: Copyable {}
+
+// Note: Heap.Inline is UNCONDITIONALLY ~Copyable due to deinit requirement for inline storage cleanup.
+
+// Note: Heap.Small is UNCONDITIONALLY ~Copyable due to deinit requirement for inline storage cleanup.
+
+// MARK: - Sendable
+
+extension Heap: @unchecked Sendable where Element: Sendable {}
+extension Heap.Bounded: @unchecked Sendable where Element: Sendable {}
+extension Heap.Inline: @unchecked Sendable where Element: Sendable {}
+extension Heap.Small: @unchecked Sendable where Element: Sendable {}
+
+// MARK: - Push.Outcome Conditional Conformances (per MEM-COPY-006)
+extension Heap.Bounded.Push.Outcome: Copyable where Element: Copyable {}
+extension Heap.Bounded.Push.Outcome: Sendable where Element: Sendable {}
+extension Heap.Inline.Push.Outcome: Copyable where Element: Copyable {}
+extension Heap.Inline.Push.Outcome: Sendable where Element: Sendable {}
+
+// MARK: - Heap.Node Comparable (per MEM-COPY-006)
+// Protocol conformances for nested types MUST be in the same file as the outer type.
+
+extension Heap.Node: Comparable where Element: ~Copyable {
+    @inlinable
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.offset == rhs.offset
+    }
+
+    @inlinable
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.offset < rhs.offset
+    }
+}
+
+// MARK: - Error Type Aliases
+
+extension Heap.Bounded {
+    /// Errors that can occur during bounded heap operations.
+    public typealias Error = __Heap.Bounded.Error
+}
+
+extension Heap.Inline {
+    /// Errors that can occur during inline heap operations.
+    public typealias Error = __Heap.Inline.Error
+}
+
+extension Heap.Small {
+    /// Errors that can occur during small heap operations.
+    public typealias Error = __Heap.Small.Error
+}
 
 // MARK: - Ordering Typealias
 
@@ -610,10 +1010,7 @@ extension Heap where Element: ~Copyable {
     }
 }
 
-// MARK: - Sendable
-
-/// `Heap` is `Sendable` when its elements are `Sendable`.
-extension Heap: @unchecked Sendable where Element: Sendable {}
+// Note: Sendable conformances are declared earlier in the file with the other conformances.
 
 // =============================================================================
 // MARK: - Copyable-Only Extensions
@@ -836,3 +1233,14 @@ extension Heap: CustomStringConvertible {
     }
 }
 #endif
+
+// =============================================================================
+// MARK: - Heap.Bounded Protocol Conformances (per MEM-COPY-006)
+// =============================================================================
+// Note: Sequence conformance is currently DISABLED due to a Swift compiler bug
+// where protocol conformances for nested types break ~Copyable propagation
+// even when in the same file as the type declaration.
+// This appears to be triggered by the combination of `Element: ~Copyable & Protocol`
+// constraint that Heap uses (vs Stack which only has `Element: ~Copyable`).
+//
+// As a workaround, use forEach() for iteration instead of for-in loops.

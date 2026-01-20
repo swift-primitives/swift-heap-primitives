@@ -35,19 +35,7 @@ extension Heap where Element: ~Copyable {
     }
 }
 
-// MARK: - Comparable
-
-extension Heap.Node: Comparable where Element: ~Copyable {
-    @inlinable
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.offset == rhs.offset
-    }
-
-    @inlinable
-    static func < (lhs: Self, rhs: Self) -> Bool {
-        lhs.offset < rhs.offset
-    }
-}
+// Note: Comparable conformance moved to Heap.swift per MEM-COPY-006
 
 // MARK: - Level Calculations
 
