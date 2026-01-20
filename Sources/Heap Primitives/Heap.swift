@@ -71,6 +71,21 @@
 ///
 /// `Heap` is `Copyable` when `Element: Copyable`, with copy-on-write semantics.
 ///
+/// ## Iteration
+///
+/// Due to a Swift compiler bug, `Sequence` conformance is disabled for `Heap`
+/// and its variants. Use `forEach(_:)` for iteration instead of `for-in` loops:
+///
+/// ```swift
+/// // Instead of: for element in heap { ... }
+/// heap.forEach { element in
+///     print(element)
+/// }
+/// ```
+///
+/// Elements are yielded in heap order (not sorted order). For sorted iteration,
+/// repeatedly call `takeMin()` or `takeMax()`.
+///
 /// ## Thread Safety
 ///
 /// Not thread-safe for concurrent mutation. Synchronize externally.
@@ -799,7 +814,19 @@ extension Heap where Element: ~Copyable {
 
     /// Calls the given closure for each element in heap order.
     ///
-    /// Note: This is heap order, not sorted order.
+    /// This method is the primary iteration mechanism for `Heap` because
+    /// `Sequence` conformance is disabled due to a Swift compiler bug. Use this
+    /// instead of `for-in` loops:
+    ///
+    /// ```swift
+    /// // Instead of: for element in heap { ... }
+    /// heap.forEach { element in
+    ///     print(element)
+    /// }
+    /// ```
+    ///
+    /// - Note: Elements are yielded in heap order, which is **not** sorted order.
+    ///   For sorted iteration, repeatedly call `takeMin()` or `takeMax()`.
     ///
     /// - Parameter body: A closure that receives a borrowed reference to each element.
     /// - Complexity: O(n) where n is the number of elements.
@@ -1237,10 +1264,88 @@ extension Heap: CustomStringConvertible {
 // =============================================================================
 // MARK: - Heap.Bounded Protocol Conformances (per MEM-COPY-006)
 // =============================================================================
-// Note: Sequence conformance is currently DISABLED due to a Swift compiler bug
-// where protocol conformances for nested types break ~Copyable propagation
-// even when in the same file as the type declaration.
-// This appears to be triggered by the combination of `Element: ~Copyable & Protocol`
-// constraint that Heap uses (vs Stack which only has `Element: ~Copyable`).
 //
-// As a workaround, use forEach() for iteration instead of for-in loops.
+// SWIFT COMPILER BUG: Sequence Conformance Disabled
+// ==================================================
+//
+// The `Sequence` conformance for `Heap.Bounded` is DISABLED due to a Swift
+// compiler bug that causes `~Copyable` constraint propagation to fail during
+// module emission (`-emit-module` flag).
+//
+// ## Bug Conditions
+//
+// The bug manifests when ALL of the following conditions are met:
+//
+// 1. Generic type has compound constraint: `Element: ~Copyable & Protocol`
+// 2. Nested type contains `UnsafeMutablePointer<Element>` stored property
+// 3. Conditional protocol conformance exists (e.g., `Sequence where Element: Copyable`)
+// 4. Compiled with `-emit-module` flag (used by Swift Package Manager)
+// 5. Compiled with `-enable-experimental-feature Lifetimes`
+//
+// ## Error Manifestation
+//
+// The error appears on the `_cachedPtr` stored property declaration:
+//
+//     error: type 'Element' does not conform to protocol 'Copyable'
+//     var _cachedPtr: UnsafeMutablePointer<Element>
+//
+// ## Why Stack Works But Heap Doesn't
+//
+// `Stack<Element: ~Copyable>` compiles successfully with Sequence conformance
+// because it has a SINGLE constraint. The compound constraint in
+// `Heap<Element: ~Copyable & __HeapOrdering>` triggers different behavior in
+// the compiler's constraint solver during module interface generation.
+//
+// ## Compilation Mode Behavior
+//
+// - `swiftc -parse *.swift` → SUCCESS (no module emission)
+// - `swiftc -emit-module *.swift` → FAILURE (module emission triggers bug)
+//
+// ## Workaround
+//
+// Use `forEach(_:)` for iteration instead of `for-in` loops:
+//
+//     // Instead of: for element in heap { ... }
+//     heap.forEach { element in ... }
+//
+// ## Tracking
+//
+// This represents a Category 4 failure mode beyond MEM-COPY-006.
+// The bug is specific to the interaction between:
+// - Compound generic constraints with `~Copyable`
+// - Module emission phase type checking
+// - Conditional protocol conformances
+//
+// When this compiler bug is fixed, re-enable the Sequence conformance below.
+//
+// =============================================================================
+
+// DISABLED: Uncomment when Swift compiler bug is fixed
+//
+// extension Heap.Bounded: Sequence where Element: Copyable {
+//
+//     public struct Iterator: IteratorProtocol {
+//         @usableFromInline
+//         let _storage: Heap<Element>.Storage
+//
+//         @usableFromInline
+//         var _index: Int = 0
+//
+//         @usableFromInline
+//         init(_storage: Heap<Element>.Storage) {
+//             self._storage = _storage
+//         }
+//
+//         @inlinable
+//         public mutating func next() -> Element? {
+//             guard _index < _storage.header else { return nil }
+//             defer { _index += 1 }
+//             return _storage._readElement(at: _index)
+//         }
+//     }
+//
+//     @inlinable
+//     public func makeIterator() -> Iterator {
+//         Iterator(_storage: _storage)
+//     }
+// }

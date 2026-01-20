@@ -404,7 +404,19 @@ extension Heap.Bounded where Element: ~Copyable {
 
     /// Calls the given closure for each element in heap order.
     ///
-    /// Note: This is heap order, not sorted order.
+    /// This method is the primary iteration mechanism for `Heap.Bounded` because
+    /// `Sequence` conformance is disabled due to a Swift compiler bug. Use this
+    /// instead of `for-in` loops:
+    ///
+    /// ```swift
+    /// // Instead of: for element in heap { ... }
+    /// heap.forEach { element in
+    ///     print(element)
+    /// }
+    /// ```
+    ///
+    /// - Note: Elements are yielded in heap order, which is **not** sorted order.
+    ///   For sorted iteration, repeatedly call `takeMin()` or `takeMax()`.
     ///
     /// - Parameter body: A closure that receives a borrowed reference to each element.
     /// - Complexity: O(n) where n is the number of elements.
