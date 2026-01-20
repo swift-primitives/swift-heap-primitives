@@ -35,7 +35,7 @@ struct HeapTests {
         #expect(try heap.pop.min() == 3)
         #expect(try heap.pop.min() == 5)
         #expect(try heap.pop.min() == 7)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop max in order")
@@ -46,7 +46,7 @@ struct HeapTests {
         #expect(try heap.pop.max() == 5)
         #expect(try heap.pop.max() == 3)
         #expect(try heap.pop.max() == 1)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Peek does not remove")
@@ -63,7 +63,7 @@ struct HeapTests {
     @Test("Empty heap")
     func emptyHeap() {
         var heap = Heap<Int>()
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
         #expect(heap.peek.min == nil)
         #expect(heap.peek.max == nil)
         #expect(heap.take.min == nil)
@@ -73,12 +73,12 @@ struct HeapTests {
     @Test("Single element")
     func singleElement() throws {
         var heap: Heap<Int> = [42]
-        #expect(!heap.isEmpty)
+        #expect(heap.isEmpty == false)
         #expect(heap.count == 1)
         #expect(heap.peek.min == 42)
         #expect(heap.peek.max == 42)
         #expect(try heap.pop.min() == 42)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Remove all")
@@ -87,7 +87,7 @@ struct HeapTests {
         #expect(heap.count == 3)
 
         heap.removeAll()
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Duplicate elements")

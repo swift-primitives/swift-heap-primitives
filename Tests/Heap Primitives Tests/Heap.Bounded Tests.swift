@@ -17,10 +17,10 @@ struct HeapBoundedTests {
     @Test("Init with capacity")
     func initWithCapacity() throws {
         let heap = try Heap<Int>.Bounded(capacity: 10)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
         #expect(heap.capacity == 10)
-        #expect(!heap.isFull)
+        #expect(heap.isFull == false)
     }
 
     @Test("Init with negative capacity throws")
@@ -48,7 +48,7 @@ struct HeapBoundedTests {
         var heap = try Heap<Int>.Bounded(capacity: 2)
         _ = heap.push(1)
         _ = heap.push(2)
-        #expect(heap.isFull)
+        #expect(heap.isFull == true)
 
         let outcome = heap.push(3)
         switch outcome {
@@ -85,7 +85,7 @@ struct HeapBoundedTests {
         #expect(try heap.popMin() == 3)
         #expect(try heap.popMin() == 5)
         #expect(try heap.popMin() == 7)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop max in order")
@@ -100,7 +100,7 @@ struct HeapBoundedTests {
         #expect(try heap.popMax() == 5)
         #expect(try heap.popMax() == 3)
         #expect(try heap.popMax() == 1)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop throws when empty")
@@ -129,7 +129,7 @@ struct HeapBoundedTests {
         _ = heap.push(3)
 
         heap.clear()
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
         #expect(heap.capacity == 10)  // Capacity unchanged
     }
@@ -224,8 +224,8 @@ struct HeapBoundedTests {
     @Test("Zero capacity heap")
     func zeroCapacityHeap() throws {
         var heap = try Heap<Int>.Bounded(capacity: 0)
-        #expect(heap.isEmpty)
-        #expect(heap.isFull)  // Zero capacity means full
+        #expect(heap.isEmpty == true)
+        #expect(heap.isFull == true)  // Zero capacity means full
 
         let outcome = heap.push(1)
         switch outcome {

@@ -9,6 +9,429 @@
 //
 // ===----------------------------------------------------------------------===//
 
+// MARK: - Hoisted Ordering Protocol
+
+/// Comparison protocol for heap elements supporting `~Copyable` types.
+///
+/// Uses `borrowing` parameters to allow comparison without consuming elements.
+/// This enables heaps to work with move-only types that cannot conform to
+/// `Comparable` (which requires value parameter passing).
+///
+/// ## Conformance
+///
+/// For `~Copyable` types, implement `isLessThan` explicitly:
+///
+/// ```swift
+/// struct FileHandle: ~Copyable, Heap.Ordering {
+///     let fd: Int32
+///
+///     static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool {
+///         lhs.fd < rhs.fd
+///     }
+/// }
+/// ```
+///
+/// For `Copyable & Comparable` types, conformance is automatic:
+///
+/// ```swift
+/// extension Int: Heap.Ordering {}  // Uses < operator
+/// ```
+///
+/// ## Design Rationale
+///
+/// This protocol is hoisted to module level (as `__HeapOrdering`) because Swift
+/// does not allow protocols nested in generic contexts. The canonical API uses
+/// the typealias `Heap.Ordering`.
+///
+/// ## SE-0499
+///
+/// This design mirrors SE-0499 (Comparable/Equatable for ~Copyable), which will
+/// add borrowing overloads to the standard library. When SE-0499 is implemented,
+/// this protocol may be deprecated in favor of `Comparable`.
+///
+/// - Note: Access this protocol via `Heap.Ordering`, not `__HeapOrdering`.
+public protocol __HeapOrdering: ~Copyable {
+    /// Returns `true` if `lhs` should be ordered before `rhs`.
+    ///
+    /// - Parameters:
+    ///   - lhs: The left-hand side element.
+    ///   - rhs: The right-hand side element.
+    /// - Returns: `true` if `lhs < rhs` in the ordering.
+    static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool
+}
+
+// MARK: - Comparable Bridge
+
+extension __HeapOrdering where Self: Comparable {
+    /// Default implementation using the `<` operator.
+    ///
+    /// Types that conform to both `Comparable` and `Heap.Ordering` get this
+    /// implementation automatically.
+    @inlinable
+    public static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool {
+        lhs < rhs
+    }
+}
+
+// MARK: - Standard Library Conformances
+
+extension Int: __HeapOrdering {}
+extension Int8: __HeapOrdering {}
+extension Int16: __HeapOrdering {}
+extension Int32: __HeapOrdering {}
+extension Int64: __HeapOrdering {}
+extension UInt: __HeapOrdering {}
+extension UInt8: __HeapOrdering {}
+extension UInt16: __HeapOrdering {}
+extension UInt32: __HeapOrdering {}
+extension UInt64: __HeapOrdering {}
+extension Float: __HeapOrdering {}
+extension Double: __HeapOrdering {}
+extension String: __HeapOrdering {}
+extension Character: __HeapOrdering {}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+extension Heap {
+    /// Typed error for Heap operations.
+    ///
+    /// Uses typed throws (`throws(Heap.Error)`) for compile-time exhaustiveness.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// do {
+    ///     let min = try heap.pop.min()
+    /// } catch .empty {
+    ///     print("Heap was empty")
+    /// }
+    /// ```
+    public enum Error: Swift.Error, Sendable, Equatable {
+        /// An operation was attempted on an empty heap.
+        case empty(Empty)
+    }
+}
+
+// MARK: - Error Payloads
+
+extension Heap.Error {
+    /// Empty collection payload.
+    public struct Empty: Sendable, Equatable {
+        @inlinable
+        public init() {}
+    }
+}
+
+// MARK: - CustomStringConvertible
+
+extension Heap.Error: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .empty: return "operation attempted on empty heap"
+        }
+    }
+}
+
+// MARK: - Hoisted Error Types (Module Level)
+//
+// Swift does not allow nested types inside generic types to be easily accessed.
+// These error types are hoisted to module level and exposed via typealiases to
+// provide the expected Nest.Name API (Heap.Bounded.Error, Heap.Inline.Error, etc.).
+//
+// This is a documented exception per [API-EXC-001] due to Swift language
+// limitations with generic nested types.
+//
+// Use the typealias forms in your code:
+// - Heap<Element>.Bounded.Error
+// - Heap<Element>.Inline.Error
+// - Heap<Element>.Small.Error
+
+/// Hoisted namespace for Heap variant error types.
+///
+/// This namespace enum avoids compound identifiers like `__HeapBoundedError`
+/// per [API-NAME-002], providing the preferred `__Heap.Bounded.Error` pattern.
+///
+/// - Note: Use the typealias forms (e.g., ``Heap/Bounded/Error``) in your code,
+///   not this namespace directly.
+public enum __Heap {
+    /// Namespace for Heap.Bounded error types.
+    public enum Bounded {
+        /// Errors that can occur during bounded heap operations.
+        ///
+        /// ## Cases
+        ///
+        /// - ``__Heap/Bounded/Error/invalidCapacity``: The requested capacity is invalid (negative).
+        /// - ``__Heap/Bounded/Error/empty``: An operation was attempted on an empty heap.
+        ///
+        /// - Note: Overflow is NOT an error case. Per [API-ERR-005/006], push operations
+        ///   that consume an element and can fail use ``Heap/Bounded/Push/Outcome`` to
+        ///   preserve the element on overflow.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// The requested capacity is invalid (negative).
+            case invalidCapacity
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+    }
+
+    /// Namespace for Heap.Inline error types.
+    public enum Inline {
+        /// Errors that can occur during inline heap operations.
+        ///
+        /// ## Cases
+        ///
+        /// - ``__Heap/Inline/Error/empty``: An operation was attempted on an empty heap.
+        ///
+        /// - Note: Overflow is NOT an error case. Per [API-ERR-005/006], push operations
+        ///   that consume an element and can fail use ``Heap/Inline/Push/Outcome`` to
+        ///   preserve the element on overflow.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+    }
+
+    /// Namespace for Heap.Small error types.
+    public enum Small {
+        /// Errors that can occur during small heap operations.
+        ///
+        /// ## Cases
+        ///
+        /// - ``__Heap/Small/Error/empty``: An operation was attempted on an empty heap.
+        ///
+        /// - Note: Small heaps grow to heap storage on overflow, so overflow is not possible.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+    }
+}
+
+// MARK: - Hoisted Error CustomStringConvertible
+
+extension __Heap.Bounded.Error: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .invalidCapacity:
+            return "invalid capacity (negative)"
+        case .empty:
+            return "operation attempted on empty heap"
+        }
+    }
+}
+
+extension __Heap.Inline.Error: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .empty:
+            return "operation attempted on empty heap"
+        }
+    }
+}
+
+extension __Heap.Small.Error: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .empty:
+            return "operation attempted on empty heap"
+        }
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+extension Heap where Element: ~Copyable {
+    /// Internal node representation for min-max heap navigation.
+    ///
+    /// Tracks both the array offset and the tree level for efficient
+    /// level-aware operations.
+    @usableFromInline
+    struct Node {
+        @usableFromInline
+        var offset: Int
+
+        @usableFromInline
+        var level: Int
+
+        @inlinable
+        init(offset: Int, level: Int) {
+            self.offset = offset
+            self.level = level
+        }
+
+        @inlinable
+        init(offset: Int) {
+            self.init(offset: offset, level: Self.level(forOffset: offset))
+        }
+    }
+}
+
+// Note: Comparable conformance moved to Heap.swift per MEM-COPY-006
+
+// MARK: - Level Calculations
+
+extension Heap.Node where Element: ~Copyable {
+    /// Computes the level for a given offset.
+    /// Level = floor(log2(offset + 1))
+    @inlinable
+    static func level(forOffset offset: Int) -> Int {
+        (offset &+ 1)._binaryLogarithm()
+    }
+
+    /// Whether a level is a min level (even: 0, 2, 4, ...).
+    @inlinable
+    static func isMinLevel(_ level: Int) -> Bool {
+        level & 0b1 == 0
+    }
+
+    /// Whether this node is on a min level.
+    @inlinable
+    var isMinLevel: Bool {
+        Self.isMinLevel(level)
+    }
+
+    /// Whether this is the root node.
+    @inlinable
+    var isRoot: Bool {
+        offset == 0
+    }
+}
+
+// MARK: - Well-Known Nodes
+
+extension Heap.Node where Element: ~Copyable {
+    /// The root node (index 0, level 0).
+    @inlinable
+    static var root: Self {
+        Self(offset: 0, level: 0)
+    }
+
+    /// The left child of root (index 1, level 1).
+    @inlinable
+    static var leftMax: Self {
+        Self(offset: 1, level: 1)
+    }
+
+    /// The right child of root (index 2, level 1).
+    @inlinable
+    static var rightMax: Self {
+        Self(offset: 2, level: 1)
+    }
+
+    /// First node on the given level.
+    @inlinable
+    static func firstNode(onLevel level: Int) -> Self {
+        Self(offset: (1 &<< level) &- 1, level: level)
+    }
+
+    /// Last node on the given level.
+    @inlinable
+    static func lastNode(onLevel level: Int) -> Self {
+        Self(offset: (1 &<< (level &+ 1)) &- 2, level: level)
+    }
+}
+
+// MARK: - Navigation
+
+extension Heap.Node where Element: ~Copyable {
+    /// Returns the parent node.
+    ///
+    /// - Precondition: This is not the root.
+    @inlinable
+    func parent() -> Self {
+        Self(offset: (offset &- 1) / 2, level: level &- 1)
+    }
+
+    /// Returns the grandparent node, if any.
+    @inlinable
+    func grandParent() -> Self? {
+        guard offset > 2 else { return nil }
+        return Self(offset: (offset &- 3) / 4, level: level &- 2)
+    }
+
+    /// Returns the left child node.
+    @inlinable
+    func leftChild() -> Self {
+        Self(offset: offset &* 2 &+ 1, level: level &+ 1)
+    }
+
+    /// Returns the right child node.
+    @inlinable
+    func rightChild() -> Self {
+        Self(offset: offset &* 2 &+ 2, level: level &+ 1)
+    }
+
+    /// Returns the first grandchild node.
+    @inlinable
+    func firstGrandchild() -> Self {
+        Self(offset: offset &* 4 &+ 3, level: level &+ 2)
+    }
+
+    /// Returns the last grandchild node.
+    @inlinable
+    func lastGrandchild() -> Self {
+        Self(offset: offset &* 4 &+ 6, level: level &+ 2)
+    }
+}
+
+// MARK: - Range Operations
+
+extension Heap.Node where Element: ~Copyable {
+    /// Returns the range of nodes on a level up to a limit.
+    @inlinable
+    static func allNodes(onLevel level: Int, limit: Int) -> ClosedRange<Self>? {
+        let first = Self.firstNode(onLevel: level)
+        guard first.offset < limit else { return nil }
+        var last = Self.lastNode(onLevel: level)
+        if last.offset >= limit {
+            last.offset = limit &- 1
+        }
+        return first ... last
+    }
+}
+
+// MARK: - Binary Logarithm
+
+extension Int {
+    /// Computes floor(log2(self)).
+    ///
+    /// - Precondition: self > 0
+    @usableFromInline
+    func _binaryLogarithm() -> Int {
+        precondition(self > 0)
+        return Int.bitWidth - 1 - self.leadingZeroBitCount
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
 /// Double-ended priority queue backed by a min-max heap.
 ///
 /// `Heap` provides O(1) access to both the minimum and maximum elements,
@@ -1316,36 +1739,2346 @@ extension Heap: CustomStringConvertible {
 // - Module emission phase type checking
 // - Conditional protocol conformances
 //
-// When this compiler bug is fixed, re-enable the Sequence conformance below.
+// Tracked: https://github.com/swiftlang/swift/issues/86669
+//
+// WORKAROUND: This Sequence conformance only compiles because all source code
+// is consolidated into a single file. When the compiler bug is fixed, this
+// package can be restructured into multiple files per [API-IMPL-005].
 //
 // =============================================================================
 
-// DISABLED: Uncomment when Swift compiler bug is fixed
+extension Heap.Bounded: Sequence where Element: Copyable {
+
+    public struct Iterator: IteratorProtocol {
+        @usableFromInline
+        let _storage: Heap<Element>.Storage
+
+        @usableFromInline
+        var _index: Int = 0
+
+        @usableFromInline
+        init(_storage: Heap<Element>.Storage) {
+            self._storage = _storage
+        }
+
+        @inlinable
+        public mutating func next() -> Element? {
+            guard _index < _storage.header else { return nil }
+            defer { _index += 1 }
+            return _storage._readElement(at: _index)
+        }
+    }
+
+    @inlinable
+    public func makeIterator() -> Iterator {
+        Iterator(_storage: _storage)
+    }
+}
+
+// ===----------------------------------------------------------------------===//
 //
-// extension Heap.Bounded: Sequence where Element: Copyable {
+// This source file is part of the swift-standards open source project
 //
-//     public struct Iterator: IteratorProtocol {
-//         @usableFromInline
-//         let _storage: Heap<Element>.Storage
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
 //
-//         @usableFromInline
-//         var _index: Int = 0
+// See LICENSE for license information
 //
-//         @usableFromInline
-//         init(_storage: Heap<Element>.Storage) {
-//             self._storage = _storage
-//         }
+// ===----------------------------------------------------------------------===//
+
+// Note: Heap.Bounded is declared INSIDE the Heap struct body (in Heap.swift)
+// due to a Swift compiler bug where nested types declared in extensions do not
+// properly inherit ~Copyable constraints from the outer type.
+// This file contains only extensions to Heap.Bounded.
+
+// MARK: - Properties
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// The current number of elements in the heap.
+    @inlinable
+    public var count: Int { _storage.header }
+
+    /// Whether the heap is empty.
+    @inlinable
+    public var isEmpty: Bool { _storage.header == 0 }
+
+    /// Whether the heap is full.
+    @inlinable
+    public var isFull: Bool { _storage.header == capacity }
+}
+
+// Note: Push.Outcome is declared in Heap.swift struct body per MEM-COPY-006
+
+// MARK: - Internal Heap Operations
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Inserts an element and restores heap property.
+    @usableFromInline
+    mutating func _insert(_ element: consuming Element) {
+        let index = _storage.header
+        _storage._initializeElement(at: index, to: element)
+        _storage.header += 1
+        _bubbleUp(Heap.Node(offset: index))
+    }
+
+    /// Removes and returns the minimum element.
+    @usableFromInline
+    mutating func _removeMin() -> Element? {
+        guard !isEmpty else { return nil }
+
+        if count == 1 {
+            _storage.header = 0
+            return _storage._moveElement(at: 0)
+        }
+
+        // Swap root with last, remove last, trickle down
+        let lastIndex = _storage.header - 1
+        _swapElements(at: 0, lastIndex)
+        _storage.header -= 1
+        let removed = _storage._moveElement(at: lastIndex)
+        _trickleDownMin(Heap.Node.root)
+        return removed
+    }
+
+    /// Removes and returns the maximum element.
+    @usableFromInline
+    mutating func _removeMax() -> Element? {
+        guard !isEmpty else { return nil }
+
+        if count == 1 {
+            _storage.header = 0
+            return _storage._moveElement(at: 0)
+        }
+
+        if count == 2 {
+            _storage.header = 1
+            return _storage._moveElement(at: 1)
+        }
+
+        // Find max (at index 1 or 2) using isLessThan
+        let ptr = unsafe _cachedPtr
+        let maxIndex = Element.isLessThan(unsafe ptr[1], unsafe ptr[2]) ? 2 : 1
+
+        // Swap with last, remove last, trickle down
+        let lastIndex = _storage.header - 1
+        _swapElements(at: maxIndex, lastIndex)
+        _storage.header -= 1
+        let removed = _storage._moveElement(at: lastIndex)
+
+        if maxIndex < _storage.header {
+            _trickleDownMax(Heap.Node(offset: maxIndex, level: 1))
+        }
+
+        return removed
+    }
+
+    /// Swaps elements at two indices using the cached pointer.
+    @usableFromInline
+    mutating func _swapElements(at i: Int, _ j: Int) {
+        let ptr = unsafe _cachedPtr
+        let temp = unsafe (ptr + i).move()
+        unsafe (ptr + i).initialize(to: (ptr + j).move())
+        unsafe (ptr + j).initialize(to: temp)
+    }
+}
+
+// MARK: - Bubble Up
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Restores heap property by moving element up.
+    @usableFromInline
+    mutating func _bubbleUp(_ node: Heap<Element>.Node) {
+        guard !node.isRoot else { return }
+
+        let parent = node.parent()
+        var node = node
+
+        let ptr = unsafe _cachedPtr
+
+        let nodeIsLess = Element.isLessThan(unsafe ptr[node.offset], unsafe ptr[parent.offset])
+        let parentIsLess = Element.isLessThan(unsafe ptr[parent.offset], unsafe ptr[node.offset])
+
+        if (node.isMinLevel && parentIsLess)
+            || (!node.isMinLevel && nodeIsLess) {
+            _swapElements(at: node.offset, parent.offset)
+            node = parent
+        }
+
+        if node.isMinLevel {
+            while let grandparent = node.grandParent() {
+                let gpIsLess = Element.isLessThan(unsafe ptr[grandparent.offset], unsafe ptr[node.offset])
+                guard !gpIsLess else { break }
+                _swapElements(at: node.offset, grandparent.offset)
+                node = grandparent
+            }
+        } else {
+            while let grandparent = node.grandParent() {
+                let nodeIsLessGp = Element.isLessThan(unsafe ptr[node.offset], unsafe ptr[grandparent.offset])
+                guard !nodeIsLessGp else { break }
+                _swapElements(at: node.offset, grandparent.offset)
+                node = grandparent
+            }
+        }
+    }
+}
+
+// MARK: - Trickle Down Min
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Sinks element at min-level node to correct position.
+    @usableFromInline
+    mutating func _trickleDownMin(_ startNode: Heap<Element>.Node) {
+        var node = startNode
+        let count = _storage.header
+        let ptr = unsafe _cachedPtr
+
+        while true {
+            let leftChild = node.leftChild()
+            if leftChild.offset >= count { break }
+
+            var smallest = node
+            var smallestOffset = node.offset
+
+            let rightChild = node.rightChild()
+
+            if Element.isLessThan(unsafe ptr[leftChild.offset], unsafe ptr[smallestOffset]) {
+                smallest = leftChild
+                smallestOffset = leftChild.offset
+            }
+            if rightChild.offset < count {
+                if Element.isLessThan(unsafe ptr[rightChild.offset], unsafe ptr[smallestOffset]) {
+                    smallest = rightChild
+                    smallestOffset = rightChild.offset
+                }
+            }
+
+            let gc0 = node.firstGrandchild()
+            for i in 0..<4 {
+                let gcOffset = gc0.offset + i
+                guard gcOffset < count else { break }
+                if Element.isLessThan(unsafe ptr[gcOffset], unsafe ptr[smallestOffset]) {
+                    smallest = Heap.Node(offset: gcOffset, level: gc0.level)
+                    smallestOffset = gcOffset
+                }
+            }
+
+            if smallest.offset == node.offset { break }
+
+            _swapElements(at: node.offset, smallest.offset)
+
+            if smallest.offset >= gc0.offset {
+                let parent = smallest.parent()
+                if Element.isLessThan(unsafe ptr[parent.offset], unsafe ptr[smallest.offset]) {
+                    _swapElements(at: smallest.offset, parent.offset)
+                }
+                node = smallest
+            } else {
+                break
+            }
+        }
+    }
+}
+
+// MARK: - Trickle Down Max
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Sinks element at max-level node to correct position.
+    @usableFromInline
+    mutating func _trickleDownMax(_ startNode: Heap<Element>.Node) {
+        var node = startNode
+        let count = _storage.header
+        let ptr = unsafe _cachedPtr
+
+        while true {
+            let leftChild = node.leftChild()
+            if leftChild.offset >= count { break }
+
+            var largest = node
+            var largestOffset = node.offset
+
+            let rightChild = node.rightChild()
+
+            if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[leftChild.offset]) {
+                largest = leftChild
+                largestOffset = leftChild.offset
+            }
+            if rightChild.offset < count {
+                if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[rightChild.offset]) {
+                    largest = rightChild
+                    largestOffset = rightChild.offset
+                }
+            }
+
+            let gc0 = node.firstGrandchild()
+            for i in 0..<4 {
+                let gcOffset = gc0.offset + i
+                guard gcOffset < count else { break }
+                if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[gcOffset]) {
+                    largest = Heap.Node(offset: gcOffset, level: gc0.level)
+                    largestOffset = gcOffset
+                }
+            }
+
+            if largest.offset == node.offset { break }
+
+            _swapElements(at: node.offset, largest.offset)
+
+            if largest.offset >= gc0.offset {
+                let parent = largest.parent()
+                if Element.isLessThan(unsafe ptr[largest.offset], unsafe ptr[parent.offset]) {
+                    _swapElements(at: largest.offset, parent.offset)
+                }
+                node = largest
+            } else {
+                break
+            }
+        }
+    }
+}
+
+// MARK: - Heapify
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Converts storage to valid min-max heap in O(n).
+    @usableFromInline
+    mutating func _heapify() {
+        let count = _storage.header
+        guard count > 1 else { return }
+
+        let limit = count / 2
+
+        var level = Heap.Node.level(forOffset: limit - 1)
+        while level >= 0 {
+            let firstOnLevel = Heap.Node.firstNode(onLevel: level)
+            let lastOnLevel = Heap.Node.lastNode(onLevel: level)
+
+            let startOffset = firstOnLevel.offset
+            let endOffset = Swift.min(lastOnLevel.offset, limit - 1)
+
+            if Heap.Node.isMinLevel(level) {
+                for offset in startOffset...endOffset {
+                    _trickleDownMin(Heap.Node(offset: offset, level: level))
+                }
+            } else {
+                for offset in startOffset...endOffset {
+                    _trickleDownMax(Heap.Node(offset: offset, level: level))
+                }
+            }
+            level -= 1
+        }
+    }
+}
+
+// MARK: - Core Operations (Base - for ~Copyable elements)
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Pushes an element onto the heap.
+    ///
+    /// Returns an ``Outcome`` indicating whether the element was inserted
+    /// or returned due to overflow.
+    ///
+    /// - Parameter element: The element to push.
+    /// - Returns: `.inserted` if successful, `.overflow(element)` if the heap is full.
+    /// - Complexity: O(log n)
+    @inlinable
+    @discardableResult
+    public mutating func push(_ element: consuming Element) -> Push.Outcome {
+        guard _storage.header < capacity else {
+            return .overflow(element)
+        }
+        _insert(element)
+        return .inserted
+    }
+
+    /// Takes and returns the minimum element, or nil if empty.
+    ///
+    /// - Returns: The minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func takeMin() -> Element? {
+        _removeMin()
+    }
+
+    /// Takes and returns the maximum element, or nil if empty.
+    ///
+    /// - Returns: The maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func takeMax() -> Element? {
+        _removeMax()
+    }
+
+    /// Pops and returns the minimum element.
+    ///
+    /// - Returns: The minimum element.
+    /// - Throws: ``Heap/Bounded/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func popMin() throws(__Heap.Bounded.Error) -> Element {
+        guard let element = _removeMin() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Pops and returns the maximum element.
+    ///
+    /// - Returns: The maximum element.
+    /// - Throws: ``Heap/Bounded/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func popMax() throws(__Heap.Bounded.Error) -> Element {
+        guard let element = _removeMax() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Removes all elements from the heap.
+    ///
+    /// The capacity remains unchanged.
+    ///
+    /// - Complexity: O(n) where n is the number of elements.
+    @inlinable
+    public mutating func clear() {
+        let count = _storage.header
+        if count > 0 {
+            _storage._deinitializeElements(in: 0..<count)
+        }
+        _storage.header = 0
+    }
+}
+
+// MARK: - Borrowing Access (~Copyable elements)
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Provides borrowing access to the minimum element.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to the minimum.
+    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
+        guard count > 0 else { return nil }
+        return body(unsafe _cachedPtr[0])
+    }
+
+    /// Provides borrowing access to the maximum element.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to the maximum.
+    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
+        guard count > 0 else { return nil }
+        if count == 1 { return body(unsafe _cachedPtr[0]) }
+        if count == 2 { return body(unsafe _cachedPtr[1]) }
+
+        let ptr = unsafe _cachedPtr
+        let maxIndex = Element.isLessThan(unsafe ptr[1], unsafe ptr[2]) ? 2 : 1
+        return body(unsafe ptr[maxIndex])
+    }
+
+    /// Calls the given closure for each element in heap order.
+    ///
+    /// This method is the primary iteration mechanism for `Heap.Bounded` because
+    /// `Sequence` conformance is disabled due to a Swift compiler bug. Use this
+    /// instead of `for-in` loops:
+    ///
+    /// ```swift
+    /// // Instead of: for element in heap { ... }
+    /// heap.forEach { element in
+    ///     print(element)
+    /// }
+    /// ```
+    ///
+    /// - Note: Elements are yielded in heap order, which is **not** sorted order.
+    ///   For sorted iteration, repeatedly call `takeMin()` or `takeMax()`.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to each element.
+    /// - Complexity: O(n) where n is the number of elements.
+    @inlinable
+    public func forEach(_ body: (borrowing Element) -> Void) {
+        let ptr = unsafe _cachedPtr
+        for i in 0..<count {
+            body(unsafe ptr[i])
+        }
+    }
+}
+
+// MARK: - Copy-on-Write (Copyable elements only)
+
+extension Heap.Bounded where Element: Copyable {
+    /// Ensures the storage is uniquely referenced before mutation.
+    @usableFromInline
+    mutating func _makeUnique() {
+        if !isKnownUniquelyReferenced(&_storage) {
+            let newStorage = Heap.Storage.create(minimumCapacity: capacity)
+            let currentCount = _storage.header
+            _storage._copyAllElements(to: newStorage, count: currentCount)
+            newStorage.header = currentCount
+            _storage = newStorage
+            unsafe (_cachedPtr = _storage._elementsPointer)
+        }
+    }
+
+    /// Pushes an element onto the heap (CoW-aware).
+    ///
+    /// - Parameter element: The element to push.
+    /// - Returns: `.inserted` if successful, `.overflow(element)` if the heap is full.
+    /// - Complexity: O(log n)
+    @inlinable
+    @discardableResult
+    public mutating func push(_ element: Element) -> Push.Outcome {
+        _makeUnique()
+        guard _storage.header < capacity else {
+            return .overflow(element)
+        }
+        _insert(element)
+        return .inserted
+    }
+
+    /// Takes and returns the minimum element, or nil if empty (CoW-aware).
+    @inlinable
+    public mutating func takeMin() -> Element? {
+        _makeUnique()
+        return _removeMin()
+    }
+
+    /// Takes and returns the maximum element, or nil if empty (CoW-aware).
+    @inlinable
+    public mutating func takeMax() -> Element? {
+        _makeUnique()
+        return _removeMax()
+    }
+
+    /// Pops and returns the minimum element (CoW-aware).
+    @inlinable
+    public mutating func popMin() throws(__Heap.Bounded.Error) -> Element {
+        _makeUnique()
+        guard let element = _removeMin() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Pops and returns the maximum element (CoW-aware).
+    @inlinable
+    public mutating func popMax() throws(__Heap.Bounded.Error) -> Element {
+        _makeUnique()
+        guard let element = _removeMax() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Removes all elements from the heap (CoW-aware).
+    @inlinable
+    public mutating func clear() {
+        _makeUnique()
+        let count = _storage.header
+        if count > 0 {
+            _storage._deinitializeElements(in: 0..<count)
+        }
+        _storage.header = 0
+    }
+}
+
+// MARK: - Peek (Copyable elements)
+
+extension Heap.Bounded where Element: Copyable {
+    /// Returns the minimum element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func peekMin() -> Element? {
+        guard !isEmpty else { return nil }
+        return _storage._readElement(at: 0)
+    }
+
+    /// Returns the maximum element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func peekMax() -> Element? {
+        guard !isEmpty else { return nil }
+        if count == 1 { return _storage._readElement(at: 0) }
+        if count == 2 { return _storage._readElement(at: 1) }
+        let e1 = _storage._readElement(at: 1)
+        let e2 = _storage._readElement(at: 2)
+        return Element.isLessThan(e1, e2) ? e2 : e1
+    }
+}
+
+// MARK: - Sequence Init (Copyable only)
+
+extension Heap.Bounded where Element: Copyable {
+    /// Creates a bounded heap from a sequence.
+    ///
+    /// - Parameters:
+    ///   - elements: The sequence of elements.
+    ///   - capacity: Maximum number of elements. Must be non-negative.
+    /// - Throws: ``Heap/Bounded/Error/invalidCapacity`` if capacity is negative.
+    /// - Note: If elements exceeds capacity, only the first `capacity` elements are kept.
+    /// - Complexity: O(n)
+    @inlinable
+    public init(_ elements: some Sequence<Element>, capacity: Int) throws(__Heap.Bounded.Error) {
+        guard capacity >= 0 else {
+            throw .invalidCapacity
+        }
+
+        self._storage = Heap.Storage.create(minimumCapacity: capacity)
+        unsafe (self._cachedPtr = _storage._elementsPointer)
+        self.capacity = capacity
+
+        for element in elements {
+            if _storage.header >= capacity { break }
+            _storage._initializeElement(at: _storage.header, to: element)
+            _storage.header += 1
+        }
+
+        if _storage.header > 1 {
+            _heapify()
+        }
+    }
+}
+
+// Note: Sequence, Equatable, Hashable conformances moved to Heap.swift per MEM-COPY-006
+
+// MARK: - Truncate
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Removes elements beyond the specified count.
+    ///
+    /// If `newCount >= count`, this method has no effect.
+    /// This is a truncation, not maintaining heap property for the removed elements.
+    ///
+    /// - Parameter newCount: The maximum number of elements to retain.
+    /// - Complexity: O(k) where k is the number of removed elements.
+    @inlinable
+    public mutating func truncate(to newCount: Int) {
+        let currentCount = _storage.header
+        guard newCount < currentCount else { return }
+        let targetCount = Swift.max(0, newCount)
+
+        _storage._deinitializeElements(in: targetCount..<currentCount)
+        _storage.header = targetCount
+    }
+}
+
+extension Heap.Bounded where Element: Copyable {
+    /// Removes elements beyond the specified count (CoW-aware).
+    @inlinable
+    public mutating func truncate(to newCount: Int) {
+        _makeUnique()
+        let currentCount = _storage.header
+        guard newCount < currentCount else { return }
+        let targetCount = Swift.max(0, newCount)
+
+        _storage._deinitializeElements(in: targetCount..<currentCount)
+        _storage.header = targetCount
+    }
+}
+
+// MARK: - Span Access
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// A read-only view of the heap's elements in heap order.
+    ///
+    /// Elements are in heap order, which is **not** sorted order.
+    public var span: Span<Element> {
+        @_lifetime(borrow self)
+        @inlinable
+        borrowing get {
+            unsafe Span(_unsafeStart: _cachedPtr, count: _storage.header)
+        }
+    }
+
+    /// A mutable view of the heap's elements.
+    ///
+    /// - Warning: Modifying elements may break the heap invariant.
+    ///   After modification, you may need to re-heapify.
+    public var mutableSpan: MutableSpan<Element> {
+        @_lifetime(&self)
+        @inlinable
+        mutating get {
+            unsafe MutableSpan(_unsafeStart: _cachedPtr, count: _storage.header)
+        }
+    }
+}
+
+extension Heap.Bounded where Element: Copyable {
+    /// A mutable view of the heap's elements (CoW-aware).
+    public var mutableSpan: MutableSpan<Element> {
+        @_lifetime(&self)
+        @inlinable
+        mutating get {
+            _makeUnique()
+            return unsafe MutableSpan(_unsafeStart: _cachedPtr, count: _storage.header)
+        }
+    }
+}
+
+// ===----------------------------------------------------------------------===//
 //
-//         @inlinable
-//         public mutating func next() -> Element? {
-//             guard _index < _storage.header else { return nil }
-//             defer { _index += 1 }
-//             return _storage._readElement(at: _index)
-//         }
-//     }
+// This source file is part of the swift-standards open source project
 //
-//     @inlinable
-//     public func makeIterator() -> Iterator {
-//         Iterator(_storage: _storage)
-//     }
-// }
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+// Note: Heap.Inline is declared INSIDE the Heap struct body (in Heap.swift)
+// due to a Swift compiler bug where nested types with value generic parameters
+// declared in extensions do not properly inherit ~Copyable constraints from
+// the outer type. This file contains only extensions to Heap.Inline.
+
+// MARK: - Properties
+
+extension Heap.Inline where Element: ~Copyable {
+    /// The current number of elements in the heap.
+    @inlinable
+    public var count: Int { _count }
+
+    /// Whether the heap is empty.
+    @inlinable
+    public var isEmpty: Bool { _count == 0 }
+
+    /// Whether the heap is full.
+    @inlinable
+    public var isFull: Bool { _count == capacity }
+}
+
+// Note: Push.Outcome is declared in Heap.swift struct body per MEM-COPY-006
+
+// MARK: - Internal Heap Operations
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Inserts an element and restores heap property.
+    @usableFromInline
+    mutating func _insert(_ element: consuming Element) {
+        let index = _count
+        unsafe _pointerToElement(at: index).initialize(to: element)
+        _count += 1
+        _bubbleUp(index)
+    }
+
+    /// Removes and returns the minimum element.
+    @usableFromInline
+    mutating func _removeMin() -> Element? {
+        guard !isEmpty else { return nil }
+
+        if count == 1 {
+            _count = 0
+            return unsafe _pointerToElement(at: 0).move()
+        }
+
+        // Swap root with last, remove last, trickle down
+        let lastIndex = _count - 1
+        _swapElements(at: 0, lastIndex)
+        _count -= 1
+        let removed = unsafe _pointerToElement(at: lastIndex).move()
+        _trickleDownMin(0)
+        return removed
+    }
+
+    /// Removes and returns the maximum element.
+    @usableFromInline
+    mutating func _removeMax() -> Element? {
+        guard !isEmpty else { return nil }
+
+        if count == 1 {
+            _count = 0
+            return unsafe _pointerToElement(at: 0).move()
+        }
+
+        if count == 2 {
+            _count = 1
+            return unsafe _pointerToElement(at: 1).move()
+        }
+
+        // Find max (at index 1 or 2) using isLessThan
+        let maxIndex: Int
+        if Element.isLessThan(
+            unsafe _readPointerToElement(at: 1).pointee,
+            unsafe _readPointerToElement(at: 2).pointee
+        ) {
+            maxIndex = 2
+        } else {
+            maxIndex = 1
+        }
+
+        // Swap with last, remove last, trickle down
+        let lastIndex = _count - 1
+        _swapElements(at: maxIndex, lastIndex)
+        _count -= 1
+        let removed = unsafe _pointerToElement(at: lastIndex).move()
+
+        if maxIndex < _count {
+            _trickleDownMax(maxIndex, level: 1)
+        }
+
+        return removed
+    }
+
+    /// Swaps elements at two indices.
+    @usableFromInline
+    mutating func _swapElements(at i: Int, _ j: Int) {
+        let ptrI = unsafe _pointerToElement(at: i)
+        let ptrJ = unsafe _pointerToElement(at: j)
+        let temp = unsafe ptrI.move()
+        unsafe ptrI.initialize(to: ptrJ.move())
+        unsafe ptrJ.initialize(to: temp)
+    }
+}
+
+// MARK: - Level Calculations
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Computes the level for a given offset.
+    @usableFromInline
+    static func _level(forOffset offset: Int) -> Int {
+        (offset &+ 1)._binaryLogarithm()
+    }
+
+    /// Whether a level is a min level (even: 0, 2, 4, ...).
+    @usableFromInline
+    static func _isMinLevel(_ level: Int) -> Bool {
+        level & 0b1 == 0
+    }
+}
+
+// MARK: - Bubble Up
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Restores heap property by moving element up.
+    @usableFromInline
+    mutating func _bubbleUp(_ nodeOffset: Int) {
+        guard nodeOffset > 0 else { return }
+
+        let parentOffset = (nodeOffset &- 1) / 2
+        var nodeOffset = nodeOffset
+        var level = Self._level(forOffset: nodeOffset)
+
+        let nodeIsLess = Element.isLessThan(
+            unsafe _readPointerToElement(at: nodeOffset).pointee,
+            unsafe _readPointerToElement(at: parentOffset).pointee
+        )
+        let parentIsLess = Element.isLessThan(
+            unsafe _readPointerToElement(at: parentOffset).pointee,
+            unsafe _readPointerToElement(at: nodeOffset).pointee
+        )
+
+        let isMinLevel = Self._isMinLevel(level)
+
+        if (isMinLevel && parentIsLess) || (!isMinLevel && nodeIsLess) {
+            _swapElements(at: nodeOffset, parentOffset)
+            nodeOffset = parentOffset
+            level -= 1
+        }
+
+        if Self._isMinLevel(level) {
+            while nodeOffset > 2 {
+                let gpOffset = (nodeOffset &- 3) / 4
+                let gpIsLess = Element.isLessThan(
+                    unsafe _readPointerToElement(at: gpOffset).pointee,
+                    unsafe _readPointerToElement(at: nodeOffset).pointee
+                )
+                guard !gpIsLess else { break }
+                _swapElements(at: nodeOffset, gpOffset)
+                nodeOffset = gpOffset
+            }
+        } else {
+            while nodeOffset > 2 {
+                let gpOffset = (nodeOffset &- 3) / 4
+                let nodeIsLessGp = Element.isLessThan(
+                    unsafe _readPointerToElement(at: nodeOffset).pointee,
+                    unsafe _readPointerToElement(at: gpOffset).pointee
+                )
+                guard !nodeIsLessGp else { break }
+                _swapElements(at: nodeOffset, gpOffset)
+                nodeOffset = gpOffset
+            }
+        }
+    }
+}
+
+// MARK: - Trickle Down Min
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Sinks element at min-level node to correct position.
+    @usableFromInline
+    mutating func _trickleDownMin(_ startOffset: Int) {
+        var nodeOffset = startOffset
+        var level = Self._level(forOffset: startOffset)
+
+        while true {
+            let leftChildOffset = nodeOffset &* 2 &+ 1
+            if leftChildOffset >= _count { break }
+
+            var smallestOffset = nodeOffset
+
+            let rightChildOffset = nodeOffset &* 2 &+ 2
+
+            if Element.isLessThan(
+                unsafe _readPointerToElement(at: leftChildOffset).pointee,
+                unsafe _readPointerToElement(at: smallestOffset).pointee
+            ) {
+                smallestOffset = leftChildOffset
+            }
+            if rightChildOffset < _count {
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: rightChildOffset).pointee,
+                    unsafe _readPointerToElement(at: smallestOffset).pointee
+                ) {
+                    smallestOffset = rightChildOffset
+                }
+            }
+
+            let gc0 = nodeOffset &* 4 &+ 3
+            for i in 0..<4 {
+                let gcOffset = gc0 + i
+                guard gcOffset < _count else { break }
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: gcOffset).pointee,
+                    unsafe _readPointerToElement(at: smallestOffset).pointee
+                ) {
+                    smallestOffset = gcOffset
+                }
+            }
+
+            if smallestOffset == nodeOffset { break }
+
+            _swapElements(at: nodeOffset, smallestOffset)
+
+            if smallestOffset >= gc0 {
+                let parentOffset = (smallestOffset &- 1) / 2
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: parentOffset).pointee,
+                    unsafe _readPointerToElement(at: smallestOffset).pointee
+                ) {
+                    _swapElements(at: smallestOffset, parentOffset)
+                }
+                nodeOffset = smallestOffset
+                level += 2
+            } else {
+                break
+            }
+        }
+    }
+}
+
+// MARK: - Trickle Down Max
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Sinks element at max-level node to correct position.
+    @usableFromInline
+    mutating func _trickleDownMax(_ startOffset: Int, level startLevel: Int) {
+        var nodeOffset = startOffset
+        var level = startLevel
+
+        while true {
+            let leftChildOffset = nodeOffset &* 2 &+ 1
+            if leftChildOffset >= _count { break }
+
+            var largestOffset = nodeOffset
+
+            let rightChildOffset = nodeOffset &* 2 &+ 2
+
+            if Element.isLessThan(
+                unsafe _readPointerToElement(at: largestOffset).pointee,
+                unsafe _readPointerToElement(at: leftChildOffset).pointee
+            ) {
+                largestOffset = leftChildOffset
+            }
+            if rightChildOffset < _count {
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: largestOffset).pointee,
+                    unsafe _readPointerToElement(at: rightChildOffset).pointee
+                ) {
+                    largestOffset = rightChildOffset
+                }
+            }
+
+            let gc0 = nodeOffset &* 4 &+ 3
+            for i in 0..<4 {
+                let gcOffset = gc0 + i
+                guard gcOffset < _count else { break }
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: largestOffset).pointee,
+                    unsafe _readPointerToElement(at: gcOffset).pointee
+                ) {
+                    largestOffset = gcOffset
+                }
+            }
+
+            if largestOffset == nodeOffset { break }
+
+            _swapElements(at: nodeOffset, largestOffset)
+
+            if largestOffset >= gc0 {
+                let parentOffset = (largestOffset &- 1) / 2
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: largestOffset).pointee,
+                    unsafe _readPointerToElement(at: parentOffset).pointee
+                ) {
+                    _swapElements(at: largestOffset, parentOffset)
+                }
+                nodeOffset = largestOffset
+                level += 2
+            } else {
+                break
+            }
+        }
+    }
+}
+
+// MARK: - Heapify
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Converts storage to valid min-max heap in O(n).
+    @usableFromInline
+    mutating func _heapify() {
+        guard _count > 1 else { return }
+
+        let limit = _count / 2
+
+        var level = Self._level(forOffset: limit - 1)
+        while level >= 0 {
+            let firstOnLevel = (1 &<< level) &- 1
+            let lastOnLevel = (1 &<< (level &+ 1)) &- 2
+
+            let startOffset = firstOnLevel
+            let endOffset = Swift.min(lastOnLevel, limit - 1)
+
+            if Self._isMinLevel(level) {
+                for offset in startOffset...endOffset {
+                    _trickleDownMin(offset)
+                }
+            } else {
+                for offset in startOffset...endOffset {
+                    _trickleDownMax(offset, level: level)
+                }
+            }
+            level -= 1
+        }
+    }
+}
+
+// MARK: - Core Operations
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Pushes an element onto the heap.
+    ///
+    /// Returns an ``Outcome`` indicating whether the element was inserted
+    /// or returned due to overflow.
+    ///
+    /// - Parameter element: The element to push.
+    /// - Returns: `.inserted` if successful, `.overflow(element)` if the heap is full.
+    /// - Complexity: O(log n)
+    @inlinable
+    @discardableResult
+    public mutating func push(_ element: consuming Element) -> Push.Outcome {
+        guard _count < capacity else {
+            return .overflow(element)
+        }
+        _insert(element)
+        return .inserted
+    }
+
+    /// Takes and returns the minimum element, or nil if empty.
+    ///
+    /// - Returns: The minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func takeMin() -> Element? {
+        _removeMin()
+    }
+
+    /// Takes and returns the maximum element, or nil if empty.
+    ///
+    /// - Returns: The maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func takeMax() -> Element? {
+        _removeMax()
+    }
+
+    /// Pops and returns the minimum element.
+    ///
+    /// - Returns: The minimum element.
+    /// - Throws: ``Heap/Inline/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func popMin() throws(__Heap.Inline.Error) -> Element {
+        guard let element = _removeMin() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Pops and returns the maximum element.
+    ///
+    /// - Returns: The maximum element.
+    /// - Throws: ``Heap/Inline/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func popMax() throws(__Heap.Inline.Error) -> Element {
+        guard let element = _removeMax() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Removes all elements from the heap.
+    ///
+    /// - Complexity: O(n) where n is the number of elements.
+    @inlinable
+    public mutating func clear() {
+        let stride = MemoryLayout<Element>.stride
+        unsafe Swift.withUnsafeMutablePointer(to: &_storage) { storagePtr in
+            let basePtr = UnsafeMutableRawPointer(storagePtr)
+            for i in 0..<_count {
+                let elementPtr = unsafe (basePtr + i * stride)
+                    .assumingMemoryBound(to: Element.self)
+                unsafe elementPtr.deinitialize(count: 1)
+            }
+        }
+        _count = 0
+    }
+}
+
+// MARK: - Borrowing Access (~Copyable elements)
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Provides borrowing access to the minimum element.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to the minimum.
+    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
+        guard count > 0 else { return nil }
+        return unsafe body(_readPointerToElement(at: 0).pointee)
+    }
+
+    /// Provides borrowing access to the maximum element.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to the maximum.
+    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
+        guard count > 0 else { return nil }
+        if count == 1 { return unsafe body(_readPointerToElement(at: 0).pointee) }
+        if count == 2 { return unsafe body(_readPointerToElement(at: 1).pointee) }
+
+        let e1IsLess = Element.isLessThan(
+            unsafe _readPointerToElement(at: 1).pointee,
+            unsafe _readPointerToElement(at: 2).pointee
+        )
+        let maxIndex = e1IsLess ? 2 : 1
+        return unsafe body(_readPointerToElement(at: maxIndex).pointee)
+    }
+
+    /// Calls the given closure for each element in heap order.
+    ///
+    /// This method is the primary iteration mechanism for `Heap.Inline` because
+    /// `Sequence` conformance is disabled due to a Swift compiler bug. Use this
+    /// instead of `for-in` loops:
+    ///
+    /// ```swift
+    /// // Instead of: for element in heap { ... }
+    /// heap.forEach { element in
+    ///     print(element)
+    /// }
+    /// ```
+    ///
+    /// - Note: Elements are yielded in heap order, which is **not** sorted order.
+    ///   For sorted iteration, repeatedly call `takeMin()` or `takeMax()`.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to each element.
+    /// - Complexity: O(n) where n is the number of elements.
+    @inlinable
+    public func forEach(_ body: (borrowing Element) -> Void) {
+        for i in 0..<count {
+            body(unsafe _readPointerToElement(at: i).pointee)
+        }
+    }
+}
+
+// MARK: - Peek (Copyable elements)
+
+extension Heap.Inline where Element: Copyable {
+    /// Returns the minimum element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func peekMin() -> Element? {
+        guard !isEmpty else { return nil }
+        return unsafe _readPointerToElement(at: 0).pointee
+    }
+
+    /// Returns the maximum element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func peekMax() -> Element? {
+        guard !isEmpty else { return nil }
+        if count == 1 { return unsafe _readPointerToElement(at: 0).pointee }
+        if count == 2 { return unsafe _readPointerToElement(at: 1).pointee }
+
+        let e1 = unsafe _readPointerToElement(at: 1).pointee
+        let e2 = unsafe _readPointerToElement(at: 2).pointee
+        return Element.isLessThan(e1, e2) ? e2 : e1
+    }
+}
+
+// MARK: - Truncate
+
+extension Heap.Inline where Element: ~Copyable {
+    /// Removes elements beyond the specified count.
+    ///
+    /// If `newCount >= count`, this method has no effect.
+    ///
+    /// - Parameter newCount: The maximum number of elements to retain.
+    /// - Complexity: O(k) where k is the number of removed elements.
+    @inlinable
+    public mutating func truncate(to newCount: Int) {
+        guard newCount < _count else { return }
+        let targetCount = Swift.max(0, newCount)
+
+        let stride = MemoryLayout<Element>.stride
+        unsafe Swift.withUnsafeMutablePointer(to: &_storage) { storagePtr in
+            let basePtr = UnsafeMutableRawPointer(storagePtr)
+            for i in targetCount..<_count {
+                let elementPtr = unsafe (basePtr + i * stride)
+                    .assumingMemoryBound(to: Element.self)
+                unsafe elementPtr.deinitialize(count: 1)
+            }
+        }
+        _count = targetCount
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+// Note: Heap.Small is declared INSIDE the Heap struct body (in Heap.swift)
+// due to a Swift compiler bug where nested types with value generic parameters
+// declared in extensions do not properly inherit ~Copyable constraints from
+// the outer type. This file contains only extensions to Heap.Small.
+
+// MARK: - Properties
+
+extension Heap.Small where Element: ~Copyable {
+    /// The current number of elements in the heap.
+    @inlinable
+    public var count: Int { _count }
+
+    /// Whether the heap is empty.
+    @inlinable
+    public var isEmpty: Bool { _count == 0 }
+
+    /// The current capacity (inline or heap).
+    @inlinable
+    public var capacity: Int {
+        if let heap = _heap {
+            return heap.capacity
+        }
+        return inlineCapacity
+    }
+}
+
+// MARK: - Internal Heap Operations
+
+extension Heap.Small where Element: ~Copyable {
+    /// Returns a pointer to the element at the given index.
+    @usableFromInline
+    @unsafe
+    mutating func _pointerToElement(at index: Int) -> UnsafeMutablePointer<Element> {
+        if let heapPtr = _heapPtr {
+            return unsafe heapPtr + index
+        } else {
+            return unsafe _inlinePointerToElement(at: index)
+        }
+    }
+
+    /// Returns a read pointer to the element at the given index.
+    @usableFromInline
+    @unsafe
+    func _readPointerToElement(at index: Int) -> UnsafePointer<Element> {
+        if let heapPtr = _heapPtr {
+            return unsafe UnsafePointer(heapPtr + index)
+        } else {
+            return unsafe _inlineReadPointerToElement(at: index)
+        }
+    }
+
+    /// Inserts an element and restores heap property.
+    @usableFromInline
+    mutating func _insert(_ element: consuming Element) {
+        let index = _count
+        unsafe _pointerToElement(at: index).initialize(to: element)
+        _count += 1
+        if _heap != nil {
+            _heap!.header = _count
+        }
+        _bubbleUp(index)
+    }
+
+    /// Removes and returns the minimum element.
+    @usableFromInline
+    mutating func _removeMin() -> Element? {
+        guard !isEmpty else { return nil }
+
+        if count == 1 {
+            _count = 0
+            if _heap != nil {
+                _heap!.header = 0
+            }
+            return unsafe _pointerToElement(at: 0).move()
+        }
+
+        // Swap root with last, remove last, trickle down
+        let lastIndex = _count - 1
+        _swapElements(at: 0, lastIndex)
+        _count -= 1
+        if _heap != nil {
+            _heap!.header = _count
+        }
+        let removed = unsafe _pointerToElement(at: lastIndex).move()
+        _trickleDownMin(0)
+        return removed
+    }
+
+    /// Removes and returns the maximum element.
+    @usableFromInline
+    mutating func _removeMax() -> Element? {
+        guard !isEmpty else { return nil }
+
+        if count == 1 {
+            _count = 0
+            if _heap != nil {
+                _heap!.header = 0
+            }
+            return unsafe _pointerToElement(at: 0).move()
+        }
+
+        if count == 2 {
+            _count = 1
+            if _heap != nil {
+                _heap!.header = 1
+            }
+            return unsafe _pointerToElement(at: 1).move()
+        }
+
+        // Find max (at index 1 or 2) using isLessThan
+        let maxIndex: Int
+        if Element.isLessThan(
+            unsafe _readPointerToElement(at: 1).pointee,
+            unsafe _readPointerToElement(at: 2).pointee
+        ) {
+            maxIndex = 2
+        } else {
+            maxIndex = 1
+        }
+
+        // Swap with last, remove last, trickle down
+        let lastIndex = _count - 1
+        _swapElements(at: maxIndex, lastIndex)
+        _count -= 1
+        if _heap != nil {
+            _heap!.header = _count
+        }
+        let removed = unsafe _pointerToElement(at: lastIndex).move()
+
+        if maxIndex < _count {
+            _trickleDownMax(maxIndex, level: 1)
+        }
+
+        return removed
+    }
+
+    /// Swaps elements at two indices.
+    @usableFromInline
+    mutating func _swapElements(at i: Int, _ j: Int) {
+        let ptrI = unsafe _pointerToElement(at: i)
+        let ptrJ = unsafe _pointerToElement(at: j)
+        let temp = unsafe ptrI.move()
+        unsafe ptrI.initialize(to: ptrJ.move())
+        unsafe ptrJ.initialize(to: temp)
+    }
+}
+
+// MARK: - Level Calculations
+
+extension Heap.Small where Element: ~Copyable {
+    /// Computes the level for a given offset.
+    @usableFromInline
+    static func _level(forOffset offset: Int) -> Int {
+        (offset &+ 1)._binaryLogarithm()
+    }
+
+    /// Whether a level is a min level (even: 0, 2, 4, ...).
+    @usableFromInline
+    static func _isMinLevel(_ level: Int) -> Bool {
+        level & 0b1 == 0
+    }
+}
+
+// MARK: - Bubble Up
+
+extension Heap.Small where Element: ~Copyable {
+    /// Restores heap property by moving element up.
+    @usableFromInline
+    mutating func _bubbleUp(_ nodeOffset: Int) {
+        guard nodeOffset > 0 else { return }
+
+        let parentOffset = (nodeOffset &- 1) / 2
+        var nodeOffset = nodeOffset
+        var level = Self._level(forOffset: nodeOffset)
+
+        let nodeIsLess = Element.isLessThan(
+            unsafe _readPointerToElement(at: nodeOffset).pointee,
+            unsafe _readPointerToElement(at: parentOffset).pointee
+        )
+        let parentIsLess = Element.isLessThan(
+            unsafe _readPointerToElement(at: parentOffset).pointee,
+            unsafe _readPointerToElement(at: nodeOffset).pointee
+        )
+
+        let isMinLevel = Self._isMinLevel(level)
+
+        if (isMinLevel && parentIsLess) || (!isMinLevel && nodeIsLess) {
+            _swapElements(at: nodeOffset, parentOffset)
+            nodeOffset = parentOffset
+            level -= 1
+        }
+
+        if Self._isMinLevel(level) {
+            while nodeOffset > 2 {
+                let gpOffset = (nodeOffset &- 3) / 4
+                let gpIsLess = Element.isLessThan(
+                    unsafe _readPointerToElement(at: gpOffset).pointee,
+                    unsafe _readPointerToElement(at: nodeOffset).pointee
+                )
+                guard !gpIsLess else { break }
+                _swapElements(at: nodeOffset, gpOffset)
+                nodeOffset = gpOffset
+            }
+        } else {
+            while nodeOffset > 2 {
+                let gpOffset = (nodeOffset &- 3) / 4
+                let nodeIsLessGp = Element.isLessThan(
+                    unsafe _readPointerToElement(at: nodeOffset).pointee,
+                    unsafe _readPointerToElement(at: gpOffset).pointee
+                )
+                guard !nodeIsLessGp else { break }
+                _swapElements(at: nodeOffset, gpOffset)
+                nodeOffset = gpOffset
+            }
+        }
+    }
+}
+
+// MARK: - Trickle Down Min
+
+extension Heap.Small where Element: ~Copyable {
+    /// Sinks element at min-level node to correct position.
+    @usableFromInline
+    mutating func _trickleDownMin(_ startOffset: Int) {
+        var nodeOffset = startOffset
+
+        while true {
+            let leftChildOffset = nodeOffset &* 2 &+ 1
+            if leftChildOffset >= _count { break }
+
+            var smallestOffset = nodeOffset
+
+            let rightChildOffset = nodeOffset &* 2 &+ 2
+
+            if Element.isLessThan(
+                unsafe _readPointerToElement(at: leftChildOffset).pointee,
+                unsafe _readPointerToElement(at: smallestOffset).pointee
+            ) {
+                smallestOffset = leftChildOffset
+            }
+            if rightChildOffset < _count {
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: rightChildOffset).pointee,
+                    unsafe _readPointerToElement(at: smallestOffset).pointee
+                ) {
+                    smallestOffset = rightChildOffset
+                }
+            }
+
+            let gc0 = nodeOffset &* 4 &+ 3
+            for i in 0..<4 {
+                let gcOffset = gc0 + i
+                guard gcOffset < _count else { break }
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: gcOffset).pointee,
+                    unsafe _readPointerToElement(at: smallestOffset).pointee
+                ) {
+                    smallestOffset = gcOffset
+                }
+            }
+
+            if smallestOffset == nodeOffset { break }
+
+            _swapElements(at: nodeOffset, smallestOffset)
+
+            if smallestOffset >= gc0 {
+                let parentOffset = (smallestOffset &- 1) / 2
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: parentOffset).pointee,
+                    unsafe _readPointerToElement(at: smallestOffset).pointee
+                ) {
+                    _swapElements(at: smallestOffset, parentOffset)
+                }
+                nodeOffset = smallestOffset
+            } else {
+                break
+            }
+        }
+    }
+}
+
+// MARK: - Trickle Down Max
+
+extension Heap.Small where Element: ~Copyable {
+    /// Sinks element at max-level node to correct position.
+    @usableFromInline
+    mutating func _trickleDownMax(_ startOffset: Int, level startLevel: Int) {
+        var nodeOffset = startOffset
+
+        while true {
+            let leftChildOffset = nodeOffset &* 2 &+ 1
+            if leftChildOffset >= _count { break }
+
+            var largestOffset = nodeOffset
+
+            let rightChildOffset = nodeOffset &* 2 &+ 2
+
+            if Element.isLessThan(
+                unsafe _readPointerToElement(at: largestOffset).pointee,
+                unsafe _readPointerToElement(at: leftChildOffset).pointee
+            ) {
+                largestOffset = leftChildOffset
+            }
+            if rightChildOffset < _count {
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: largestOffset).pointee,
+                    unsafe _readPointerToElement(at: rightChildOffset).pointee
+                ) {
+                    largestOffset = rightChildOffset
+                }
+            }
+
+            let gc0 = nodeOffset &* 4 &+ 3
+            for i in 0..<4 {
+                let gcOffset = gc0 + i
+                guard gcOffset < _count else { break }
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: largestOffset).pointee,
+                    unsafe _readPointerToElement(at: gcOffset).pointee
+                ) {
+                    largestOffset = gcOffset
+                }
+            }
+
+            if largestOffset == nodeOffset { break }
+
+            _swapElements(at: nodeOffset, largestOffset)
+
+            if largestOffset >= gc0 {
+                let parentOffset = (largestOffset &- 1) / 2
+                if Element.isLessThan(
+                    unsafe _readPointerToElement(at: largestOffset).pointee,
+                    unsafe _readPointerToElement(at: parentOffset).pointee
+                ) {
+                    _swapElements(at: largestOffset, parentOffset)
+                }
+                nodeOffset = largestOffset
+            } else {
+                break
+            }
+        }
+    }
+}
+
+// MARK: - Heapify
+
+extension Heap.Small where Element: ~Copyable {
+    /// Converts storage to valid min-max heap in O(n).
+    @usableFromInline
+    mutating func _heapify() {
+        guard _count > 1 else { return }
+
+        let limit = _count / 2
+
+        var level = Self._level(forOffset: limit - 1)
+        while level >= 0 {
+            let firstOnLevel = (1 &<< level) &- 1
+            let lastOnLevel = (1 &<< (level &+ 1)) &- 2
+
+            let startOffset = firstOnLevel
+            let endOffset = Swift.min(lastOnLevel, limit - 1)
+
+            if Self._isMinLevel(level) {
+                for offset in startOffset...endOffset {
+                    _trickleDownMin(offset)
+                }
+            } else {
+                for offset in startOffset...endOffset {
+                    _trickleDownMax(offset, level: level)
+                }
+            }
+            level -= 1
+        }
+    }
+}
+
+// MARK: - Heap Growth
+
+extension Heap.Small where Element: ~Copyable {
+    /// Internal: push element to heap storage.
+    @usableFromInline
+    mutating func _pushToHeap(_ element: consuming Element) {
+        guard let heap = _heap, let heapPtr = _heapPtr else {
+            preconditionFailure("_pushToHeap called without heap storage")
+        }
+
+        // Check if we need to grow
+        if _count >= heap.capacity {
+            _growHeap(minimumCapacity: _count + 1)
+        }
+
+        unsafe (_heapPtr! + _count).initialize(to: element)
+        _count += 1
+        heap.header = _count
+        _bubbleUp(_count - 1)
+    }
+
+    /// Internal: grow heap storage.
+    @usableFromInline
+    mutating func _growHeap(minimumCapacity: Int) {
+        guard let oldStorage = _heap else {
+            preconditionFailure("_growHeap called without heap storage")
+        }
+
+        let newCapacity = Swift.max(minimumCapacity, oldStorage.capacity * 2)
+        let newStorage = Heap<Element>.Storage.create(minimumCapacity: newCapacity)
+
+        oldStorage._moveAllElements(to: newStorage, count: _count)
+        newStorage.header = _count
+        oldStorage.header = 0  // Elements moved, prevent double-free
+
+        _heap = newStorage
+        unsafe (_heapPtr = newStorage._elementsPointer)
+    }
+}
+
+// MARK: - Core Operations
+
+extension Heap.Small where Element: ~Copyable {
+    /// Pushes an element onto the heap.
+    ///
+    /// If the heap exceeds inline capacity, elements are moved to heap storage.
+    /// Push operations never fail - the heap grows automatically.
+    ///
+    /// - Parameter element: The element to push.
+    /// - Complexity: O(log n) amortized, O(n) when spilling to heap.
+    @inlinable
+    public mutating func push(_ element: consuming Element) {
+        if _heap != nil {
+            // Already spilled - push to heap
+            _pushToHeap(element)
+        } else if _count < inlineCapacity {
+            // Still inline and have space
+            _insert(element)
+        } else {
+            // Need to spill
+            _spillToHeap(minimumCapacity: _count + 1)
+            _pushToHeap(element)
+        }
+    }
+
+    /// Takes and returns the minimum element, or nil if empty.
+    ///
+    /// - Returns: The minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func takeMin() -> Element? {
+        _removeMin()
+    }
+
+    /// Takes and returns the maximum element, or nil if empty.
+    ///
+    /// - Returns: The maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func takeMax() -> Element? {
+        _removeMax()
+    }
+
+    /// Pops and returns the minimum element.
+    ///
+    /// - Returns: The minimum element.
+    /// - Throws: ``Heap/Small/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func popMin() throws(__Heap.Small.Error) -> Element {
+        guard let element = _removeMin() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Pops and returns the maximum element.
+    ///
+    /// - Returns: The maximum element.
+    /// - Throws: ``Heap/Small/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func popMax() throws(__Heap.Small.Error) -> Element {
+        guard let element = _removeMax() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Removes all elements from the heap.
+    ///
+    /// Does not shrink back to inline storage if spilled.
+    ///
+    /// - Complexity: O(n) where n is the number of elements.
+    @inlinable
+    public mutating func clear() {
+        guard _count > 0 else { return }
+
+        if let heap = _heap {
+            heap._deinitializeElements(in: 0..<_count)
+            heap.header = 0
+        } else {
+            let stride = MemoryLayout<Element>.stride
+            unsafe Swift.withUnsafeMutablePointer(to: &_inline) { storagePtr in
+                let basePtr = UnsafeMutableRawPointer(storagePtr)
+                for i in 0..<_count {
+                    let elementPtr = unsafe (basePtr + i * stride)
+                        .assumingMemoryBound(to: Element.self)
+                    unsafe elementPtr.deinitialize(count: 1)
+                }
+            }
+        }
+        _count = 0
+    }
+}
+
+// MARK: - Borrowing Access (~Copyable elements)
+
+extension Heap.Small where Element: ~Copyable {
+    /// Provides borrowing access to the minimum element.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to the minimum.
+    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
+        guard count > 0 else { return nil }
+        return unsafe body(_readPointerToElement(at: 0).pointee)
+    }
+
+    /// Provides borrowing access to the maximum element.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to the maximum.
+    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
+        guard count > 0 else { return nil }
+        if count == 1 { return unsafe body(_readPointerToElement(at: 0).pointee) }
+        if count == 2 { return unsafe body(_readPointerToElement(at: 1).pointee) }
+
+        let e1IsLess = Element.isLessThan(
+            unsafe _readPointerToElement(at: 1).pointee,
+            unsafe _readPointerToElement(at: 2).pointee
+        )
+        let maxIndex = e1IsLess ? 2 : 1
+        return unsafe body(_readPointerToElement(at: maxIndex).pointee)
+    }
+
+    /// Calls the given closure for each element in heap order.
+    ///
+    /// This method is the primary iteration mechanism for `Heap.Small` because
+    /// `Sequence` conformance is disabled due to a Swift compiler bug. Use this
+    /// instead of `for-in` loops:
+    ///
+    /// ```swift
+    /// // Instead of: for element in heap { ... }
+    /// heap.forEach { element in
+    ///     print(element)
+    /// }
+    /// ```
+    ///
+    /// - Note: Elements are yielded in heap order, which is **not** sorted order.
+    ///   For sorted iteration, repeatedly call `takeMin()` or `takeMax()`.
+    ///
+    /// - Parameter body: A closure that receives a borrowed reference to each element.
+    /// - Complexity: O(n) where n is the number of elements.
+    @inlinable
+    public func forEach(_ body: (borrowing Element) -> Void) {
+        for i in 0..<count {
+            body(unsafe _readPointerToElement(at: i).pointee)
+        }
+    }
+}
+
+// MARK: - Peek (Copyable elements)
+
+extension Heap.Small where Element: Copyable {
+    /// Returns the minimum element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func peekMin() -> Element? {
+        guard !isEmpty else { return nil }
+        return unsafe _readPointerToElement(at: 0).pointee
+    }
+
+    /// Returns the maximum element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public func peekMax() -> Element? {
+        guard !isEmpty else { return nil }
+        if count == 1 { return unsafe _readPointerToElement(at: 0).pointee }
+        if count == 2 { return unsafe _readPointerToElement(at: 1).pointee }
+
+        let e1 = unsafe _readPointerToElement(at: 1).pointee
+        let e2 = unsafe _readPointerToElement(at: 2).pointee
+        return Element.isLessThan(e1, e2) ? e2 : e1
+    }
+}
+
+// MARK: - Truncate
+
+extension Heap.Small where Element: ~Copyable {
+    /// Removes elements beyond the specified count.
+    ///
+    /// If `newCount >= count`, this method has no effect.
+    ///
+    /// - Parameter newCount: The maximum number of elements to retain.
+    /// - Complexity: O(k) where k is the number of removed elements.
+    @inlinable
+    public mutating func truncate(to newCount: Int) {
+        guard newCount < _count else { return }
+        let targetCount = Swift.max(0, newCount)
+
+        if let heap = _heap {
+            heap._deinitializeElements(in: targetCount..<_count)
+            heap.header = targetCount
+        } else {
+            let stride = MemoryLayout<Element>.stride
+            unsafe Swift.withUnsafeMutablePointer(to: &_inline) { storagePtr in
+                let basePtr = UnsafeMutableRawPointer(storagePtr)
+                for i in targetCount..<_count {
+                    let elementPtr = unsafe (basePtr + i * stride)
+                        .assumingMemoryBound(to: Element.self)
+                    unsafe elementPtr.deinitialize(count: 1)
+                }
+            }
+        }
+        _count = targetCount
+    }
+}
+
+// MARK: - Span Access
+
+extension Heap.Small where Element: ~Copyable {
+    /// Read-only span of the heap elements in heap order.
+    ///
+    /// Elements are in heap order, which is **not** sorted order.
+    @inlinable
+    public var span: Span<Element> {
+        _read {
+            if let heapPtr = _heapPtr {
+                yield unsafe Span(_unsafeStart: heapPtr, count: _count)
+            } else {
+                yield unsafe Span(_unsafeStart: _inlineReadPointerToElement(at: 0), count: _count)
+            }
+        }
+    }
+
+    /// Mutable span of the heap elements.
+    ///
+    /// - Warning: Modifying elements may break the heap invariant.
+    @inlinable
+    public var mutableSpan: MutableSpan<Element> {
+        _read {
+            if let heapPtr = _heapPtr {
+                yield unsafe MutableSpan(_unsafeStart: heapPtr, count: _count)
+            } else {
+                let ptr = unsafe UnsafeMutablePointer(mutating: _inlineReadPointerToElement(at: 0))
+                yield unsafe MutableSpan(_unsafeStart: ptr, count: _count)
+            }
+        }
+        _modify {
+            if var heapPtr = _heapPtr {
+                var s = unsafe MutableSpan(_unsafeStart: heapPtr, count: _count)
+                yield &s
+            } else {
+                var s = unsafe MutableSpan(_unsafeStart: _inlineMutableBasePointer(), count: _count)
+                yield &s
+            }
+        }
+    }
+
+    /// Returns the mutable inline base pointer.
+    @usableFromInline
+    @unsafe
+    mutating func _inlineMutableBasePointer() -> UnsafeMutablePointer<Element> {
+        unsafe Swift.withUnsafeMutablePointer(to: &_inline) { storagePtr in
+            let basePtr = UnsafeMutableRawPointer(storagePtr)
+            return unsafe basePtr.assumingMemoryBound(to: Element.self)
+        }
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+// MARK: - Push Accessor (Copyable elements only)
+
+extension Heap where Element: Copyable {
+    /// Nested accessor for push operations.
+    ///
+    /// ```swift
+    /// var heap = Heap<Int>()
+    /// heap.push(42)                    // single element
+    /// heap.push.contentsOf([1, 2, 3])  // bulk insert
+    /// ```
+    ///
+    /// - Note: This accessor is only available for `Copyable` elements.
+    @inlinable
+    public var push: Push {
+        _read {
+            yield Push(heap: self)
+        }
+        _modify {
+            // Force uniqueness before transferring
+            _makeUnique()
+
+            var proxy = Push(heap: self)
+            self = Heap()  // Clear self to release our reference
+            defer { self = proxy.heap }
+            yield &proxy
+        }
+    }
+}
+
+// MARK: - Push Type
+
+extension Heap where Element: Copyable {
+    /// Namespace for push operations.
+    public struct Push {
+        @usableFromInline
+        var heap: Heap<Element>
+
+        @usableFromInline
+        init(heap: Heap<Element>) {
+            self.heap = heap
+        }
+    }
+}
+
+// MARK: - Push Operations
+
+extension Heap.Push where Element: Copyable {
+    /// Inserts an element into the heap.
+    ///
+    /// - Parameter element: The element to insert.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func callAsFunction(_ element: Element) {
+        heap._insert(element)
+    }
+
+    /// Inserts multiple elements into the heap.
+    ///
+    /// Uses a heuristic to choose between per-element insertion
+    /// and full re-heapification for optimal performance.
+    ///
+    /// - Parameter elements: The elements to insert.
+    /// - Complexity: O(n + k) where k is the number of new elements.
+    @inlinable
+    public mutating func contentsOf(_ elements: some Sequence<Element>) {
+        let origCount = heap.count
+        for element in elements {
+            heap._appendWithoutHeapify(element)
+        }
+        let newCount = heap.count
+
+        guard newCount > origCount, newCount > 1 else { return }
+
+        // Heuristic: use Floyd's if k > 2n / log(n)
+        let heuristicLimit = 2 * newCount / Swift.max(1, newCount._binaryLogarithm())
+        let useFloyd = (newCount - origCount) > heuristicLimit
+
+        if useFloyd {
+            heap._heapify()
+        } else {
+            for offset in origCount..<newCount {
+                heap._bubbleUp(Heap.Node(offset: offset))
+            }
+        }
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+// MARK: - Pop Accessor (Copyable elements only)
+
+extension Heap where Element: Copyable {
+    /// Nested accessor for pop operations.
+    ///
+    /// ```swift
+    /// var heap: Heap<Int> = [3, 1, 4, 1, 5]
+    /// let min = try heap.pop.min()  // 1
+    /// let max = try heap.pop.max()  // 5
+    /// ```
+    ///
+    /// - Note: This accessor is only available for `Copyable` elements.
+    @inlinable
+    public var pop: Pop {
+        _read {
+            yield Pop(heap: self)
+        }
+        _modify {
+            // Force uniqueness before transferring
+            _makeUnique()
+
+            var proxy = Pop(heap: self)
+            self = Heap()  // Clear self to release our reference
+            defer { self = proxy.heap }
+            yield &proxy
+        }
+    }
+}
+
+// MARK: - Pop Type
+
+extension Heap where Element: Copyable {
+    /// Namespace for pop operations.
+    public struct Pop {
+        @usableFromInline
+        var heap: Heap<Element>
+
+        @usableFromInline
+        init(heap: Heap<Element>) {
+            self.heap = heap
+        }
+    }
+}
+
+// MARK: - Pop Operations
+
+extension Heap.Pop where Element: Copyable {
+    /// Removes and returns the minimum element.
+    ///
+    /// - Returns: The minimum element.
+    /// - Throws: `Heap.Error.empty` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func min() throws(Heap<Element>.Error) -> Element {
+        guard let element = heap._removeMin() else {
+            throw .empty(.init())
+        }
+        return element
+    }
+
+    /// Removes and returns the maximum element.
+    ///
+    /// - Returns: The maximum element.
+    /// - Throws: `Heap.Error.empty` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func max() throws(Heap<Element>.Error) -> Element {
+        guard let element = heap._removeMax() else {
+            throw .empty(.init())
+        }
+        return element
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+// MARK: - Peek Accessor (Copyable elements only)
+
+extension Heap where Element: Copyable {
+    /// Nested accessor for peek operations.
+    ///
+    /// ```swift
+    /// let heap: Heap<Int> = [3, 1, 4, 1, 5]
+    /// if let min = heap.peek.min { print(min) }  // 1
+    /// if let max = heap.peek.max { print(max) }  // 5
+    /// ```
+    ///
+    /// - Note: This accessor is only available for `Copyable` elements.
+    @inlinable
+    public var peek: Peek {
+        Peek(heap: self)
+    }
+}
+
+// MARK: - Peek Type
+
+extension Heap where Element: Copyable {
+    /// Namespace for peek operations.
+    public struct Peek {
+        @usableFromInline
+        let heap: Heap<Element>
+
+        @usableFromInline
+        init(heap: Heap<Element>) {
+            self.heap = heap
+        }
+    }
+}
+
+// MARK: - Peek Operations
+
+extension Heap.Peek where Element: Copyable {
+    /// The minimum element, or `nil` if empty.
+    ///
+    /// - Complexity: O(1)
+    @inlinable
+    public var min: Element? {
+        heap._peekMin()
+    }
+
+    /// The maximum element, or `nil` if empty.
+    ///
+    /// - Complexity: O(1)
+    @inlinable
+    public var max: Element? {
+        heap._peekMax()
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+// MARK: - Take Accessor (Copyable elements only)
+
+extension Heap where Element: Copyable {
+    /// Nested accessor for optional removal operations.
+    ///
+    /// Use `take` when empty is a normal state (priority queue drain):
+    /// ```swift
+    /// var heap: Heap<Int> = [3, 1, 4, 1, 5]
+    /// while let min = heap.take.min {
+    ///     process(min)
+    /// }
+    /// ```
+    ///
+    /// Use `pop` when empty is exceptional and should throw.
+    ///
+    /// - Note: This accessor is only available for `Copyable` elements.
+    @inlinable
+    public var take: Take {
+        _read {
+            yield Take(heap: self)
+        }
+        _modify {
+            // Force uniqueness before transferring
+            _makeUnique()
+
+            var proxy = Take(heap: self)
+            self = Heap()  // Clear self to release our reference
+            defer { self = proxy.heap }
+            yield &proxy
+        }
+    }
+}
+
+// MARK: - Take Type
+
+extension Heap where Element: Copyable {
+    /// Namespace for optional removal operations.
+    public struct Take {
+        @usableFromInline
+        var heap: Heap<Element>
+
+        @usableFromInline
+        init(heap: Heap<Element>) {
+            self.heap = heap
+        }
+    }
+}
+
+// MARK: - Take Operations
+
+extension Heap.Take where Element: Copyable {
+    /// Removes and returns the minimum element, or `nil` if empty.
+    ///
+    /// - Returns: The minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public var min: Element? {
+        mutating get {
+            heap._removeMin()
+        }
+    }
+
+    /// Removes and returns the maximum element, or `nil` if empty.
+    ///
+    /// - Returns: The maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public var max: Element? {
+        mutating get {
+            heap._removeMax()
+        }
+    }
+}
+
+// ===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-standards open source project
+//
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
+
+// MARK: - Replace Accessor (Copyable elements only)
+
+extension Heap where Element: Copyable {
+    /// Nested accessor for replace operations.
+    ///
+    /// Replace is more efficient than pop + push when you need to
+    /// replace the extremum:
+    /// ```swift
+    /// var heap: Heap<Int> = [3, 1, 4, 1, 5]
+    /// let oldMin = try heap.replace.min(with: 0)  // returns 1, heap now has 0
+    /// let oldMax = try heap.replace.max(with: 9)  // returns 5, heap now has 9
+    /// ```
+    ///
+    /// - Note: This accessor is only available for `Copyable` elements.
+    @inlinable
+    public var replace: Replace {
+        _read {
+            yield Replace(heap: self)
+        }
+        _modify {
+            // Force uniqueness before transferring
+            _makeUnique()
+
+            var proxy = Replace(heap: self)
+            self = Heap()  // Clear self to release our reference
+            defer { self = proxy.heap }
+            yield &proxy
+        }
+    }
+}
+
+// MARK: - Replace Type
+
+extension Heap where Element: Copyable {
+    /// Namespace for replace operations.
+    public struct Replace {
+        @usableFromInline
+        var heap: Heap<Element>
+
+        @usableFromInline
+        init(heap: Heap<Element>) {
+            self.heap = heap
+        }
+    }
+}
+
+// MARK: - Replace Operations
+
+extension Heap.Replace where Element: Copyable {
+    /// Replaces the minimum element and returns the old value.
+    ///
+    /// - Parameter replacement: The new value to insert.
+    /// - Returns: The original minimum element.
+    /// - Throws: `Heap.Error.empty` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func min(with replacement: Element) throws(Heap<Element>.Error) -> Element {
+        guard !heap.isEmpty else {
+            throw .empty(.init())
+        }
+        return heap._replaceMin(with: replacement)
+    }
+
+    /// Replaces the maximum element and returns the old value.
+    ///
+    /// - Parameter replacement: The new value to insert.
+    /// - Returns: The original maximum element.
+    /// - Throws: `Heap.Error.empty` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public mutating func max(with replacement: Element) throws(Heap<Element>.Error) -> Element {
+        guard !heap.isEmpty else {
+            throw .empty(.init())
+        }
+        return heap._replaceMax(with: replacement)
+    }
+}

@@ -17,9 +17,9 @@ struct HeapInlineTests {
     @Test("Init creates empty heap")
     func initCreatesEmpty() {
         let heap = Heap<Int>.Inline<8>()
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
-        #expect(!heap.isFull)
+        #expect(heap.isFull == false)
     }
 
     @Test("Push returns inserted on success")
@@ -40,7 +40,7 @@ struct HeapInlineTests {
         var heap = Heap<Int>.Inline<2>()
         _ = heap.push(1)
         _ = heap.push(2)
-        #expect(heap.isFull)
+        #expect(heap.isFull == true)
 
         let outcome = heap.push(3)
         switch outcome {
@@ -76,7 +76,7 @@ struct HeapInlineTests {
         #expect(try heap.popMin() == 3)
         #expect(try heap.popMin() == 5)
         #expect(try heap.popMin() == 7)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop max in order")
@@ -91,7 +91,7 @@ struct HeapInlineTests {
         #expect(try heap.popMax() == 5)
         #expect(try heap.popMax() == 3)
         #expect(try heap.popMax() == 1)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop throws when empty")
@@ -120,7 +120,7 @@ struct HeapInlineTests {
         _ = heap.push(3)
 
         heap.clear()
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
     }
 
@@ -141,7 +141,7 @@ struct HeapInlineTests {
         _ = heap.push(3)
         _ = heap.push(1)
 
-        #expect(heap.isFull)
+        #expect(heap.isFull == true)
         #expect(heap.count == 4)
         #expect(heap.peekMin() == 1)
         #expect(heap.peekMax() == 4)
@@ -194,7 +194,7 @@ struct HeapInlineTests {
         for i in 0..<16 {
             _ = heap.push(i)
         }
-        #expect(heap.isFull)
+        #expect(heap.isFull == true)
         #expect(heap.peekMin() == 0)
         #expect(heap.peekMax() == 15)
     }

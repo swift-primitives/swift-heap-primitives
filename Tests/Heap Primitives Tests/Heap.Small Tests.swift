@@ -17,9 +17,9 @@ struct HeapSmallTests {
     @Test("Init creates empty heap")
     func initCreatesEmpty() {
         let heap = Heap<Int>.Small<4>()
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
-        #expect(!heap.isSpilled)
+        #expect(heap.isSpilled == false)
     }
 
     @Test("Push within inline capacity")
@@ -31,7 +31,7 @@ struct HeapSmallTests {
         heap.push(4)
 
         #expect(heap.count == 4)
-        #expect(!heap.isSpilled)
+        #expect(heap.isSpilled == false)
     }
 
     @Test("Push spills to heap")
@@ -41,10 +41,10 @@ struct HeapSmallTests {
         heap.push(2)
         heap.push(3)
         heap.push(4)
-        #expect(!heap.isSpilled)
+        #expect(heap.isSpilled == false)
 
         heap.push(5)  // Triggers spill
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
         #expect(heap.count == 5)
     }
 
@@ -58,7 +58,7 @@ struct HeapSmallTests {
 
         #expect(heap.peekMin() == 1)
         #expect(heap.peekMax() == 7)
-        #expect(!heap.isSpilled)
+        #expect(heap.isSpilled == false)
     }
 
     @Test("Min-max ordering after spill")
@@ -66,11 +66,11 @@ struct HeapSmallTests {
         var heap = Heap<Int>.Small<2>()
         heap.push(5)
         heap.push(3)
-        #expect(!heap.isSpilled)
+        #expect(heap.isSpilled == false)
 
         heap.push(7)
         heap.push(1)
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
 
         #expect(heap.peekMin() == 1)
         #expect(heap.peekMax() == 7)
@@ -88,7 +88,7 @@ struct HeapSmallTests {
         #expect(try heap.popMin() == 3)
         #expect(try heap.popMin() == 5)
         #expect(try heap.popMin() == 7)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop min in order after spill")
@@ -98,13 +98,13 @@ struct HeapSmallTests {
         heap.push(3)
         heap.push(7)
         heap.push(1)
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
 
         #expect(try heap.popMin() == 1)
         #expect(try heap.popMin() == 3)
         #expect(try heap.popMin() == 5)
         #expect(try heap.popMin() == 7)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop max in order")
@@ -119,7 +119,7 @@ struct HeapSmallTests {
         #expect(try heap.popMax() == 5)
         #expect(try heap.popMax() == 3)
         #expect(try heap.popMax() == 1)
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
     }
 
     @Test("Pop throws when empty")
@@ -148,7 +148,7 @@ struct HeapSmallTests {
         heap.push(3)
 
         heap.clear()
-        #expect(heap.isEmpty)
+        #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
     }
 
@@ -159,11 +159,11 @@ struct HeapSmallTests {
         heap.push(2)
         heap.push(3)
         heap.push(4)
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
 
         heap.clear()
-        #expect(heap.isEmpty)
-        #expect(heap.isSpilled)  // Still spilled, storage not reclaimed
+        #expect(heap.isEmpty == true)
+        #expect(heap.isSpilled == true)  // Still spilled, storage not reclaimed
     }
 
     @Test("Single element min equals max")
@@ -189,7 +189,7 @@ struct HeapSmallTests {
         }
 
         #expect(heap.count == 20)
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
         #expect(heap.peekMin() == 1)
         #expect(heap.peekMax() == 20)
     }
@@ -215,7 +215,7 @@ struct HeapSmallTests {
         heap.push(2)
         heap.push(3)
         heap.push(4)
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
 
         var sum = 0
         heap.forEach { element in
@@ -259,7 +259,7 @@ struct HeapSmallTests {
         heap.push(3)
         heap.push(4)
         heap.push(5)
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
 
         heap.truncate(to: 3)
         #expect(heap.count == 3)
@@ -276,7 +276,7 @@ struct HeapSmallTests {
         heap.push(4)
         heap.push(5)  // Spills
 
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
         #expect(heap.capacity >= 5)  // Heap capacity
     }
 }
@@ -307,7 +307,7 @@ struct HeapSmallNonCopyableTests {
         heap.push(UniqueResource(id: 15))
 
         #expect(heap.count == 3)
-        #expect(!heap.isSpilled)
+        #expect(heap.isSpilled == false)
 
         let minId = heap.withMin { $0.id }
         #expect(minId == 5)
@@ -326,7 +326,7 @@ struct HeapSmallNonCopyableTests {
         heap.push(UniqueResource(id: 1))
 
         #expect(heap.count == 4)
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
 
         let minId = heap.withMin { $0.id }
         #expect(minId == 1)
@@ -365,7 +365,7 @@ struct HeapSmallNonCopyableTests {
         heap.push(UniqueResource(id: 2))
         heap.push(UniqueResource(id: 3))
         heap.push(UniqueResource(id: 4))
-        #expect(heap.isSpilled)
+        #expect(heap.isSpilled == true)
         // heap goes out of scope - deinit should clean up properly
     }
 }
