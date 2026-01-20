@@ -129,4 +129,140 @@ struct HeapTests {
             try heap.pop.max()
         }
     }
+
+    @Test("Copy-on-write semantics")
+    func copyOnWrite() {
+        var heap1: Heap<Int> = [5, 3, 7]
+        let heap2 = heap1
+
+        heap1.push(1)
+
+        #expect(heap1.count == 4)
+        #expect(heap2.count == 3)
+        #expect(heap1.peek.min == 1)
+        #expect(heap2.peek.min == 3)
+    }
+}
+
+// MARK: - ~Copyable Element Tests
+
+/// A move-only resource for testing ~Copyable heap functionality.
+struct UniqueResource: ~Copyable, Heap.Ordering {
+    let id: Int
+
+    init(id: Int) {
+        self.id = id
+    }
+
+    static func isLessThan(_ lhs: borrowing UniqueResource, _ rhs: borrowing UniqueResource) -> Bool {
+        lhs.id < rhs.id
+    }
+}
+
+@Suite("Heap with ~Copyable elements")
+struct HeapNonCopyableTests {
+    @Test("Push and access ~Copyable elements")
+    func pushAndAccess() {
+        var heap = Heap<UniqueResource>()
+
+        heap.push(UniqueResource(id: 10))
+        heap.push(UniqueResource(id: 5))
+        heap.push(UniqueResource(id: 15))
+
+        let count = heap.count
+        #expect(count == 3)
+
+        // Access via borrowing closure
+        let minId = heap.withMin { $0.id }
+        #expect(minId == 5)
+
+        let maxId = heap.withMax { $0.id }
+        #expect(maxId == 15)
+    }
+
+    @Test("forEach with ~Copyable elements")
+    func forEachAccess() {
+        var heap = Heap<UniqueResource>()
+        heap.push(UniqueResource(id: 3))
+        heap.push(UniqueResource(id: 1))
+        heap.push(UniqueResource(id: 2))
+
+        var ids: [Int] = []
+        heap.forEach { element in
+            ids.append(element.id)
+        }
+
+        #expect(ids.count == 3)
+        #expect(ids.contains(1))
+        #expect(ids.contains(2))
+        #expect(ids.contains(3))
+    }
+
+    @Test("Empty ~Copyable heap")
+    func emptyNonCopyableHeap() {
+        let heap = Heap<UniqueResource>()
+
+        let isEmpty = heap.isEmpty
+        let count = heap.count
+        #expect(isEmpty)
+        #expect(count == 0)
+
+        let minResult = heap.withMin { $0.id }
+        #expect(minResult == nil)
+
+        let maxResult = heap.withMax { $0.id }
+        #expect(maxResult == nil)
+    }
+
+    @Test("Single ~Copyable element")
+    func singleNonCopyableElement() {
+        var heap = Heap<UniqueResource>()
+        heap.push(UniqueResource(id: 42))
+
+        let count = heap.count
+        #expect(count == 1)
+
+        // For single element, min == max
+        let minId = heap.withMin { $0.id }
+        let maxId = heap.withMax { $0.id }
+        #expect(minId == 42)
+        #expect(maxId == 42)
+    }
+
+    @Test("Remove all ~Copyable elements")
+    func removeAllNonCopyable() {
+        var heap = Heap<UniqueResource>()
+        heap.push(UniqueResource(id: 1))
+        heap.push(UniqueResource(id: 2))
+        heap.push(UniqueResource(id: 3))
+
+        var count = heap.count
+        #expect(count == 3)
+
+        heap.removeAll()
+
+        let isEmpty = heap.isEmpty
+        count = heap.count
+        #expect(isEmpty)
+        #expect(count == 0)
+    }
+
+    @Test("Heap ordering with ~Copyable elements")
+    func heapOrderingNonCopyable() {
+        var heap = Heap<UniqueResource>()
+
+        // Push in non-sorted order
+        heap.push(UniqueResource(id: 50))
+        heap.push(UniqueResource(id: 10))
+        heap.push(UniqueResource(id: 30))
+        heap.push(UniqueResource(id: 5))
+        heap.push(UniqueResource(id: 100))
+
+        // Min should be 5, max should be 100
+        let minId = heap.withMin { $0.id }
+        let maxId = heap.withMax { $0.id }
+
+        #expect(minId == 5)
+        #expect(maxId == 100)
+    }
 }

@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-extension Heap {
+extension Heap where Element: ~Copyable {
     /// Internal node representation for min-max heap navigation.
     ///
     /// Tracks both the array offset and the tree level for efficient
@@ -37,7 +37,7 @@ extension Heap {
 
 // MARK: - Comparable
 
-extension Heap.Node: Comparable {
+extension Heap.Node: Comparable where Element: ~Copyable {
     @inlinable
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.offset == rhs.offset
@@ -51,7 +51,7 @@ extension Heap.Node: Comparable {
 
 // MARK: - Level Calculations
 
-extension Heap.Node {
+extension Heap.Node where Element: ~Copyable {
     /// Computes the level for a given offset.
     /// Level = floor(log2(offset + 1))
     @inlinable
@@ -80,7 +80,7 @@ extension Heap.Node {
 
 // MARK: - Well-Known Nodes
 
-extension Heap.Node {
+extension Heap.Node where Element: ~Copyable {
     /// The root node (index 0, level 0).
     @inlinable
     static var root: Self {
@@ -114,7 +114,7 @@ extension Heap.Node {
 
 // MARK: - Navigation
 
-extension Heap.Node {
+extension Heap.Node where Element: ~Copyable {
     /// Returns the parent node.
     ///
     /// - Precondition: This is not the root.
@@ -157,7 +157,7 @@ extension Heap.Node {
 
 // MARK: - Range Operations
 
-extension Heap.Node {
+extension Heap.Node where Element: ~Copyable {
     /// Returns the range of nodes on a level up to a limit.
     @inlinable
     static func allNodes(onLevel level: Int, limit: Int) -> ClosedRange<Self>? {

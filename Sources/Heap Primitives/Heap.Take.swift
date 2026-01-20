@@ -2,16 +2,16 @@
 //
 // This source file is part of the swift-standards open source project
 //
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
 //
 // ===----------------------------------------------------------------------===//
 
-// MARK: - Take Accessor
+// MARK: - Take Accessor (Copyable elements only)
 
-extension Heap {
+extension Heap where Element: Copyable {
     /// Nested accessor for optional removal operations.
     ///
     /// Use `take` when empty is a normal state (priority queue drain):
@@ -23,15 +23,20 @@ extension Heap {
     /// ```
     ///
     /// Use `pop` when empty is exceptional and should throw.
+    ///
+    /// - Note: This accessor is only available for `Copyable` elements.
     @inlinable
     public var take: Take {
         _read {
-            yield Take(storage: storage)
+            yield Take(heap: self)
         }
         _modify {
-            var proxy = Take(storage: storage)
-            storage = Storage()
-            defer { storage = proxy.storage }
+            // Force uniqueness before transferring
+            _makeUnique()
+
+            var proxy = Take(heap: self)
+            self = Heap()  // Clear self to release our reference
+            defer { self = proxy.heap }
             yield &proxy
         }
     }
@@ -39,22 +44,22 @@ extension Heap {
 
 // MARK: - Take Type
 
-extension Heap {
+extension Heap where Element: Copyable {
     /// Namespace for optional removal operations.
     public struct Take {
         @usableFromInline
-        var storage: Storage
+        var heap: Heap<Element>
 
         @usableFromInline
-        init(storage: Storage) {
-            self.storage = storage
+        init(heap: Heap<Element>) {
+            self.heap = heap
         }
     }
 }
 
 // MARK: - Take Operations
 
-extension Heap.Take {
+extension Heap.Take where Element: Copyable {
     /// Removes and returns the minimum element, or `nil` if empty.
     ///
     /// - Returns: The minimum element, or `nil` if the heap is empty.
@@ -62,7 +67,7 @@ extension Heap.Take {
     @inlinable
     public var min: Element? {
         mutating get {
-            storage.removeMin()
+            heap._removeMin()
         }
     }
 
@@ -73,7 +78,7 @@ extension Heap.Take {
     @inlinable
     public var max: Element? {
         mutating get {
-            storage.removeMax()
+            heap._removeMax()
         }
     }
 }

@@ -2,16 +2,16 @@
 //
 // This source file is part of the swift-standards open source project
 //
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
 //
 // ===----------------------------------------------------------------------===//
 
-// MARK: - Pop Accessor
+// MARK: - Pop Accessor (Copyable elements only)
 
-extension Heap {
+extension Heap where Element: Copyable {
     /// Nested accessor for pop operations.
     ///
     /// ```swift
@@ -19,15 +19,20 @@ extension Heap {
     /// let min = try heap.pop.min()  // 1
     /// let max = try heap.pop.max()  // 5
     /// ```
+    ///
+    /// - Note: This accessor is only available for `Copyable` elements.
     @inlinable
     public var pop: Pop {
         _read {
-            yield Pop(storage: storage)
+            yield Pop(heap: self)
         }
         _modify {
-            var proxy = Pop(storage: storage)
-            storage = Storage()
-            defer { storage = proxy.storage }
+            // Force uniqueness before transferring
+            _makeUnique()
+
+            var proxy = Pop(heap: self)
+            self = Heap()  // Clear self to release our reference
+            defer { self = proxy.heap }
             yield &proxy
         }
     }
@@ -35,22 +40,22 @@ extension Heap {
 
 // MARK: - Pop Type
 
-extension Heap {
+extension Heap where Element: Copyable {
     /// Namespace for pop operations.
     public struct Pop {
         @usableFromInline
-        var storage: Storage
+        var heap: Heap<Element>
 
         @usableFromInline
-        init(storage: Storage) {
-            self.storage = storage
+        init(heap: Heap<Element>) {
+            self.heap = heap
         }
     }
 }
 
 // MARK: - Pop Operations
 
-extension Heap.Pop {
+extension Heap.Pop where Element: Copyable {
     /// Removes and returns the minimum element.
     ///
     /// - Returns: The minimum element.
@@ -58,7 +63,7 @@ extension Heap.Pop {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func min() throws(Heap<Element>.Error) -> Element {
-        guard let element = storage.removeMin() else {
+        guard let element = heap._removeMin() else {
             throw .empty(.init())
         }
         return element
@@ -71,7 +76,7 @@ extension Heap.Pop {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func max() throws(Heap<Element>.Error) -> Element {
-        guard let element = storage.removeMax() else {
+        guard let element = heap._removeMax() else {
             throw .empty(.init())
         }
         return element
