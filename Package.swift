@@ -17,9 +17,21 @@ let package = Package(
             targets: ["Heap Primitives"]
         )
     ],
+    dependencies: [
+        .package(path: "../swift-index-primitives"),
+        .package(path: "../swift-collection-primitives"),
+        .package(path: "../swift-input-primitives"),
+        .package(path: "../swift-array-primitives"),
+    ],
     targets: [
         .target(
-            name: "Heap Primitives"
+            name: "Heap Primitives",
+            dependencies: [
+                .product(name: "Index Primitives", package: "swift-index-primitives"),
+                .product(name: "Collection Primitives", package: "swift-collection-primitives"),
+                .product(name: "Input Primitives", package: "swift-input-primitives"),
+                .product(name: "Array Primitives", package: "swift-array-primitives"),
+            ]
         ),
         .testTarget(
             name: "Heap Primitives Tests",
