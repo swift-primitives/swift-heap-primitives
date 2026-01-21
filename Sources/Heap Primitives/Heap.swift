@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Index_Primitives
+
 // MARK: - Hoisted Ordering Protocol
 
 /// Comparison protocol for heap elements supporting `~Copyable` types.
@@ -4080,5 +4082,32 @@ extension Heap.Replace where Element: Copyable {
             throw .empty(.init())
         }
         return heap._replaceMax(with: replacement)
+    }
+}
+
+// MARK: - Bounded Heap Index Operations
+// NOTE: Per [MEM-COPY-006], protocol conformances and extensions for nested types
+// MUST be in the same file as the type declaration to avoid breaking ~Copyable propagation.
+
+extension Heap.Bounded where Element: ~Copyable {
+    /// Returns the index of the root element, or nil if the heap is empty.
+    @inlinable
+    public func rootIndex() -> Heap<Element>.Index? {
+        isEmpty ? nil : Heap<Element>.Index(0)
+    }
+
+    /// Returns whether the given index represents a valid position in the heap.
+    @inlinable
+    public func isValid(_ index: Heap<Element>.Index) -> Bool {
+        index.position >= 0 && index.position < count
+    }
+}
+
+extension Heap.Bounded where Element: Copyable {
+    /// Returns the element at the given typed index, or nil if out of bounds.
+    @inlinable
+    public func element(at index: Heap<Element>.Index) -> Element? {
+        guard isValid(index) else { return nil }
+        return _storage._readElement(at: index.position)
     }
 }

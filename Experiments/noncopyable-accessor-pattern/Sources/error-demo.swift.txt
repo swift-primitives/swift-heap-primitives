@@ -1,0 +1,141 @@
+// ============================================================================
+// ERROR DEMONSTRATION - DO NOT COMPILE THIS FILE DIRECTLY
+// ============================================================================
+//
+// This file shows the exact code that produces the compiler error.
+// It is saved as .swift.txt to prevent compilation.
+//
+// To reproduce the error:
+// 1. Rename this file to error-demo.swift
+// 2. Run `swift build`
+// 3. Observe the compiler error
+// 4. Rename back to error-demo.swift.txt
+//
+// ============================================================================
+
+/// A ~Copyable container (like Heap.Bounded, Heap.Inline, Heap.Small)
+struct BrokenContainer<Element: ~Copyable>: ~Copyable {
+    var _element: Element?
+    var _count: Int = 0
+
+    init() {
+        self._element = nil
+    }
+
+    mutating func push(_ element: consuming Element) {
+        self._element = consume element
+        self._count += 1
+    }
+}
+
+// This extension attempts the accessor pattern for ~Copyable elements.
+// IT WILL NOT COMPILE.
+extension BrokenContainer where Element: ~Copyable {
+    /// The accessor struct that demonstrates the incompatibility.
+    ///
+    /// This struct is implicitly Copyable (no ~Copyable marker).
+    /// But it holds BrokenContainer, which is ~Copyable.
+    /// A Copyable type cannot hold a ~Copyable value.
+    struct Take {
+        var container: BrokenContainer<Element>
+        //             ^^^^^^^^^^^^^^^^^^^^^^^
+        // ERROR: stored property 'container' of 'Copyable'-conforming struct
+        //        'Take' has non-Copyable type 'BrokenContainer<Element>'
+
+        init(container: BrokenContainer<Element>) {
+        //              ^^^^^^^^^^^^^^^^^^^^^^^
+        // ERROR: parameter of noncopyable type 'BrokenContainer<Element>'
+        //        must specify ownership
+            self.container = container
+        }
+    }
+
+    /// The accessor property that would use the Take struct.
+    var take: Take {
+        _read { yield Take(container: self) }
+        _modify {
+            var proxy = Take(container: self)
+            // ... CoW logic would go here
+            yield &proxy
+        }
+    }
+}
+
+extension BrokenContainer.Take where Element: ~Copyable {
+    var first: Element? {
+        mutating get {
+            guard container._count > 0 else { return nil }
+            container._count -= 1
+            return container._element.take()
+        }
+    }
+}
+
+// Usage that would work IF the above compiled (but it doesn't):
+func brokenUsage() {
+    var c = BrokenContainer<Int>()
+    c.push(42)
+    _ = c.take.first  // Would be: 42
+}
+
+// ============================================================================
+// COMPILER OUTPUT (Swift 6.2, 2026-01-20):
+// ============================================================================
+//
+// error: stored property 'container' of 'Copyable'-conforming struct 'Take'
+//        has non-Copyable type 'BrokenContainer<Element>'
+//    |
+//    | struct BrokenContainer<Element: ~Copyable>: ~Copyable {
+//    |        `- note: struct 'BrokenContainer' has '~Copyable' constraint
+//    |                 preventing 'Copyable' conformance
+//    :
+//    | struct Take {
+//    |        `- note: consider adding '~Copyable' to struct 'Take'
+//    |     var container: BrokenContainer<Element>
+//    |         `- error: stored property 'container' of 'Copyable'-conforming
+//    |                   struct 'Take' has non-Copyable type
+//    |                   'BrokenContainer<Element>'
+//
+// error: parameter of noncopyable type 'BrokenContainer<Element>' must
+//        specify ownership
+//    |
+//    |     init(container: BrokenContainer<Element>) {
+//    |                     |- error: parameter of noncopyable type
+//    |                     |         'BrokenContainer<Element>' must specify
+//    |                     |         ownership
+//    |                     |- note: add 'borrowing' for an immutable reference
+//    |                     |- note: add 'inout' for a mutable reference
+//    |                     `- note: add 'consuming' to take the value from
+//    |                              the caller
+//
+// ============================================================================
+// WHY ADDING ~Copyable TO Take DOESN'T HELP:
+// ============================================================================
+//
+// If we mark Take as ~Copyable:
+//
+//     struct Take: ~Copyable {
+//         var container: BrokenContainer<Element>
+//     }
+//
+// The struct compiles, BUT:
+// 1. The accessor property can't return a ~Copyable value freely
+// 2. The _modify accessor can't yield a ~Copyable value
+// 3. The caller can't use `c.take.first` because `take` would be consumed
+//
+// This defeats the purpose of the accessor pattern, which relies on the
+// accessor being a lightweight, freely-passable intermediate value.
+//
+// ============================================================================
+// CONCLUSION:
+// ============================================================================
+//
+// The accessor pattern (per API-NAME-002) is fundamentally incompatible with
+// ~Copyable containers. This is documented in MEM-COPY-005.
+//
+// For ~Copyable containers, use compound methods:
+//   - takeMin() instead of take.min
+//   - popMin() instead of pop.min()
+//
+// This is not a bug—it's a fundamental constraint of Swift's ownership model.
+// ============================================================================
