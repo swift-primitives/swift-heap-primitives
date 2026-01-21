@@ -759,7 +759,7 @@ public struct Heap<Element: ~Copyable & __HeapOrdering>: ~Copyable {
             let stride = MemoryLayout<Element>.stride
 
             unsafe Swift.withUnsafePointer(to: _storage) { storagePtr in
-                let basePtr = UnsafeMutableRawPointer(mutating: UnsafeRawPointer(storagePtr))
+                let basePtr = unsafe UnsafeMutableRawPointer(mutating: UnsafeRawPointer(storagePtr))
                 for i in 0..<count {
                     let elementPtr = unsafe (basePtr + i * stride)
                         .assumingMemoryBound(to: Element.self)
@@ -874,7 +874,7 @@ public struct Heap<Element: ~Copyable & __HeapOrdering>: ~Copyable {
             self._inline = InlineArray(repeating: (0, 0, 0, 0, 0, 0, 0, 0))
             self._count = 0
             self._heap = nil
-            self._heapPtr = nil
+            unsafe self._heapPtr = nil
         }
 
         deinit {
@@ -944,7 +944,7 @@ public struct Heap<Element: ~Copyable & __HeapOrdering>: ~Copyable {
             let stride = MemoryLayout<Element>.stride
             _ = unsafe Swift.withUnsafeBytes(of: _inline) { bytes in
                 unsafe newStorage.withUnsafeMutablePointerToElements { heapPtr in
-                    let inlineBase = UnsafeMutableRawPointer(mutating: bytes.baseAddress!)
+                    let inlineBase = unsafe UnsafeMutableRawPointer(mutating: bytes.baseAddress!)
                     for i in 0..<_count {
                         let inlineElement = unsafe (inlineBase + i * stride)
                             .assumingMemoryBound(to: Element.self)
@@ -3013,7 +3013,7 @@ extension Heap.Small where Element: ~Copyable {
     @usableFromInline
     @unsafe
     mutating func _pointerToElement(at index: Int) -> UnsafeMutablePointer<Element> {
-        if let heapPtr = _heapPtr {
+        if let heapPtr = unsafe _heapPtr {
             return unsafe heapPtr + index
         } else {
             return unsafe _inlinePointerToElement(at: index)
@@ -3024,7 +3024,7 @@ extension Heap.Small where Element: ~Copyable {
     @usableFromInline
     @unsafe
     func _readPointerToElement(at index: Int) -> UnsafePointer<Element> {
-        if let heapPtr = _heapPtr {
+        if let heapPtr = unsafe _heapPtr {
             return unsafe UnsafePointer(heapPtr + index)
         } else {
             return unsafe _inlineReadPointerToElement(at: index)
@@ -3362,7 +3362,7 @@ extension Heap.Small where Element: ~Copyable {
     /// Internal: push element to heap storage.
     @usableFromInline
     mutating func _pushToHeap(_ element: consuming Element) {
-        guard let heap = _heap, let heapPtr = _heapPtr else {
+        guard let heap = _heap, let _ = unsafe _heapPtr else {
             preconditionFailure("_pushToHeap called without heap storage")
         }
 
@@ -3621,7 +3621,7 @@ extension Heap.Small where Element: ~Copyable {
     @inlinable
     public var span: Span<Element> {
         _read {
-            if let heapPtr = _heapPtr {
+            if let heapPtr = unsafe _heapPtr {
                 yield unsafe Span(_unsafeStart: heapPtr, count: _count)
             } else {
                 yield unsafe Span(_unsafeStart: _inlineReadPointerToElement(at: 0), count: _count)
@@ -3635,7 +3635,7 @@ extension Heap.Small where Element: ~Copyable {
     @inlinable
     public var mutableSpan: MutableSpan<Element> {
         _read {
-            if let heapPtr = _heapPtr {
+            if let heapPtr = unsafe _heapPtr {
                 yield unsafe MutableSpan(_unsafeStart: heapPtr, count: _count)
             } else {
                 let ptr = unsafe UnsafeMutablePointer(mutating: _inlineReadPointerToElement(at: 0))
@@ -3643,7 +3643,7 @@ extension Heap.Small where Element: ~Copyable {
             }
         }
         _modify {
-            if var heapPtr = _heapPtr {
+            if let heapPtr = unsafe _heapPtr {
                 var s = unsafe MutableSpan(_unsafeStart: heapPtr, count: _count)
                 yield &s
             } else {
@@ -3660,338 +3660,6 @@ extension Heap.Small where Element: ~Copyable {
         unsafe Swift.withUnsafeMutablePointer(to: &_inline) { storagePtr in
             let basePtr = UnsafeMutableRawPointer(storagePtr)
             return unsafe basePtr.assumingMemoryBound(to: Element.self)
-        }
-    }
-}
-
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-standards open source project
-//
-// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
-// MARK: - Push Accessor (Copyable elements only)
-
-extension Heap where Element: Copyable {
-    /// Nested accessor for push operations.
-    ///
-    /// ```swift
-    /// var heap = Heap<Int>()
-    /// heap.push(42)                    // single element
-    /// heap.push.contentsOf([1, 2, 3])  // bulk insert
-    /// ```
-    ///
-    /// - Note: This accessor is only available for `Copyable` elements.
-    @inlinable
-    public var push: Push {
-        _read {
-            yield Push(heap: self)
-        }
-        _modify {
-            // Force uniqueness before transferring
-            _makeUnique()
-
-            var proxy = Push(heap: self)
-            self = Heap()  // Clear self to release our reference
-            defer { self = proxy.heap }
-            yield &proxy
-        }
-    }
-}
-
-// MARK: - Push Type
-
-extension Heap where Element: Copyable {
-    /// Namespace for push operations.
-    public struct Push {
-        @usableFromInline
-        var heap: Heap<Element>
-
-        @usableFromInline
-        init(heap: Heap<Element>) {
-            self.heap = heap
-        }
-    }
-}
-
-// MARK: - Push Operations
-
-extension Heap.Push where Element: Copyable {
-    /// Inserts an element into the heap.
-    ///
-    /// - Parameter element: The element to insert.
-    /// - Complexity: O(log n)
-    @inlinable
-    public mutating func callAsFunction(_ element: Element) {
-        heap._insert(element)
-    }
-
-    /// Inserts multiple elements into the heap.
-    ///
-    /// Uses a heuristic to choose between per-element insertion
-    /// and full re-heapification for optimal performance.
-    ///
-    /// - Parameter elements: The elements to insert.
-    /// - Complexity: O(n + k) where k is the number of new elements.
-    @inlinable
-    public mutating func contentsOf(_ elements: some Sequence<Element>) {
-        let origCount = heap.count
-        for element in elements {
-            heap._appendWithoutHeapify(element)
-        }
-        let newCount = heap.count
-
-        guard newCount > origCount, newCount > 1 else { return }
-
-        // Heuristic: use Floyd's if k > 2n / log(n)
-        let heuristicLimit = 2 * newCount / Swift.max(1, newCount._binaryLogarithm())
-        let useFloyd = (newCount - origCount) > heuristicLimit
-
-        if useFloyd {
-            heap._heapify()
-        } else {
-            for offset in origCount..<newCount {
-                heap._bubbleUp(Heap.Node(offset: offset))
-            }
-        }
-    }
-}
-
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-standards open source project
-//
-// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
-// MARK: - Pop Accessor (Copyable elements only)
-
-extension Heap where Element: Copyable {
-    /// Nested accessor for pop operations.
-    ///
-    /// ```swift
-    /// var heap: Heap<Int> = [3, 1, 4, 1, 5]
-    /// let min = try heap.pop.min()  // 1
-    /// let max = try heap.pop.max()  // 5
-    /// ```
-    ///
-    /// - Note: This accessor is only available for `Copyable` elements.
-    @inlinable
-    public var pop: Pop {
-        _read {
-            yield Pop(heap: self)
-        }
-        _modify {
-            // Force uniqueness before transferring
-            _makeUnique()
-
-            var proxy = Pop(heap: self)
-            self = Heap()  // Clear self to release our reference
-            defer { self = proxy.heap }
-            yield &proxy
-        }
-    }
-}
-
-// MARK: - Pop Type
-
-extension Heap where Element: Copyable {
-    /// Namespace for pop operations.
-    public struct Pop {
-        @usableFromInline
-        var heap: Heap<Element>
-
-        @usableFromInline
-        init(heap: Heap<Element>) {
-            self.heap = heap
-        }
-    }
-}
-
-// MARK: - Pop Operations
-
-extension Heap.Pop where Element: Copyable {
-    /// Removes and returns the minimum element.
-    ///
-    /// - Returns: The minimum element.
-    /// - Throws: `Heap.Error.empty` if the heap is empty.
-    /// - Complexity: O(log n)
-    @inlinable
-    public mutating func min() throws(Heap<Element>.Error) -> Element {
-        guard let element = heap._removeMin() else {
-            throw .empty(.init())
-        }
-        return element
-    }
-
-    /// Removes and returns the maximum element.
-    ///
-    /// - Returns: The maximum element.
-    /// - Throws: `Heap.Error.empty` if the heap is empty.
-    /// - Complexity: O(log n)
-    @inlinable
-    public mutating func max() throws(Heap<Element>.Error) -> Element {
-        guard let element = heap._removeMax() else {
-            throw .empty(.init())
-        }
-        return element
-    }
-}
-
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-standards open source project
-//
-// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
-// MARK: - Peek Accessor (Copyable elements only)
-
-extension Heap where Element: Copyable {
-    /// Nested accessor for peek operations.
-    ///
-    /// ```swift
-    /// let heap: Heap<Int> = [3, 1, 4, 1, 5]
-    /// if let min = heap.peek.min { print(min) }  // 1
-    /// if let max = heap.peek.max { print(max) }  // 5
-    /// ```
-    ///
-    /// - Note: This accessor is only available for `Copyable` elements.
-    @inlinable
-    public var peek: Peek {
-        Peek(heap: self)
-    }
-}
-
-// MARK: - Peek Type
-
-extension Heap where Element: Copyable {
-    /// Namespace for peek operations.
-    public struct Peek {
-        @usableFromInline
-        let heap: Heap<Element>
-
-        @usableFromInline
-        init(heap: Heap<Element>) {
-            self.heap = heap
-        }
-    }
-}
-
-// MARK: - Peek Operations
-
-extension Heap.Peek where Element: Copyable {
-    /// The minimum element, or `nil` if empty.
-    ///
-    /// - Complexity: O(1)
-    @inlinable
-    public var min: Element? {
-        heap._peekMin()
-    }
-
-    /// The maximum element, or `nil` if empty.
-    ///
-    /// - Complexity: O(1)
-    @inlinable
-    public var max: Element? {
-        heap._peekMax()
-    }
-}
-
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-standards open source project
-//
-// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
-// MARK: - Take Accessor (Copyable elements only)
-
-extension Heap where Element: Copyable {
-    /// Nested accessor for optional removal operations.
-    ///
-    /// Use `take` when empty is a normal state (priority queue drain):
-    /// ```swift
-    /// var heap: Heap<Int> = [3, 1, 4, 1, 5]
-    /// while let min = heap.take.min {
-    ///     process(min)
-    /// }
-    /// ```
-    ///
-    /// Use `pop` when empty is exceptional and should throw.
-    ///
-    /// - Note: This accessor is only available for `Copyable` elements.
-    @inlinable
-    public var take: Take {
-        _read {
-            yield Take(heap: self)
-        }
-        _modify {
-            // Force uniqueness before transferring
-            _makeUnique()
-
-            var proxy = Take(heap: self)
-            self = Heap()  // Clear self to release our reference
-            defer { self = proxy.heap }
-            yield &proxy
-        }
-    }
-}
-
-// MARK: - Take Type
-
-extension Heap where Element: Copyable {
-    /// Namespace for optional removal operations.
-    public struct Take {
-        @usableFromInline
-        var heap: Heap<Element>
-
-        @usableFromInline
-        init(heap: Heap<Element>) {
-            self.heap = heap
-        }
-    }
-}
-
-// MARK: - Take Operations
-
-extension Heap.Take where Element: Copyable {
-    /// Removes and returns the minimum element, or `nil` if empty.
-    ///
-    /// - Returns: The minimum element, or `nil` if the heap is empty.
-    /// - Complexity: O(log n)
-    @inlinable
-    public var min: Element? {
-        mutating get {
-            heap._removeMin()
-        }
-    }
-
-    /// Removes and returns the maximum element, or `nil` if empty.
-    ///
-    /// - Returns: The maximum element, or `nil` if the heap is empty.
-    /// - Complexity: O(log n)
-    @inlinable
-    public var max: Element? {
-        mutating get {
-            heap._removeMax()
         }
     }
 }
@@ -4093,13 +3761,13 @@ extension Heap.Bounded where Element: ~Copyable {
     /// Returns the index of the root element, or nil if the heap is empty.
     @inlinable
     public func rootIndex() -> Heap<Element>.Index? {
-        isEmpty ? nil : Heap<Element>.Index(0)
+        isEmpty ? nil : .zero
     }
 
     /// Returns whether the given index represents a valid position in the heap.
     @inlinable
     public func isValid(_ index: Heap<Element>.Index) -> Bool {
-        index.position >= 0 && index.position < count
+        index >= .zero && index.position.rawValue < count
     }
 }
 
@@ -4108,6 +3776,6 @@ extension Heap.Bounded where Element: Copyable {
     @inlinable
     public func element(at index: Heap<Element>.Index) -> Element? {
         guard isValid(index) else { return nil }
-        return _storage._readElement(at: index.position)
+        return _storage._readElement(at: index.position.rawValue)
     }
 }

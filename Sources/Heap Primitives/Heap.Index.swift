@@ -44,7 +44,7 @@ extension Heap where Element: ~Copyable {
     /// - Returns: Index of root element (position 0), or `nil` if empty.
     @inlinable
     public func rootIndex() -> Index? {
-        isEmpty ? nil : Index(0)
+        isEmpty ? nil : .zero
     }
 
     /// Returns the index of the parent of the element at the given index.
@@ -54,7 +54,7 @@ extension Heap where Element: ~Copyable {
     @inlinable
     public func parentIndex(of index: Index) -> Index? {
         guard index.position > 0 else { return nil }
-        return Index((index.position - 1) / 2)
+        return try? Index((index.position.rawValue - 1) / 2)
     }
 
     /// Returns the index of the left child of the element at the given index.
@@ -63,9 +63,9 @@ extension Heap where Element: ~Copyable {
     /// - Returns: Index of the left child, or `nil` if no left child exists.
     @inlinable
     public func leftChildIndex(of index: Index) -> Index? {
-        let childPosition = 2 * index.position + 1
+        let childPosition = 2 * index.position.rawValue + 1
         guard childPosition < count else { return nil }
-        return Index(childPosition)
+        return try? Index(childPosition)
     }
 
     /// Returns the index of the right child of the element at the given index.
@@ -74,9 +74,9 @@ extension Heap where Element: ~Copyable {
     /// - Returns: Index of the right child, or `nil` if no right child exists.
     @inlinable
     public func rightChildIndex(of index: Index) -> Index? {
-        let childPosition = 2 * index.position + 2
+        let childPosition = 2 * index.position.rawValue + 2
         guard childPosition < count else { return nil }
-        return Index(childPosition)
+        return try? Index(childPosition)
     }
 
     /// Returns whether the given index represents a valid position in the heap.
@@ -85,7 +85,7 @@ extension Heap where Element: ~Copyable {
     /// - Returns: `true` if the index is within bounds.
     @inlinable
     public func isValid(_ index: Index) -> Bool {
-        index.position >= 0 && index.position < count
+        index >= .zero && index.position.rawValue < count
     }
 }
 
@@ -99,7 +99,7 @@ extension Heap where Element: Copyable {
     @inlinable
     public func element(at index: Index) -> Element? {
         guard isValid(index) else { return nil }
-        return _storage._readElement(at: index.position)
+        return _storage._readElement(at: index.position.rawValue)
     }
 }
 
@@ -113,12 +113,12 @@ extension Heap.Inline where Element: ~Copyable {
     /// Returns the index of the root element, or nil if the heap is empty.
     @inlinable
     public func rootIndex() -> Heap<Element>.Index? {
-        isEmpty ? nil : Heap<Element>.Index(0)
+        isEmpty ? nil : .zero
     }
 
     /// Returns whether the given index represents a valid position in the heap.
     @inlinable
     public func isValid(_ index: Heap<Element>.Index) -> Bool {
-        index.position >= 0 && index.position < _count
+        index >= .zero && index.position.rawValue < _count
     }
 }
