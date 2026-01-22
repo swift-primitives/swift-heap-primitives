@@ -131,6 +131,47 @@ For `~Copyable` containers, compound methods (`takeMin()`, `popMin()`) remain th
 
 ---
 
+## Experiments as Institutional Memory
+
+**Date**: 2026-01-20
+
+**Context**: Creating the `noncopyable-accessor-pattern` experiment package after discovering the accessor pattern limitation.
+
+The accessor pattern limitation was discovered through production code failure, not systematic experimentation. The experiment package was created *after* the conclusion was reached, to preserve the finding.
+
+### Why Create an Experiment for Documented Behavior
+
+[MEM-COPY-005] already documents this limitation. The experiment adds:
+
+1. **Reproducible proof**: Anyone can verify the limitation by uncommenting failing code
+2. **Future reference**: When Swift's ownership model evolves, re-run to check
+3. **Onboarding documentation**: New contributors understand why compound methods exist
+4. **Issue filing support**: Ready-made reproduction for Swift issues
+
+### Experiment Structure
+
+```
+Experiments/noncopyable-accessor-pattern/
+├── Package.swift
+└── Sources/
+    ├── main.swift              # Working code (V1, V2, V3 workarounds)
+    └── error-demo.swift.txt    # Failing code with captured compiler output
+```
+
+The `.swift.txt` extension preserves failing code without breaking the build. Rename to `.swift` to reproduce the error on demand.
+
+### Variant Table
+
+| Variant | Configuration | Result |
+|---------|---------------|--------|
+| V1 | Copyable container + accessor | PASS |
+| V2 | ~Copyable container + accessor | FAIL |
+| V3 | Conditional Copyable + accessor in ~Copyable context | FAIL |
+
+**Applies to**: `Experiments/noncopyable-accessor-pattern/` directory.
+
+---
+
 ## Topics
 
 ### Related Documents
