@@ -242,15 +242,19 @@ struct HeapBoundedTests {
 @Suite("Heap.Bounded with ~Copyable elements")
 struct HeapBoundedNonCopyableTests {
     /// A move-only resource for testing.
-    struct UniqueResource: ~Copyable, Heap.Ordering {
+    struct UniqueResource: ~Copyable, Comparison_Primitives.Comparison.`Protocol` {
         let id: Int
 
         init(id: Int) {
             self.id = id
         }
 
-        static func isLessThan(_ lhs: borrowing UniqueResource, _ rhs: borrowing UniqueResource) -> Bool {
+        static func < (lhs: borrowing UniqueResource, rhs: borrowing UniqueResource) -> Bool {
             lhs.id < rhs.id
+        }
+
+        static func == (lhs: borrowing UniqueResource, rhs: borrowing UniqueResource) -> Bool {
+            lhs.id == rhs.id
         }
     }
 

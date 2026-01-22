@@ -70,7 +70,7 @@ extension Property_Primitives.Property {
     /// - Parameter elements: The elements to insert.
     /// - Complexity: O(n + k) where k is the number of new elements.
     @inlinable
-    public mutating func contentsOf<E: Copyable & Comparable>(_ elements: some Sequence<E>)
+    public mutating func contentsOf<E: Copyable & Comparable>(_ elements: some Swift.Sequence<E>)
     where Tag == Heap<E>.Push, Base == Heap<E> {
         let origCount = base.count
         for element in elements {

@@ -10,87 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Index_Primitives
-
-// MARK: - Hoisted Ordering Protocol
-
-/// Comparison protocol for heap elements supporting `~Copyable` types.
-///
-/// Uses `borrowing` parameters to allow comparison without consuming elements.
-/// This enables heaps to work with move-only types that cannot conform to
-/// `Comparable` (which requires value parameter passing).
-///
-/// ## Conformance
-///
-/// For `~Copyable` types, implement `isLessThan` explicitly:
-///
-/// ```swift
-/// struct FileHandle: ~Copyable, Heap.Ordering {
-///     let fd: Int32
-///
-///     static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool {
-///         lhs.fd < rhs.fd
-///     }
-/// }
-/// ```
-///
-/// For `Copyable & Comparable` types, conformance is automatic:
-///
-/// ```swift
-/// extension Int: Heap.Ordering {}  // Uses < operator
-/// ```
-///
-/// ## Design Rationale
-///
-/// This protocol is hoisted to module level (as `__HeapOrdering`) because Swift
-/// does not allow protocols nested in generic contexts. The canonical API uses
-/// the typealias `Heap.Ordering`.
-///
-/// ## SE-0499
-///
-/// This design mirrors SE-0499 (Comparable/Equatable for ~Copyable), which will
-/// add borrowing overloads to the standard library. When SE-0499 is implemented,
-/// this protocol may be deprecated in favor of `Comparable`.
-///
-/// - Note: Access this protocol via `Heap.Ordering`, not `__HeapOrdering`.
-public protocol __HeapOrdering: ~Copyable {
-    /// Returns `true` if `lhs` should be ordered before `rhs`.
-    ///
-    /// - Parameters:
-    ///   - lhs: The left-hand side element.
-    ///   - rhs: The right-hand side element.
-    /// - Returns: `true` if `lhs < rhs` in the ordering.
-    static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool
-}
-
-// MARK: - Comparable Bridge
-
-extension __HeapOrdering where Self: Comparable {
-    /// Default implementation using the `<` operator.
-    ///
-    /// Types that conform to both `Comparable` and `Heap.Ordering` get this
-    /// implementation automatically.
-    @inlinable
-    public static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool {
-        lhs < rhs
-    }
-}
-
-// MARK: - Standard Library Conformances
-
-extension Int: __HeapOrdering {}
-extension Int8: __HeapOrdering {}
-extension Int16: __HeapOrdering {}
-extension Int32: __HeapOrdering {}
-extension Int64: __HeapOrdering {}
-extension UInt: __HeapOrdering {}
-extension UInt8: __HeapOrdering {}
-extension UInt16: __HeapOrdering {}
-extension UInt32: __HeapOrdering {}
-extension UInt64: __HeapOrdering {}
-extension Float: __HeapOrdering {}
-extension Double: __HeapOrdering {}
-extension String: __HeapOrdering {}
-extension Character: __HeapOrdering {}
+public import Comparison_Primitives
 
 // ===----------------------------------------------------------------------===//
 //
@@ -446,10 +366,15 @@ extension Int {
 ///
 /// ```swift
 /// // Move-only elements
-/// struct FileHandle: ~Copyable, Heap.Ordering {
+/// struct FileHandle: ~Copyable, Comparison.`Protocol` {
 ///     let fd: Int32
-///     static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool {
+///
+///     static func < (lhs: borrowing Self, rhs: borrowing Self) -> Bool {
 ///         lhs.fd < rhs.fd
+///     }
+///
+///     static func == (lhs: borrowing Self, rhs: borrowing Self) -> Bool {
+///         lhs.fd == rhs.fd
 ///     }
 /// }
 /// var handles = Heap<FileHandle>()  // ~Copyable heap
@@ -522,7 +447,7 @@ extension Int {
 /// - Pop min/max: O(log n)
 /// - Init from sequence: O(n)
 @safe
-public struct Heap<Element: ~Copyable & __HeapOrdering>: ~Copyable {
+public struct Heap<Element: ~Copyable & Comparison_Primitives.Comparison.`Protocol`>: ~Copyable {
 
     // MARK: - Unified Storage (nested to inherit Element's ~Copyable context)
 
@@ -1030,26 +955,29 @@ extension Heap.Small {
 extension Heap {
     /// Comparison protocol for heap elements.
     ///
-    /// Due to Swift's limitation on nesting protocols in generic contexts,
-    /// the actual protocol is hoisted to module level as `__HeapOrdering`.
+    /// This is a typealias to `Comparison.Protocol` from comparison-primitives,
+    /// which provides borrowing-based comparison for `~Copyable` types.
     ///
     /// ## Usage
     ///
-    /// For `~Copyable` types:
+    /// For `~Copyable` types, implement the `<` and `==` operators:
     /// ```swift
     /// struct UniqueResource: ~Copyable, Heap.Ordering {
     ///     let priority: Int
-    ///     static func isLessThan(_ lhs: borrowing Self, _ rhs: borrowing Self) -> Bool {
+    ///
+    ///     static func < (lhs: borrowing Self, rhs: borrowing Self) -> Bool {
     ///         lhs.priority < rhs.priority
+    ///     }
+    ///
+    ///     static func == (lhs: borrowing Self, rhs: borrowing Self) -> Bool {
+    ///         lhs.priority == rhs.priority
     ///     }
     /// }
     /// ```
     ///
-    /// For `Comparable` types, conformance is automatic via bridge:
-    /// ```swift
-    /// extension MyType: Heap.Ordering {}  // Uses < operator
-    /// ```
-    public typealias Ordering = __HeapOrdering
+    /// Standard library types (`Int`, `String`, etc.) already conform to
+    /// `Comparison.Protocol` and work automatically with heaps.
+    public typealias Ordering = Comparison_Primitives.Comparison.`Protocol`
 }
 
 // MARK: - Properties
@@ -1150,9 +1078,9 @@ extension Heap where Element: ~Copyable {
             return _storage._moveElement(at: 1)
         }
 
-        // Find max (at index 1 or 2) using isLessThan
+        // Find max (at index 1 or 2) using < operator
         let ptr = unsafe _cachedPtr
-        let maxIndex = Element.isLessThan(unsafe ptr[1], unsafe ptr[2]) ? 2 : 1
+        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
 
         // Swap with last, remove last, trickle down
         let lastIndex = _storage.header - 1
@@ -1233,7 +1161,7 @@ extension Heap where Element: ~Copyable {
         if count == 2 { return body(unsafe _cachedPtr[1]) }
 
         let ptr = unsafe _cachedPtr
-        let maxIndex = Element.isLessThan(unsafe ptr[1], unsafe ptr[2]) ? 2 : 1
+        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
         return body(unsafe ptr[maxIndex])
     }
 
@@ -1277,9 +1205,9 @@ extension Heap where Element: ~Copyable {
 
         let ptr = unsafe _cachedPtr
 
-        // Compare using Element.isLessThan with borrowing
-        let nodeIsLess = Element.isLessThan(unsafe ptr[node.offset], unsafe ptr[parent.offset])
-        let parentIsLess = Element.isLessThan(unsafe ptr[parent.offset], unsafe ptr[node.offset])
+        // Compare using Comparison.Protocol with borrowing
+        let nodeIsLess = unsafe ptr[node.offset] < ptr[parent.offset]
+        let parentIsLess = unsafe ptr[parent.offset] < ptr[node.offset]
 
         if (node.isMinLevel && parentIsLess)
             || (!node.isMinLevel && nodeIsLess) {
@@ -1289,14 +1217,14 @@ extension Heap where Element: ~Copyable {
 
         if node.isMinLevel {
             while let grandparent = node.grandParent() {
-                let gpIsLess = Element.isLessThan(unsafe ptr[grandparent.offset], unsafe ptr[node.offset])
+                let gpIsLess = unsafe ptr[grandparent.offset] < ptr[node.offset]
                 guard !gpIsLess else { break }  // node < grandparent
                 _swapElements(at: node.offset, grandparent.offset)
                 node = grandparent
             }
         } else {
             while let grandparent = node.grandParent() {
-                let nodeIsLessGp = Element.isLessThan(unsafe ptr[node.offset], unsafe ptr[grandparent.offset])
+                let nodeIsLessGp = unsafe ptr[node.offset] < ptr[grandparent.offset]
                 guard !nodeIsLessGp else { break }  // node > grandparent
                 _swapElements(at: node.offset, grandparent.offset)
                 node = grandparent
@@ -1326,12 +1254,12 @@ extension Heap where Element: ~Copyable {
             // Check children
             let rightChild = node.rightChild()
 
-            if Element.isLessThan(unsafe ptr[leftChild.offset], unsafe ptr[smallestOffset]) {
+            if unsafe ptr[leftChild.offset] < ptr[smallestOffset] {
                 smallest = leftChild
                 smallestOffset = leftChild.offset
             }
             if rightChild.offset < count {
-                if Element.isLessThan(unsafe ptr[rightChild.offset], unsafe ptr[smallestOffset]) {
+                if unsafe ptr[rightChild.offset] < ptr[smallestOffset] {
                     smallest = rightChild
                     smallestOffset = rightChild.offset
                 }
@@ -1342,7 +1270,7 @@ extension Heap where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
-                if Element.isLessThan(unsafe ptr[gcOffset], unsafe ptr[smallestOffset]) {
+                if unsafe ptr[gcOffset] < ptr[smallestOffset] {
                     smallest = Node(offset: gcOffset, level: gc0.level)
                     smallestOffset = gcOffset
                 }
@@ -1355,7 +1283,7 @@ extension Heap where Element: ~Copyable {
             // If swapped with grandchild, may need to swap with parent
             if smallest.offset >= gc0.offset {
                 let parent = smallest.parent()
-                if Element.isLessThan(unsafe ptr[parent.offset], unsafe ptr[smallest.offset]) {
+                if unsafe ptr[parent.offset] < ptr[smallest.offset] {
                     _swapElements(at: smallest.offset, parent.offset)
                 }
                 node = smallest
@@ -1388,12 +1316,12 @@ extension Heap where Element: ~Copyable {
             let rightChild = node.rightChild()
 
             // largest < leftChild means leftChild > largest
-            if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[leftChild.offset]) {
+            if unsafe ptr[largestOffset] < ptr[leftChild.offset] {
                 largest = leftChild
                 largestOffset = leftChild.offset
             }
             if rightChild.offset < count {
-                if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[rightChild.offset]) {
+                if unsafe ptr[largestOffset] < ptr[rightChild.offset] {
                     largest = rightChild
                     largestOffset = rightChild.offset
                 }
@@ -1404,7 +1332,7 @@ extension Heap where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
-                if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[gcOffset]) {
+                if unsafe ptr[largestOffset] < ptr[gcOffset] {
                     largest = Node(offset: gcOffset, level: gc0.level)
                     largestOffset = gcOffset
                 }
@@ -1418,7 +1346,7 @@ extension Heap where Element: ~Copyable {
             if largest.offset >= gc0.offset {
                 let parent = largest.parent()
                 // newValue < parentValue
-                if Element.isLessThan(unsafe ptr[largest.offset], unsafe ptr[parent.offset]) {
+                if unsafe ptr[largest.offset] < ptr[parent.offset] {
                     _swapElements(at: largest.offset, parent.offset)
                 }
                 node = largest
@@ -1476,7 +1404,7 @@ extension Heap where Element: Copyable {
     /// - Parameter elements: The sequence of elements.
     /// - Complexity: O(n)
     @inlinable
-    public init(_ elements: some Sequence<Element>) {
+    public init(_ elements: some Swift.Sequence<Element>) {
         self._storage = Storage.create()
         unsafe (self._cachedPtr = _storage._elementsPointer)
 
@@ -1583,7 +1511,7 @@ extension Heap where Element: Copyable {
         if count == 2 { return _storage._readElement(at: 1) }
         let e1 = _storage._readElement(at: 1)
         let e2 = _storage._readElement(at: 2)
-        return Element.isLessThan(e1, e2) ? e2 : e1
+        return e1 < e2 ? e2 : e1
     }
 
     /// Replaces the minimum and returns the old value.
@@ -1613,7 +1541,7 @@ extension Heap where Element: Copyable {
 
         let e1 = _storage._readElement(at: 1)
         let e2 = _storage._readElement(at: 2)
-        let maxIndex = Element.isLessThan(e1, e2) ? 2 : 1
+        let maxIndex = e1 < e2 ? 2 : 1
         let removed = _storage._readElement(at: maxIndex)
         _storage._writeElement(at: maxIndex, replacement)
         let maxNode = Node(offset: maxIndex, level: 1)
@@ -1718,7 +1646,7 @@ extension Heap: CustomStringConvertible {
 //
 // `Stack<Element: ~Copyable>` compiles successfully with Sequence conformance
 // because it has a SINGLE constraint. The compound constraint in
-// `Heap<Element: ~Copyable & __HeapOrdering>` triggers different behavior in
+// `Heap<Element: ~Copyable & Comparison.`Protocol`>` triggers different behavior in
 // the compiler's constraint solver during module interface generation.
 //
 // ## Compilation Mode Behavior
@@ -1749,7 +1677,7 @@ extension Heap: CustomStringConvertible {
 //
 // =============================================================================
 
-extension Heap.Bounded: Sequence where Element: Copyable {
+extension Heap.Bounded: Swift.Sequence where Element: Copyable {
 
     public struct Iterator: IteratorProtocol {
         @usableFromInline
@@ -1857,9 +1785,9 @@ extension Heap.Bounded where Element: ~Copyable {
             return _storage._moveElement(at: 1)
         }
 
-        // Find max (at index 1 or 2) using isLessThan
+        // Find max (at index 1 or 2) using < operator
         let ptr = unsafe _cachedPtr
-        let maxIndex = Element.isLessThan(unsafe ptr[1], unsafe ptr[2]) ? 2 : 1
+        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
 
         // Swap with last, remove last, trickle down
         let lastIndex = _storage.header - 1
@@ -1897,8 +1825,8 @@ extension Heap.Bounded where Element: ~Copyable {
 
         let ptr = unsafe _cachedPtr
 
-        let nodeIsLess = Element.isLessThan(unsafe ptr[node.offset], unsafe ptr[parent.offset])
-        let parentIsLess = Element.isLessThan(unsafe ptr[parent.offset], unsafe ptr[node.offset])
+        let nodeIsLess = unsafe ptr[node.offset] < ptr[parent.offset]
+        let parentIsLess = unsafe ptr[parent.offset] < ptr[node.offset]
 
         if (node.isMinLevel && parentIsLess)
             || (!node.isMinLevel && nodeIsLess) {
@@ -1908,14 +1836,14 @@ extension Heap.Bounded where Element: ~Copyable {
 
         if node.isMinLevel {
             while let grandparent = node.grandParent() {
-                let gpIsLess = Element.isLessThan(unsafe ptr[grandparent.offset], unsafe ptr[node.offset])
+                let gpIsLess = unsafe ptr[grandparent.offset] < ptr[node.offset]
                 guard !gpIsLess else { break }
                 _swapElements(at: node.offset, grandparent.offset)
                 node = grandparent
             }
         } else {
             while let grandparent = node.grandParent() {
-                let nodeIsLessGp = Element.isLessThan(unsafe ptr[node.offset], unsafe ptr[grandparent.offset])
+                let nodeIsLessGp = unsafe ptr[node.offset] < ptr[grandparent.offset]
                 guard !nodeIsLessGp else { break }
                 _swapElements(at: node.offset, grandparent.offset)
                 node = grandparent
@@ -1943,12 +1871,12 @@ extension Heap.Bounded where Element: ~Copyable {
 
             let rightChild = node.rightChild()
 
-            if Element.isLessThan(unsafe ptr[leftChild.offset], unsafe ptr[smallestOffset]) {
+            if unsafe ptr[leftChild.offset] < ptr[smallestOffset] {
                 smallest = leftChild
                 smallestOffset = leftChild.offset
             }
             if rightChild.offset < count {
-                if Element.isLessThan(unsafe ptr[rightChild.offset], unsafe ptr[smallestOffset]) {
+                if unsafe ptr[rightChild.offset] < ptr[smallestOffset] {
                     smallest = rightChild
                     smallestOffset = rightChild.offset
                 }
@@ -1958,7 +1886,7 @@ extension Heap.Bounded where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
-                if Element.isLessThan(unsafe ptr[gcOffset], unsafe ptr[smallestOffset]) {
+                if unsafe ptr[gcOffset] < ptr[smallestOffset] {
                     smallest = Heap.Node(offset: gcOffset, level: gc0.level)
                     smallestOffset = gcOffset
                 }
@@ -1970,7 +1898,7 @@ extension Heap.Bounded where Element: ~Copyable {
 
             if smallest.offset >= gc0.offset {
                 let parent = smallest.parent()
-                if Element.isLessThan(unsafe ptr[parent.offset], unsafe ptr[smallest.offset]) {
+                if unsafe ptr[parent.offset] < ptr[smallest.offset] {
                     _swapElements(at: smallest.offset, parent.offset)
                 }
                 node = smallest
@@ -2000,12 +1928,12 @@ extension Heap.Bounded where Element: ~Copyable {
 
             let rightChild = node.rightChild()
 
-            if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[leftChild.offset]) {
+            if unsafe ptr[largestOffset] < ptr[leftChild.offset] {
                 largest = leftChild
                 largestOffset = leftChild.offset
             }
             if rightChild.offset < count {
-                if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[rightChild.offset]) {
+                if unsafe ptr[largestOffset] < ptr[rightChild.offset] {
                     largest = rightChild
                     largestOffset = rightChild.offset
                 }
@@ -2015,7 +1943,7 @@ extension Heap.Bounded where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
-                if Element.isLessThan(unsafe ptr[largestOffset], unsafe ptr[gcOffset]) {
+                if unsafe ptr[largestOffset] < ptr[gcOffset] {
                     largest = Heap.Node(offset: gcOffset, level: gc0.level)
                     largestOffset = gcOffset
                 }
@@ -2027,7 +1955,7 @@ extension Heap.Bounded where Element: ~Copyable {
 
             if largest.offset >= gc0.offset {
                 let parent = largest.parent()
-                if Element.isLessThan(unsafe ptr[largest.offset], unsafe ptr[parent.offset]) {
+                if unsafe ptr[largest.offset] < ptr[parent.offset] {
                     _swapElements(at: largest.offset, parent.offset)
                 }
                 node = largest
@@ -2177,7 +2105,7 @@ extension Heap.Bounded where Element: ~Copyable {
         if count == 2 { return body(unsafe _cachedPtr[1]) }
 
         let ptr = unsafe _cachedPtr
-        let maxIndex = Element.isLessThan(unsafe ptr[1], unsafe ptr[2]) ? 2 : 1
+        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
         return body(unsafe ptr[maxIndex])
     }
 
@@ -2310,7 +2238,7 @@ extension Heap.Bounded where Element: Copyable {
         if count == 2 { return _storage._readElement(at: 1) }
         let e1 = _storage._readElement(at: 1)
         let e2 = _storage._readElement(at: 2)
-        return Element.isLessThan(e1, e2) ? e2 : e1
+        return e1 < e2 ? e2 : e1
     }
 }
 
@@ -2326,7 +2254,7 @@ extension Heap.Bounded where Element: Copyable {
     /// - Note: If elements exceeds capacity, only the first `capacity` elements are kept.
     /// - Complexity: O(n)
     @inlinable
-    public init(_ elements: some Sequence<Element>, capacity: Int) throws(__Heap.Bounded.Error) {
+    public init(_ elements: some Swift.Sequence<Element>, capacity: Int) throws(__Heap.Bounded.Error) {
         guard capacity >= 0 else {
             throw .invalidCapacity
         }
@@ -2503,12 +2431,9 @@ extension Heap.Inline where Element: ~Copyable {
             return unsafe _pointerToElement(at: 1).move()
         }
 
-        // Find max (at index 1 or 2) using isLessThan
+        // Find max (at index 1 or 2) using < operator
         let maxIndex: Int
-        if Element.isLessThan(
-            unsafe _readPointerToElement(at: 1).pointee,
-            unsafe _readPointerToElement(at: 2).pointee
-        ) {
+        if unsafe _readPointerToElement(at: 1).pointee < _readPointerToElement(at: 2).pointee {
             maxIndex = 2
         } else {
             maxIndex = 1
@@ -2566,14 +2491,8 @@ extension Heap.Inline where Element: ~Copyable {
         var nodeOffset = nodeOffset
         var level = Self._level(forOffset: nodeOffset)
 
-        let nodeIsLess = Element.isLessThan(
-            unsafe _readPointerToElement(at: nodeOffset).pointee,
-            unsafe _readPointerToElement(at: parentOffset).pointee
-        )
-        let parentIsLess = Element.isLessThan(
-            unsafe _readPointerToElement(at: parentOffset).pointee,
-            unsafe _readPointerToElement(at: nodeOffset).pointee
-        )
+        let nodeIsLess = unsafe _readPointerToElement(at: nodeOffset).pointee < _readPointerToElement(at: parentOffset).pointee
+        let parentIsLess = unsafe _readPointerToElement(at: parentOffset).pointee < _readPointerToElement(at: nodeOffset).pointee
 
         let isMinLevel = Self._isMinLevel(level)
 
@@ -2586,10 +2505,7 @@ extension Heap.Inline where Element: ~Copyable {
         if Self._isMinLevel(level) {
             while nodeOffset > 2 {
                 let gpOffset = (nodeOffset &- 3) / 4
-                let gpIsLess = Element.isLessThan(
-                    unsafe _readPointerToElement(at: gpOffset).pointee,
-                    unsafe _readPointerToElement(at: nodeOffset).pointee
-                )
+                let gpIsLess = unsafe _readPointerToElement(at: gpOffset).pointee < _readPointerToElement(at: nodeOffset).pointee
                 guard !gpIsLess else { break }
                 _swapElements(at: nodeOffset, gpOffset)
                 nodeOffset = gpOffset
@@ -2597,10 +2513,7 @@ extension Heap.Inline where Element: ~Copyable {
         } else {
             while nodeOffset > 2 {
                 let gpOffset = (nodeOffset &- 3) / 4
-                let nodeIsLessGp = Element.isLessThan(
-                    unsafe _readPointerToElement(at: nodeOffset).pointee,
-                    unsafe _readPointerToElement(at: gpOffset).pointee
-                )
+                let nodeIsLessGp = unsafe _readPointerToElement(at: nodeOffset).pointee < _readPointerToElement(at: gpOffset).pointee
                 guard !nodeIsLessGp else { break }
                 _swapElements(at: nodeOffset, gpOffset)
                 nodeOffset = gpOffset
@@ -2626,17 +2539,11 @@ extension Heap.Inline where Element: ~Copyable {
 
             let rightChildOffset = nodeOffset &* 2 &+ 2
 
-            if Element.isLessThan(
-                unsafe _readPointerToElement(at: leftChildOffset).pointee,
-                unsafe _readPointerToElement(at: smallestOffset).pointee
-            ) {
+            if unsafe _readPointerToElement(at: leftChildOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                 smallestOffset = leftChildOffset
             }
             if rightChildOffset < _count {
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: rightChildOffset).pointee,
-                    unsafe _readPointerToElement(at: smallestOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: rightChildOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                     smallestOffset = rightChildOffset
                 }
             }
@@ -2645,10 +2552,7 @@ extension Heap.Inline where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0 + i
                 guard gcOffset < _count else { break }
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: gcOffset).pointee,
-                    unsafe _readPointerToElement(at: smallestOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: gcOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                     smallestOffset = gcOffset
                 }
             }
@@ -2659,10 +2563,7 @@ extension Heap.Inline where Element: ~Copyable {
 
             if smallestOffset >= gc0 {
                 let parentOffset = (smallestOffset &- 1) / 2
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: parentOffset).pointee,
-                    unsafe _readPointerToElement(at: smallestOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: parentOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                     _swapElements(at: smallestOffset, parentOffset)
                 }
                 nodeOffset = smallestOffset
@@ -2691,17 +2592,11 @@ extension Heap.Inline where Element: ~Copyable {
 
             let rightChildOffset = nodeOffset &* 2 &+ 2
 
-            if Element.isLessThan(
-                unsafe _readPointerToElement(at: largestOffset).pointee,
-                unsafe _readPointerToElement(at: leftChildOffset).pointee
-            ) {
+            if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: leftChildOffset).pointee {
                 largestOffset = leftChildOffset
             }
             if rightChildOffset < _count {
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: largestOffset).pointee,
-                    unsafe _readPointerToElement(at: rightChildOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: rightChildOffset).pointee {
                     largestOffset = rightChildOffset
                 }
             }
@@ -2710,10 +2605,7 @@ extension Heap.Inline where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0 + i
                 guard gcOffset < _count else { break }
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: largestOffset).pointee,
-                    unsafe _readPointerToElement(at: gcOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: gcOffset).pointee {
                     largestOffset = gcOffset
                 }
             }
@@ -2724,10 +2616,7 @@ extension Heap.Inline where Element: ~Copyable {
 
             if largestOffset >= gc0 {
                 let parentOffset = (largestOffset &- 1) / 2
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: largestOffset).pointee,
-                    unsafe _readPointerToElement(at: parentOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: parentOffset).pointee {
                     _swapElements(at: largestOffset, parentOffset)
                 }
                 nodeOffset = largestOffset
@@ -2879,10 +2768,7 @@ extension Heap.Inline where Element: ~Copyable {
         if count == 1 { return unsafe body(_readPointerToElement(at: 0).pointee) }
         if count == 2 { return unsafe body(_readPointerToElement(at: 1).pointee) }
 
-        let e1IsLess = Element.isLessThan(
-            unsafe _readPointerToElement(at: 1).pointee,
-            unsafe _readPointerToElement(at: 2).pointee
-        )
+        let e1IsLess = unsafe _readPointerToElement(at: 1).pointee < _readPointerToElement(at: 2).pointee
         let maxIndex = e1IsLess ? 2 : 1
         return unsafe body(_readPointerToElement(at: maxIndex).pointee)
     }
@@ -2938,7 +2824,7 @@ extension Heap.Inline where Element: Copyable {
 
         let e1 = unsafe _readPointerToElement(at: 1).pointee
         let e2 = unsafe _readPointerToElement(at: 2).pointee
-        return Element.isLessThan(e1, e2) ? e2 : e1
+        return e1 < e2 ? e2 : e1
     }
 }
 
@@ -3089,12 +2975,9 @@ extension Heap.Small where Element: ~Copyable {
             return unsafe _pointerToElement(at: 1).move()
         }
 
-        // Find max (at index 1 or 2) using isLessThan
+        // Find max (at index 1 or 2) using < operator
         let maxIndex: Int
-        if Element.isLessThan(
-            unsafe _readPointerToElement(at: 1).pointee,
-            unsafe _readPointerToElement(at: 2).pointee
-        ) {
+        if unsafe _readPointerToElement(at: 1).pointee < _readPointerToElement(at: 2).pointee {
             maxIndex = 2
         } else {
             maxIndex = 1
@@ -3155,14 +3038,8 @@ extension Heap.Small where Element: ~Copyable {
         var nodeOffset = nodeOffset
         var level = Self._level(forOffset: nodeOffset)
 
-        let nodeIsLess = Element.isLessThan(
-            unsafe _readPointerToElement(at: nodeOffset).pointee,
-            unsafe _readPointerToElement(at: parentOffset).pointee
-        )
-        let parentIsLess = Element.isLessThan(
-            unsafe _readPointerToElement(at: parentOffset).pointee,
-            unsafe _readPointerToElement(at: nodeOffset).pointee
-        )
+        let nodeIsLess = unsafe _readPointerToElement(at: nodeOffset).pointee < _readPointerToElement(at: parentOffset).pointee
+        let parentIsLess = unsafe _readPointerToElement(at: parentOffset).pointee < _readPointerToElement(at: nodeOffset).pointee
 
         let isMinLevel = Self._isMinLevel(level)
 
@@ -3175,10 +3052,7 @@ extension Heap.Small where Element: ~Copyable {
         if Self._isMinLevel(level) {
             while nodeOffset > 2 {
                 let gpOffset = (nodeOffset &- 3) / 4
-                let gpIsLess = Element.isLessThan(
-                    unsafe _readPointerToElement(at: gpOffset).pointee,
-                    unsafe _readPointerToElement(at: nodeOffset).pointee
-                )
+                let gpIsLess = unsafe _readPointerToElement(at: gpOffset).pointee < _readPointerToElement(at: nodeOffset).pointee
                 guard !gpIsLess else { break }
                 _swapElements(at: nodeOffset, gpOffset)
                 nodeOffset = gpOffset
@@ -3186,10 +3060,7 @@ extension Heap.Small where Element: ~Copyable {
         } else {
             while nodeOffset > 2 {
                 let gpOffset = (nodeOffset &- 3) / 4
-                let nodeIsLessGp = Element.isLessThan(
-                    unsafe _readPointerToElement(at: nodeOffset).pointee,
-                    unsafe _readPointerToElement(at: gpOffset).pointee
-                )
+                let nodeIsLessGp = unsafe _readPointerToElement(at: nodeOffset).pointee < _readPointerToElement(at: gpOffset).pointee
                 guard !nodeIsLessGp else { break }
                 _swapElements(at: nodeOffset, gpOffset)
                 nodeOffset = gpOffset
@@ -3214,17 +3085,11 @@ extension Heap.Small where Element: ~Copyable {
 
             let rightChildOffset = nodeOffset &* 2 &+ 2
 
-            if Element.isLessThan(
-                unsafe _readPointerToElement(at: leftChildOffset).pointee,
-                unsafe _readPointerToElement(at: smallestOffset).pointee
-            ) {
+            if unsafe _readPointerToElement(at: leftChildOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                 smallestOffset = leftChildOffset
             }
             if rightChildOffset < _count {
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: rightChildOffset).pointee,
-                    unsafe _readPointerToElement(at: smallestOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: rightChildOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                     smallestOffset = rightChildOffset
                 }
             }
@@ -3233,10 +3098,7 @@ extension Heap.Small where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0 + i
                 guard gcOffset < _count else { break }
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: gcOffset).pointee,
-                    unsafe _readPointerToElement(at: smallestOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: gcOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                     smallestOffset = gcOffset
                 }
             }
@@ -3247,10 +3109,7 @@ extension Heap.Small where Element: ~Copyable {
 
             if smallestOffset >= gc0 {
                 let parentOffset = (smallestOffset &- 1) / 2
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: parentOffset).pointee,
-                    unsafe _readPointerToElement(at: smallestOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: parentOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
                     _swapElements(at: smallestOffset, parentOffset)
                 }
                 nodeOffset = smallestOffset
@@ -3277,17 +3136,11 @@ extension Heap.Small where Element: ~Copyable {
 
             let rightChildOffset = nodeOffset &* 2 &+ 2
 
-            if Element.isLessThan(
-                unsafe _readPointerToElement(at: largestOffset).pointee,
-                unsafe _readPointerToElement(at: leftChildOffset).pointee
-            ) {
+            if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: leftChildOffset).pointee {
                 largestOffset = leftChildOffset
             }
             if rightChildOffset < _count {
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: largestOffset).pointee,
-                    unsafe _readPointerToElement(at: rightChildOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: rightChildOffset).pointee {
                     largestOffset = rightChildOffset
                 }
             }
@@ -3296,10 +3149,7 @@ extension Heap.Small where Element: ~Copyable {
             for i in 0..<4 {
                 let gcOffset = gc0 + i
                 guard gcOffset < _count else { break }
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: largestOffset).pointee,
-                    unsafe _readPointerToElement(at: gcOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: gcOffset).pointee {
                     largestOffset = gcOffset
                 }
             }
@@ -3310,10 +3160,7 @@ extension Heap.Small where Element: ~Copyable {
 
             if largestOffset >= gc0 {
                 let parentOffset = (largestOffset &- 1) / 2
-                if Element.isLessThan(
-                    unsafe _readPointerToElement(at: largestOffset).pointee,
-                    unsafe _readPointerToElement(at: parentOffset).pointee
-                ) {
+                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: parentOffset).pointee {
                     _swapElements(at: largestOffset, parentOffset)
                 }
                 nodeOffset = largestOffset
@@ -3517,10 +3364,7 @@ extension Heap.Small where Element: ~Copyable {
         if count == 1 { return unsafe body(_readPointerToElement(at: 0).pointee) }
         if count == 2 { return unsafe body(_readPointerToElement(at: 1).pointee) }
 
-        let e1IsLess = Element.isLessThan(
-            unsafe _readPointerToElement(at: 1).pointee,
-            unsafe _readPointerToElement(at: 2).pointee
-        )
+        let e1IsLess = unsafe _readPointerToElement(at: 1).pointee < _readPointerToElement(at: 2).pointee
         let maxIndex = e1IsLess ? 2 : 1
         return unsafe body(_readPointerToElement(at: maxIndex).pointee)
     }
@@ -3576,7 +3420,7 @@ extension Heap.Small where Element: Copyable {
 
         let e1 = unsafe _readPointerToElement(at: 1).pointee
         let e2 = unsafe _readPointerToElement(at: 2).pointee
-        return Element.isLessThan(e1, e2) ? e2 : e1
+        return e1 < e2 ? e2 : e1
     }
 }
 
