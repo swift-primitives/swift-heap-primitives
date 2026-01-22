@@ -81,6 +81,56 @@ The key insight: patterns that work in minimal reproductions don't always scale.
 
 ---
 
+## The Accessor Pattern Boundary
+
+**Date**: 2026-01-20
+
+**Context**: Attempting to unify Heap API by replacing compound methods (`takeMin()`, `popMin()`) with accessor patterns (`heap.take.min`, `heap.pop.min()`) per [API-NAME-002].
+
+The nested accessor pattern requires an accessor struct that holds a reference to the container:
+
+```swift
+public struct Take {
+    var heap: Heap<Element>.Bounded  // Must hold the container
+}
+```
+
+For a `~Copyable` container, this is impossible. The accessor struct needs to store the container, but storing a `~Copyable` value requires the accessor itself to be `~Copyable`. A `~Copyable` accessor defeats the purpose—accessors need to be freely passable as intermediate values.
+
+### Why Class Storage Doesn't Help
+
+`Heap.Bounded` uses class-based storage (`ManagedBuffer`), which initially suggested the accessor pattern might work. The reasoning: "The Storage class is a reference type, so the Bounded struct is lightweight and should be copyable."
+
+This reasoning is wrong. The Bounded struct is declared `~Copyable`:
+
+```swift
+public struct Bounded: ~Copyable { ... }
+```
+
+Even with class-based storage, the struct itself is `~Copyable` to support `~Copyable` elements. The struct becomes `Copyable` only when `Element: Copyable` via conditional conformance. For `~Copyable` elements, the container is `~Copyable`, and the accessor pattern fails.
+
+### The Heap Type Family API Patterns
+
+| Variant | Storage | ~Copyable? | Accessor Pattern? |
+|---------|---------|------------|-------------------|
+| `Heap` (base) | Class-based (CoW) | Conditional | Yes |
+| `Heap.Bounded` | Class-based | Conditional | No (struct is ~Copyable) |
+| `Heap.Inline` | Inline | Always | No |
+| `Heap.Small` | Hybrid | Always | No |
+
+The divergence between base `Heap` using `heap.take.min` and variants using `heap.takeMin()` is intentional, not inconsistency. It reflects the underlying type constraints:
+
+- **Base Heap**: Accessor pattern works because the container is `Copyable` when elements are
+- **Variants**: Compound methods required because containers are `~Copyable` by design
+
+### Decision
+
+For `~Copyable` containers, compound methods (`takeMin()`, `popMin()`) remain the correct pattern. This violates [API-NAME-002] (no compound identifiers), but [MEM-COPY-005] provides the exception for `~Copyable` containers requiring direct methods instead of accessor patterns.
+
+**Applies to**: All Heap variant types (Bounded, Inline, Small) API design.
+
+---
+
 ## Topics
 
 ### Related Documents
