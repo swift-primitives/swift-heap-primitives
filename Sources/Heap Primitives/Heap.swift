@@ -1618,7 +1618,7 @@ extension Heap: CustomStringConvertible {
 // MARK: - Heap.Bounded Protocol Conformances (per MEM-COPY-006)
 // =============================================================================
 //
-// SWIFT COMPILER BUG: Sequence Conformance Disabled
+// SWIFT COMPILER BUG: Swift.Sequence Conformance Disabled
 // ==================================================
 //
 // The `Sequence` conformance for `Heap.Bounded` is DISABLED due to a Swift
@@ -2275,7 +2275,7 @@ extension Heap.Bounded where Element: Copyable {
     }
 }
 
-// Note: Sequence, Equatable, Hashable conformances moved to Heap.swift per MEM-COPY-006
+// Note: Swift.Sequence, Equatable, Hashable conformances moved to Heap.swift per MEM-COPY-006
 
 // MARK: - Truncate
 
