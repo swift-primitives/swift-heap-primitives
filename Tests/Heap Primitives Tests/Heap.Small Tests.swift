@@ -12,11 +12,11 @@
 import Testing
 @testable import Heap_Primitives
 
-@Suite("Heap.Binary.Small")
-struct HeapBinarySmallTests {
+@Suite("Heap.Small (Single-Ended)")
+struct HeapSmallTests {
     @Test("Init creates empty heap")
     func initCreatesEmpty() {
-        let heap = Heap<Int>.Binary.Small<4>()
+        let heap = Heap<Int>.Small<4>(order: .ascending)
         #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
         #expect(heap.isSpilled == false)
@@ -24,7 +24,7 @@ struct HeapBinarySmallTests {
 
     @Test("Push within inline capacity")
     func pushWithinInlineCapacity() {
-        var heap = Heap<Int>.Binary.Small<4>()
+        var heap = Heap<Int>.Small<4>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -36,7 +36,7 @@ struct HeapBinarySmallTests {
 
     @Test("Push spills to heap")
     func pushSpillsToHeap() {
-        var heap = Heap<Int>.Binary.Small<4>()
+        var heap = Heap<Int>.Small<4>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -48,22 +48,33 @@ struct HeapBinarySmallTests {
         #expect(heap.count == 5)
     }
 
-    @Test("Min-max ordering with inline storage")
-    func minMaxOrderingInline() {
-        var heap = Heap<Int>.Binary.Small<8>()
+    @Test("Min-heap ordering with inline storage")
+    func minHeapOrderingInline() {
+        var heap = Heap<Int>.Small<8>(order: .ascending)
         heap.push(5)
         heap.push(3)
         heap.push(7)
         heap.push(1)
 
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMax() == 7)
+        #expect(heap.peek == 1)  // Min element at top
         #expect(heap.isSpilled == false)
     }
 
-    @Test("Min-max ordering after spill")
-    func minMaxOrderingAfterSpill() {
-        var heap = Heap<Int>.Binary.Small<2>()
+    @Test("Max-heap ordering with inline storage")
+    func maxHeapOrderingInline() {
+        var heap = Heap<Int>.Small<8>(order: .descending)
+        heap.push(5)
+        heap.push(3)
+        heap.push(7)
+        heap.push(1)
+
+        #expect(heap.peek == 7)  // Max element at top
+        #expect(heap.isSpilled == false)
+    }
+
+    @Test("Min-heap ordering after spill")
+    func minHeapOrderingAfterSpill() {
+        var heap = Heap<Int>.Small<2>(order: .ascending)
         heap.push(5)
         heap.push(3)
         #expect(heap.isSpilled == false)
@@ -72,77 +83,72 @@ struct HeapBinarySmallTests {
         heap.push(1)
         #expect(heap.isSpilled == true)
 
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMax() == 7)
+        #expect(heap.peek == 1)  // Min at top
     }
 
-    @Test("Pop min in order inline")
+    @Test("Pop in order (min-heap) inline")
     func popMinInOrderInline() throws {
-        var heap = Heap<Int>.Binary.Small<8>()
+        var heap = Heap<Int>.Small<8>(order: .ascending)
         heap.push(5)
         heap.push(3)
         heap.push(7)
         heap.push(1)
 
-        #expect(try heap.popMin() == 1)
-        #expect(try heap.popMin() == 3)
-        #expect(try heap.popMin() == 5)
-        #expect(try heap.popMin() == 7)
+        #expect(try heap.pop() == 1)
+        #expect(try heap.pop() == 3)
+        #expect(try heap.pop() == 5)
+        #expect(try heap.pop() == 7)
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Pop min in order after spill")
-    func popMinInOrderAfterSpill() throws {
-        var heap = Heap<Int>.Binary.Small<2>()
+    @Test("Pop in order (max-heap) inline")
+    func popMaxInOrderInline() throws {
+        var heap = Heap<Int>.Small<8>(order: .descending)
+        heap.push(5)
+        heap.push(3)
+        heap.push(7)
+        heap.push(1)
+
+        #expect(try heap.pop() == 7)
+        #expect(try heap.pop() == 5)
+        #expect(try heap.pop() == 3)
+        #expect(try heap.pop() == 1)
+        #expect(heap.isEmpty == true)
+    }
+
+    @Test("Pop in order after spill")
+    func popInOrderAfterSpill() throws {
+        var heap = Heap<Int>.Small<2>(order: .ascending)
         heap.push(5)
         heap.push(3)
         heap.push(7)
         heap.push(1)
         #expect(heap.isSpilled == true)
 
-        #expect(try heap.popMin() == 1)
-        #expect(try heap.popMin() == 3)
-        #expect(try heap.popMin() == 5)
-        #expect(try heap.popMin() == 7)
-        #expect(heap.isEmpty == true)
-    }
-
-    @Test("Pop max in order")
-    func popMaxInOrder() throws {
-        var heap = Heap<Int>.Binary.Small<8>()
-        heap.push(5)
-        heap.push(3)
-        heap.push(7)
-        heap.push(1)
-
-        #expect(try heap.popMax() == 7)
-        #expect(try heap.popMax() == 5)
-        #expect(try heap.popMax() == 3)
-        #expect(try heap.popMax() == 1)
+        #expect(try heap.pop() == 1)
+        #expect(try heap.pop() == 3)
+        #expect(try heap.pop() == 5)
+        #expect(try heap.pop() == 7)
         #expect(heap.isEmpty == true)
     }
 
     @Test("Pop throws when empty")
     func popThrowsWhenEmpty() {
-        var heap = Heap<Int>.Binary.Small<8>()
-        #expect(throws: __Heap.Binary.Small.Error.empty) {
-            try heap.popMin()
-        }
-        #expect(throws: __Heap.Binary.Small.Error.empty) {
-            try heap.popMax()
+        var heap = Heap<Int>.Small<8>(order: .ascending)
+        #expect(throws: __Heap.Small.Error.empty) {
+            try heap.pop()
         }
     }
 
     @Test("Take returns nil when empty")
     func takeReturnsNilWhenEmpty() {
-        var heap = Heap<Int>.Binary.Small<8>()
-        #expect(heap.takeMin() == nil)
-        #expect(heap.takeMax() == nil)
+        var heap = Heap<Int>.Small<8>(order: .ascending)
+        #expect(heap.take == nil)
     }
 
     @Test("Clear removes all elements")
     func clearRemovesAllElements() {
-        var heap = Heap<Int>.Binary.Small<4>()
+        var heap = Heap<Int>.Small<4>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -154,7 +160,7 @@ struct HeapBinarySmallTests {
 
     @Test("Clear after spill")
     func clearAfterSpill() {
-        var heap = Heap<Int>.Binary.Small<2>()
+        var heap = Heap<Int>.Small<2>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -166,18 +172,9 @@ struct HeapBinarySmallTests {
         #expect(heap.isSpilled == true)  // Still spilled, storage not reclaimed
     }
 
-    @Test("Single element min equals max")
-    func singleElementMinEqualsMax() {
-        var heap = Heap<Int>.Binary.Small<4>()
-        heap.push(42)
-
-        #expect(heap.peekMin() == 42)
-        #expect(heap.peekMax() == 42)
-    }
-
     @Test("Heap grows after spill")
     func heapGrowsAfterSpill() {
-        var heap = Heap<Int>.Binary.Small<2>()
+        var heap = Heap<Int>.Small<2>(order: .ascending)
 
         // Fill inline
         heap.push(1)
@@ -190,13 +187,12 @@ struct HeapBinarySmallTests {
 
         #expect(heap.count == 20)
         #expect(heap.isSpilled == true)
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMax() == 20)
+        #expect(heap.peek == 1)  // Min at top
     }
 
     @Test("forEach with borrowing access")
     func forEachBorrowingAccess() {
-        var heap = Heap<Int>.Binary.Small<8>()
+        var heap = Heap<Int>.Small<8>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -210,7 +206,7 @@ struct HeapBinarySmallTests {
 
     @Test("forEach after spill")
     func forEachAfterSpill() {
-        var heap = Heap<Int>.Binary.Small<2>()
+        var heap = Heap<Int>.Small<2>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -224,23 +220,20 @@ struct HeapBinarySmallTests {
         #expect(sum == 10)
     }
 
-    @Test("withMin and withMax borrowing")
-    func withMinMaxBorrowing() {
-        var heap = Heap<Int>.Binary.Small<8>()
+    @Test("withPriority borrowing access")
+    func withPriorityBorrowing() {
+        var heap = Heap<Int>.Small<8>(order: .ascending)
         heap.push(5)
         heap.push(3)
         heap.push(7)
 
-        let minValue = heap.withMin { $0 * 2 }
-        #expect(minValue == 6)
-
-        let maxValue = heap.withMax { $0 * 2 }
-        #expect(maxValue == 14)
+        let value = heap.withPriority { $0 * 2 }
+        #expect(value == 6)  // 3 * 2 (min element)
     }
 
     @Test("Truncate reduces count inline")
     func truncateReducesCountInline() {
-        var heap = Heap<Int>.Binary.Small<8>()
+        var heap = Heap<Int>.Small<8>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -253,7 +246,7 @@ struct HeapBinarySmallTests {
 
     @Test("Truncate after spill")
     func truncateAfterSpill() {
-        var heap = Heap<Int>.Binary.Small<2>()
+        var heap = Heap<Int>.Small<2>(order: .ascending)
         heap.push(1)
         heap.push(2)
         heap.push(3)
@@ -267,7 +260,7 @@ struct HeapBinarySmallTests {
 
     @Test("Capacity reflects storage type")
     func capacityReflectsStorageType() {
-        var heap = Heap<Int>.Binary.Small<4>()
+        var heap = Heap<Int>.Small<4>(order: .ascending)
         #expect(heap.capacity == 4)  // Inline capacity
 
         heap.push(1)
@@ -283,8 +276,8 @@ struct HeapBinarySmallTests {
 
 // MARK: - ~Copyable Element Tests
 
-@Suite("Heap.Binary.Small with ~Copyable elements")
-struct HeapBinarySmallNonCopyableTests {
+@Suite("Heap.Small with ~Copyable elements")
+struct HeapSmallNonCopyableTests {
     /// A move-only resource for testing.
     struct UniqueResource: ~Copyable, Comparison_Primitives.Comparison.`Protocol` {
         let id: Int
@@ -304,7 +297,7 @@ struct HeapBinarySmallNonCopyableTests {
 
     @Test("Push and access ~Copyable elements inline")
     func pushAndAccessInline() {
-        var heap = Heap<UniqueResource>.Binary.Small<8>()
+        var heap = Heap<UniqueResource>.Small<8>(order: .ascending)
 
         heap.push(UniqueResource(id: 10))
         heap.push(UniqueResource(id: 5))
@@ -313,16 +306,13 @@ struct HeapBinarySmallNonCopyableTests {
         #expect(heap.count == 3)
         #expect(heap.isSpilled == false)
 
-        let minId = heap.withMin { $0.id }
+        let minId = heap.withPriority { $0.id }
         #expect(minId == 5)
-
-        let maxId = heap.withMax { $0.id }
-        #expect(maxId == 15)
     }
 
     @Test("Push and access ~Copyable elements after spill")
     func pushAndAccessAfterSpill() {
-        var heap = Heap<UniqueResource>.Binary.Small<2>()
+        var heap = Heap<UniqueResource>.Small<2>(order: .ascending)
 
         heap.push(UniqueResource(id: 10))
         heap.push(UniqueResource(id: 5))
@@ -332,16 +322,13 @@ struct HeapBinarySmallNonCopyableTests {
         #expect(heap.count == 4)
         #expect(heap.isSpilled == true)
 
-        let minId = heap.withMin { $0.id }
+        let minId = heap.withPriority { $0.id }
         #expect(minId == 1)
-
-        let maxId = heap.withMax { $0.id }
-        #expect(maxId == 15)
     }
 
     @Test("forEach with ~Copyable elements")
     func forEachNonCopyable() {
-        var heap = Heap<UniqueResource>.Binary.Small<8>()
+        var heap = Heap<UniqueResource>.Small<8>(order: .ascending)
         heap.push(UniqueResource(id: 3))
         heap.push(UniqueResource(id: 1))
         heap.push(UniqueResource(id: 2))
@@ -355,7 +342,7 @@ struct HeapBinarySmallNonCopyableTests {
 
     @Test("Deinit properly cleans up ~Copyable elements inline")
     func deinitCleansUpInline() {
-        var heap = Heap<UniqueResource>.Binary.Small<4>()
+        var heap = Heap<UniqueResource>.Small<4>(order: .ascending)
         heap.push(UniqueResource(id: 1))
         heap.push(UniqueResource(id: 2))
         heap.push(UniqueResource(id: 3))
@@ -364,7 +351,7 @@ struct HeapBinarySmallNonCopyableTests {
 
     @Test("Deinit properly cleans up ~Copyable elements after spill")
     func deinitCleansUpAfterSpill() {
-        var heap = Heap<UniqueResource>.Binary.Small<2>()
+        var heap = Heap<UniqueResource>.Small<2>(order: .ascending)
         heap.push(UniqueResource(id: 1))
         heap.push(UniqueResource(id: 2))
         heap.push(UniqueResource(id: 3))

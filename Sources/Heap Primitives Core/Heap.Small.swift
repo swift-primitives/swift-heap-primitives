@@ -67,9 +67,9 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         _bubbleUp(index)
     }
 
-    /// Removes and returns the minimum element.
+    /// Removes and returns the priority element.
     @usableFromInline
-    package mutating func _removeMin() -> Element? {
+    package mutating func _removePriority() -> Element? {
         guard !isEmpty else { return nil }
 
         if count == 1 {
@@ -80,7 +80,6 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
             return unsafe _pointerToElement(at: 0).move()
         }
 
-        // Swap root with last, remove last, trickle down
         let lastIndex = _count - 1
         _swapElements(at: 0, lastIndex)
         _count -= 1
@@ -88,52 +87,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
             _heap!.header = _count
         }
         let removed = unsafe _pointerToElement(at: lastIndex).move()
-        _trickleDownMin(0)
-        return removed
-    }
-
-    /// Removes and returns the maximum element.
-    @usableFromInline
-    package mutating func _removeMax() -> Element? {
-        guard !isEmpty else { return nil }
-
-        if count == 1 {
-            _count = 0
-            if _heap != nil {
-                _heap!.header = 0
-            }
-            return unsafe _pointerToElement(at: 0).move()
-        }
-
-        if count == 2 {
-            _count = 1
-            if _heap != nil {
-                _heap!.header = 1
-            }
-            return unsafe _pointerToElement(at: 1).move()
-        }
-
-        // Find max (at index 1 or 2) using < operator
-        let maxIndex: Int
-        if unsafe _readPointerToElement(at: 1).pointee < _readPointerToElement(at: 2).pointee {
-            maxIndex = 2
-        } else {
-            maxIndex = 1
-        }
-
-        // Swap with last, remove last, trickle down
-        let lastIndex = _count - 1
-        _swapElements(at: maxIndex, lastIndex)
-        _count -= 1
-        if _heap != nil {
-            _heap!.header = _count
-        }
-        let removed = unsafe _pointerToElement(at: lastIndex).move()
-
-        if maxIndex < _count {
-            _trickleDownMax(maxIndex, level: 1)
-        }
-
+        _trickleDown(0)
         return removed
     }
 
@@ -148,162 +102,94 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Level Calculations
-
-extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
-    /// Computes the level for a given offset.
-    @usableFromInline
-    package static func _level(forOffset offset: Int) -> Int {
-        (offset &+ 1)._binaryLogarithm()
-    }
-
-    /// Whether a level is a min level (even: 0, 2, 4, ...).
-    @usableFromInline
-    package static func _isMinLevel(_ level: Int) -> Bool {
-        level & 0b1 == 0
-    }
-}
-
-// MARK: - Bubble Up
+// MARK: - Bubble Up (Single-Ended Heap)
 
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element up.
     @usableFromInline
-    package mutating func _bubbleUp(_ nodeOffset: Int) {
-        guard nodeOffset > 0 else { return }
+    package mutating func _bubbleUp(_ index: Int) {
+        guard index > 0 else { return }
 
-        let parentOffset = (nodeOffset &- 1) / 2
-        var nodeOffset = nodeOffset
-        var level = Self._level(forOffset: nodeOffset)
+        var current = index
 
-        let nodeIsLess = unsafe _readPointerToElement(at: nodeOffset).pointee < _readPointerToElement(at: parentOffset).pointee
-        let parentIsLess = unsafe _readPointerToElement(at: parentOffset).pointee < _readPointerToElement(at: nodeOffset).pointee
-
-        let isMinLevel = Self._isMinLevel(level)
-
-        if (isMinLevel && parentIsLess) || (!isMinLevel && nodeIsLess) {
-            _swapElements(at: nodeOffset, parentOffset)
-            nodeOffset = parentOffset
-            level -= 1
-        }
-
-        if Self._isMinLevel(level) {
-            while nodeOffset > 2 {
-                let gpOffset = (nodeOffset &- 3) / 4
-                let gpIsLess = unsafe _readPointerToElement(at: gpOffset).pointee < _readPointerToElement(at: nodeOffset).pointee
-                guard !gpIsLess else { break }
-                _swapElements(at: nodeOffset, gpOffset)
-                nodeOffset = gpOffset
+        switch order {
+        case .ascending:
+            while current > 0 {
+                let parentIndex = (current &- 1) / 2
+                if unsafe _readPointerToElement(at: current).pointee < _readPointerToElement(at: parentIndex).pointee {
+                    _swapElements(at: current, parentIndex)
+                    current = parentIndex
+                } else {
+                    break
+                }
             }
-        } else {
-            while nodeOffset > 2 {
-                let gpOffset = (nodeOffset &- 3) / 4
-                let nodeIsLessGp = unsafe _readPointerToElement(at: nodeOffset).pointee < _readPointerToElement(at: gpOffset).pointee
-                guard !nodeIsLessGp else { break }
-                _swapElements(at: nodeOffset, gpOffset)
-                nodeOffset = gpOffset
+        case .descending:
+            while current > 0 {
+                let parentIndex = (current &- 1) / 2
+                if unsafe _readPointerToElement(at: parentIndex).pointee < _readPointerToElement(at: current).pointee {
+                    _swapElements(at: current, parentIndex)
+                    current = parentIndex
+                } else {
+                    break
+                }
             }
         }
     }
 }
 
-// MARK: - Trickle Down Min
+// MARK: - Trickle Down (Single-Ended Heap)
 
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
-    /// Sinks element at min-level node to correct position.
+    /// Restores heap property by moving element down.
     @usableFromInline
-    package mutating func _trickleDownMin(_ startOffset: Int) {
-        var nodeOffset = startOffset
+    package mutating func _trickleDown(_ startIndex: Int) {
+        var current = startIndex
 
-        while true {
-            let leftChildOffset = nodeOffset &* 2 &+ 1
-            if leftChildOffset >= _count { break }
+        switch order {
+        case .ascending:
+            while true {
+                let leftChild = current &* 2 &+ 1
+                guard leftChild < _count else { break }
 
-            var smallestOffset = nodeOffset
+                let rightChild = leftChild + 1
+                var smallest = current
 
-            let rightChildOffset = nodeOffset &* 2 &+ 2
-
-            if unsafe _readPointerToElement(at: leftChildOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
-                smallestOffset = leftChildOffset
-            }
-            if rightChildOffset < _count {
-                if unsafe _readPointerToElement(at: rightChildOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
-                    smallestOffset = rightChildOffset
+                if unsafe _readPointerToElement(at: leftChild).pointee < _readPointerToElement(at: smallest).pointee {
+                    smallest = leftChild
                 }
-            }
-
-            let gc0 = nodeOffset &* 4 &+ 3
-            for i in 0..<4 {
-                let gcOffset = gc0 + i
-                guard gcOffset < _count else { break }
-                if unsafe _readPointerToElement(at: gcOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
-                    smallestOffset = gcOffset
+                if rightChild < _count {
+                    if unsafe _readPointerToElement(at: rightChild).pointee < _readPointerToElement(at: smallest).pointee {
+                        smallest = rightChild
+                    }
                 }
+
+                if smallest == current { break }
+
+                _swapElements(at: current, smallest)
+                current = smallest
             }
 
-            if smallestOffset == nodeOffset { break }
+        case .descending:
+            while true {
+                let leftChild = current &* 2 &+ 1
+                guard leftChild < _count else { break }
 
-            _swapElements(at: nodeOffset, smallestOffset)
+                let rightChild = leftChild + 1
+                var largest = current
 
-            if smallestOffset >= gc0 {
-                let parentOffset = (smallestOffset &- 1) / 2
-                if unsafe _readPointerToElement(at: parentOffset).pointee < _readPointerToElement(at: smallestOffset).pointee {
-                    _swapElements(at: smallestOffset, parentOffset)
+                if unsafe _readPointerToElement(at: largest).pointee < _readPointerToElement(at: leftChild).pointee {
+                    largest = leftChild
                 }
-                nodeOffset = smallestOffset
-            } else {
-                break
-            }
-        }
-    }
-}
-
-// MARK: - Trickle Down Max
-
-extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
-    /// Sinks element at max-level node to correct position.
-    @usableFromInline
-    package mutating func _trickleDownMax(_ startOffset: Int, level startLevel: Int) {
-        var nodeOffset = startOffset
-
-        while true {
-            let leftChildOffset = nodeOffset &* 2 &+ 1
-            if leftChildOffset >= _count { break }
-
-            var largestOffset = nodeOffset
-
-            let rightChildOffset = nodeOffset &* 2 &+ 2
-
-            if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: leftChildOffset).pointee {
-                largestOffset = leftChildOffset
-            }
-            if rightChildOffset < _count {
-                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: rightChildOffset).pointee {
-                    largestOffset = rightChildOffset
+                if rightChild < _count {
+                    if unsafe _readPointerToElement(at: largest).pointee < _readPointerToElement(at: rightChild).pointee {
+                        largest = rightChild
+                    }
                 }
-            }
 
-            let gc0 = nodeOffset &* 4 &+ 3
-            for i in 0..<4 {
-                let gcOffset = gc0 + i
-                guard gcOffset < _count else { break }
-                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: gcOffset).pointee {
-                    largestOffset = gcOffset
-                }
-            }
+                if largest == current { break }
 
-            if largestOffset == nodeOffset { break }
-
-            _swapElements(at: nodeOffset, largestOffset)
-
-            if largestOffset >= gc0 {
-                let parentOffset = (largestOffset &- 1) / 2
-                if unsafe _readPointerToElement(at: largestOffset).pointee < _readPointerToElement(at: parentOffset).pointee {
-                    _swapElements(at: largestOffset, parentOffset)
-                }
-                nodeOffset = largestOffset
-            } else {
-                break
+                _swapElements(at: current, largest)
+                current = largest
             }
         }
     }
@@ -312,31 +198,15 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 // MARK: - Heapify
 
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
-    /// Converts storage to valid min-max heap in O(n).
+    /// Converts storage to valid heap in O(n).
     @usableFromInline
     package mutating func _heapify() {
         guard _count > 1 else { return }
 
-        let limit = _count / 2
-
-        var level = Self._level(forOffset: limit - 1)
-        while level >= 0 {
-            let firstOnLevel = (1 &<< level) &- 1
-            let lastOnLevel = (1 &<< (level &+ 1)) &- 2
-
-            let startOffset = firstOnLevel
-            let endOffset = Swift.min(lastOnLevel, limit - 1)
-
-            if Self._isMinLevel(level) {
-                for offset in startOffset...endOffset {
-                    _trickleDownMin(offset)
-                }
-            } else {
-                for offset in startOffset...endOffset {
-                    _trickleDownMax(offset, level: level)
-                }
-            }
-            level -= 1
+        var i = _count / 2 - 1
+        while i >= 0 {
+            _trickleDown(i)
+            i -= 1
         }
     }
 }
@@ -351,7 +221,6 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
             preconditionFailure("_pushToHeap called without heap storage")
         }
 
-        // Check if we need to grow
         if _count >= heap.capacity {
             _growHeap(minimumCapacity: _count + 1)
         }
@@ -374,7 +243,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 
         oldStorage._moveAllElements(to: newStorage, count: _count)
         newStorage.header = _count
-        oldStorage.header = 0  // Elements moved, prevent double-free
+        oldStorage.header = 0
 
         _heap = newStorage
         unsafe (_heapPtr = newStorage._elementsPointer)
@@ -394,57 +263,34 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public mutating func push(_ element: consuming Element) {
         if _heap != nil {
-            // Already spilled - push to heap
             _pushToHeap(element)
         } else if _count < inlineCapacity {
-            // Still inline and have space
             _insert(element)
         } else {
-            // Need to spill
             _spillToHeap(minimumCapacity: _count + 1)
             _pushToHeap(element)
         }
     }
 
-    /// Takes and returns the minimum element, or nil if empty.
+    /// Takes and returns the priority element, or nil if empty.
     ///
-    /// - Returns: The minimum element, or `nil` if the heap is empty.
+    /// - Returns: The priority element, or `nil` if the heap is empty.
     /// - Complexity: O(log n)
     @inlinable
-    public mutating func takeMin() -> Element? {
-        _removeMin()
-    }
-
-    /// Takes and returns the maximum element, or nil if empty.
-    ///
-    /// - Returns: The maximum element, or `nil` if the heap is empty.
-    /// - Complexity: O(log n)
-    @inlinable
-    public mutating func takeMax() -> Element? {
-        _removeMax()
-    }
-
-    /// Pops and returns the minimum element.
-    ///
-    /// - Returns: The minimum element.
-    /// - Throws: ``Small/Error/empty`` if the heap is empty.
-    /// - Complexity: O(log n)
-    @inlinable
-    public mutating func popMin() throws(__Heap.Small.Error) -> Element {
-        guard let element = _removeMin() else {
-            throw .empty
+    public var take: Element? {
+        mutating get {
+            _removePriority()
         }
-        return element
     }
 
-    /// Pops and returns the maximum element.
+    /// Pops and returns the priority element.
     ///
-    /// - Returns: The maximum element.
+    /// - Returns: The priority element.
     /// - Throws: ``Small/Error/empty`` if the heap is empty.
     /// - Complexity: O(log n)
     @inlinable
-    public mutating func popMax() throws(__Heap.Small.Error) -> Element {
-        guard let element = _removeMax() else {
+    public mutating func pop() throws(__Heap.Small.Error) -> Element {
+        guard let element = _removePriority() else {
             throw .empty
         }
         return element
@@ -480,37 +326,21 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 // MARK: - Borrowing Access (~Copyable elements)
 
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
-    /// Provides borrowing access to the minimum element.
+    /// Provides borrowing access to the priority element.
     ///
-    /// - Parameter body: A closure that receives a borrowed reference to the minimum.
+    /// - Parameter body: A closure that receives a borrowed reference to the priority element.
     /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
     /// - Complexity: O(1)
     @inlinable
-    public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
+    public func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
         guard count > 0 else { return nil }
         return unsafe body(_readPointerToElement(at: 0).pointee)
-    }
-
-    /// Provides borrowing access to the maximum element.
-    ///
-    /// - Parameter body: A closure that receives a borrowed reference to the maximum.
-    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
-    /// - Complexity: O(1)
-    @inlinable
-    public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
-        guard count > 0 else { return nil }
-        if count == 1 { return unsafe body(_readPointerToElement(at: 0).pointee) }
-        if count == 2 { return unsafe body(_readPointerToElement(at: 1).pointee) }
-
-        let e1IsLess = unsafe _readPointerToElement(at: 1).pointee < _readPointerToElement(at: 2).pointee
-        let maxIndex = e1IsLess ? 2 : 1
-        return unsafe body(_readPointerToElement(at: maxIndex).pointee)
     }
 
     /// Calls the given closure for each element in heap order.
     ///
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
-    ///   For sorted iteration, repeatedly call `takeMin()` or `takeMax()`.
+    ///   For sorted iteration, repeatedly call `take`.
     ///
     /// - Parameter body: A closure that receives a borrowed reference to each element.
     /// - Complexity: O(n) where n is the number of elements.
@@ -525,29 +355,14 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 // MARK: - Peek (Copyable elements)
 
 extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
-    /// Returns the minimum element without removing it, or nil if empty.
+    /// Returns the priority element without removing it, or nil if empty.
     ///
-    /// - Returns: A copy of the minimum element, or `nil` if the heap is empty.
+    /// - Returns: A copy of the priority element, or `nil` if the heap is empty.
     /// - Complexity: O(1)
     @inlinable
-    public func peekMin() -> Element? {
+    public var peek: Element? {
         guard !isEmpty else { return nil }
         return unsafe _readPointerToElement(at: 0).pointee
-    }
-
-    /// Returns the maximum element without removing it, or nil if empty.
-    ///
-    /// - Returns: A copy of the maximum element, or `nil` if the heap is empty.
-    /// - Complexity: O(1)
-    @inlinable
-    public func peekMax() -> Element? {
-        guard !isEmpty else { return nil }
-        if count == 1 { return unsafe _readPointerToElement(at: 0).pointee }
-        if count == 2 { return unsafe _readPointerToElement(at: 1).pointee }
-
-        let e1 = unsafe _readPointerToElement(at: 1).pointee
-        let e2 = unsafe _readPointerToElement(at: 2).pointee
-        return e1 < e2 ? e2 : e1
     }
 }
 

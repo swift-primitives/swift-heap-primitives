@@ -11,7 +11,7 @@
 
 // MARK: - Properties
 
-extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// The number of elements in the heap.
     @inlinable
     public var count: Int { _storage.header }
@@ -23,7 +23,7 @@ extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
 
 // MARK: - Capacity Management
 
-extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Ensures the storage has capacity for at least the specified number of elements.
     @usableFromInline
     package mutating func _ensureCapacity(_ minimumCapacity: Int) {
@@ -53,7 +53,7 @@ extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
 
 // MARK: - Core Operations (Internal)
 
-extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Appends element without maintaining heap property (for bulk init).
     @usableFromInline
     package mutating func _appendWithoutHeapify(_ element: consuming Element) {
@@ -70,12 +70,12 @@ extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
         let index = _storage.header
         _storage._initializeElement(at: index, to: element)
         _storage.header += 1
-        _bubbleUp(Heap<Element>.Node(offset: index))
+        _bubbleUp(index)
     }
 
-    /// Removes and returns the minimum element.
+    /// Removes and returns the priority element (min for ascending, max for descending).
     @usableFromInline
-    package mutating func _removeMin() -> Element? {
+    package mutating func _removePriority() -> Element? {
         guard !isEmpty else { return nil }
 
         if count == 1 {
@@ -88,39 +88,7 @@ extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
         _swapElements(at: 0, lastIndex)
         _storage.header -= 1
         let removed = _storage._moveElement(at: lastIndex)
-        _trickleDownMin(Heap<Element>.Node.root)
-        return removed
-    }
-
-    /// Removes and returns the maximum element.
-    @usableFromInline
-    package mutating func _removeMax() -> Element? {
-        guard !isEmpty else { return nil }
-
-        if count == 1 {
-            _storage.header = 0
-            return _storage._moveElement(at: 0)
-        }
-
-        if count == 2 {
-            _storage.header = 1
-            return _storage._moveElement(at: 1)
-        }
-
-        // Find max (at index 1 or 2) using < operator
-        let ptr = unsafe _cachedPtr
-        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
-
-        // Swap with last, remove last, trickle down
-        let lastIndex = _storage.header - 1
-        _swapElements(at: maxIndex, lastIndex)
-        _storage.header -= 1
-        let removed = _storage._moveElement(at: lastIndex)
-
-        if maxIndex < _storage.header {
-            _trickleDownMax(Heap<Element>.Node(offset: maxIndex, level: 1))
-        }
-
+        _trickleDown(0)
         return removed
     }
 
@@ -134,9 +102,138 @@ extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
+// MARK: - Bubble Up (Single-Ended Heap)
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Restores heap property by moving element up.
+    ///
+    /// For ascending order (min-heap): element bubbles up while smaller than parent.
+    /// For descending order (max-heap): element bubbles up while larger than parent.
+    @usableFromInline
+    package mutating func _bubbleUp(_ index: Int) {
+        guard index > 0 else { return }
+
+        var current = index
+        let ptr = unsafe _cachedPtr
+
+        switch order {
+        case .ascending:
+            // Min-heap: bubble up while element < parent
+            while current > 0 {
+                let parentIndex = (current - 1) / 2
+                // If current < parent, swap
+                if unsafe ptr[current] < ptr[parentIndex] {
+                    _swapElements(at: current, parentIndex)
+                    current = parentIndex
+                } else {
+                    break
+                }
+            }
+        case .descending:
+            // Max-heap: bubble up while element > parent
+            while current > 0 {
+                let parentIndex = (current - 1) / 2
+                // If current > parent (parent < current), swap
+                if unsafe ptr[parentIndex] < ptr[current] {
+                    _swapElements(at: current, parentIndex)
+                    current = parentIndex
+                } else {
+                    break
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Trickle Down (Single-Ended Heap)
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Restores heap property by moving element down.
+    ///
+    /// For ascending order (min-heap): element trickles down to larger of children.
+    /// For descending order (max-heap): element trickles down to smaller of children.
+    @usableFromInline
+    package mutating func _trickleDown(_ startIndex: Int) {
+        var current = startIndex
+        let count = _storage.header
+        let ptr = unsafe _cachedPtr
+
+        switch order {
+        case .ascending:
+            // Min-heap: trickle down, swapping with smaller child
+            while true {
+                let leftChild = 2 * current + 1
+                guard leftChild < count else { break }
+
+                let rightChild = leftChild + 1
+                var smallest = current
+
+                // Find smallest among current and children
+                if unsafe ptr[leftChild] < ptr[smallest] {
+                    smallest = leftChild
+                }
+                if rightChild < count {
+                    if unsafe ptr[rightChild] < ptr[smallest] {
+                        smallest = rightChild
+                    }
+                }
+
+                if smallest == current { break }
+
+                _swapElements(at: current, smallest)
+                current = smallest
+            }
+
+        case .descending:
+            // Max-heap: trickle down, swapping with larger child
+            while true {
+                let leftChild = 2 * current + 1
+                guard leftChild < count else { break }
+
+                let rightChild = leftChild + 1
+                var largest = current
+
+                // Find largest among current and children
+                // Using < operator: if largest < leftChild, then leftChild is larger
+                if unsafe ptr[largest] < ptr[leftChild] {
+                    largest = leftChild
+                }
+                if rightChild < count {
+                    if unsafe ptr[largest] < ptr[rightChild] {
+                        largest = rightChild
+                    }
+                }
+
+                if largest == current { break }
+
+                _swapElements(at: current, largest)
+                current = largest
+            }
+        }
+    }
+}
+
+// MARK: - Heapify (Floyd's Algorithm)
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Converts storage to valid heap in O(n).
+    @usableFromInline
+    package mutating func _heapify() {
+        let count = _storage.header
+        guard count > 1 else { return }
+
+        // Start from the last non-leaf node and trickle down
+        var i = count / 2 - 1
+        while i >= 0 {
+            _trickleDown(i)
+            i -= 1
+        }
+    }
+}
+
 // MARK: - Public Mutating Operations
 
-extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Inserts an element into the heap.
     ///
     /// - Parameter element: The element to insert.
@@ -166,38 +263,22 @@ extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
 
 // MARK: - Borrowing Access (~Copyable elements)
 
-extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
-    /// Provides borrowing access to the minimum element.
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Provides borrowing access to the priority element (root).
     ///
-    /// - Parameter body: A closure that receives a borrowed reference to the minimum.
+    /// - Parameter body: A closure that receives a borrowed reference to the priority element.
     /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
     /// - Complexity: O(1)
     @inlinable
-    public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
+    public func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
         guard count > 0 else { return nil }
         return body(unsafe _cachedPtr[0])
-    }
-
-    /// Provides borrowing access to the maximum element.
-    ///
-    /// - Parameter body: A closure that receives a borrowed reference to the maximum.
-    /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
-    /// - Complexity: O(1)
-    @inlinable
-    public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
-        guard count > 0 else { return nil }
-        if count == 1 { return body(unsafe _cachedPtr[0]) }
-        if count == 2 { return body(unsafe _cachedPtr[1]) }
-
-        let ptr = unsafe _cachedPtr
-        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
-        return body(unsafe ptr[maxIndex])
     }
 
     /// Calls the given closure for each element in heap order.
     ///
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
-    ///   For sorted iteration, repeatedly call `takeMin()` or `takeMax()`.
+    ///   For sorted iteration, repeatedly call `take`.
     ///
     /// - Parameter body: A closure that receives a borrowed reference to each element.
     /// - Complexity: O(n) where n is the number of elements.
@@ -212,7 +293,7 @@ extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
 
 // MARK: - Index Operations
 
-extension Heap.Binary where Element: ~Copyable & Comparison.`Protocol` {
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Returns the index of the root element, or nil if the heap is empty.
     ///
     /// - Returns: Index of root element (position 0), or `nil` if empty.

@@ -12,11 +12,13 @@
 import Testing
 @testable import Heap_Primitives
 
-@Suite("Heap.Binary.Fixed")
-struct HeapBinaryFixedTests {
+// MARK: - Heap.Fixed Tests (Single-Ended)
+
+@Suite("Heap.Fixed (Single-Ended)")
+struct HeapFixedTests {
     @Test("Init with capacity")
     func initWithCapacity() throws {
-        let heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+        let heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
         #expect(heap.capacity == 10)
@@ -25,14 +27,14 @@ struct HeapBinaryFixedTests {
 
     @Test("Init with negative capacity throws")
     func initNegativeCapacityThrows() {
-        #expect(throws: __Heap.Binary.Fixed.Error.invalidCapacity) {
-            _ = try Heap<Int>.Binary.Fixed(capacity: -1)
+        #expect(throws: __Heap.Fixed.Error.invalidCapacity) {
+            _ = try Heap<Int>.Fixed(capacity: -1)
         }
     }
 
     @Test("Push returns inserted on success")
     func pushReturnsInserted() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 5)
+        var heap = try Heap<Int>.Fixed(capacity: 5, order: .ascending)
         let outcome = heap.push(42)
         switch outcome {
         case .inserted:
@@ -45,7 +47,7 @@ struct HeapBinaryFixedTests {
 
     @Test("Push returns overflow when full")
     func pushReturnsOverflowWhenFull() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 2)
+        var heap = try Heap<Int>.Fixed(capacity: 2, order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
         #expect(heap.isFull == true)
@@ -60,70 +62,77 @@ struct HeapBinaryFixedTests {
         #expect(heap.count == 2)
     }
 
-    @Test("Min-max ordering")
-    func minMaxOrdering() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+    @Test("Min-heap ordering (ascending)")
+    func minHeapOrdering() throws {
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
         _ = heap.push(1)
         _ = heap.push(9)
 
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMax() == 9)
+        #expect(heap.peek == 1)  // Min at top
     }
 
-    @Test("Pop min in order")
+    @Test("Max-heap ordering (descending)")
+    func maxHeapOrdering() throws {
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .descending)
+        _ = heap.push(5)
+        _ = heap.push(3)
+        _ = heap.push(7)
+        _ = heap.push(1)
+        _ = heap.push(9)
+
+        #expect(heap.peek == 9)  // Max at top
+    }
+
+    @Test("Pop in order (min-heap)")
     func popMinInOrder() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
         _ = heap.push(1)
 
-        #expect(try heap.popMin() == 1)
-        #expect(try heap.popMin() == 3)
-        #expect(try heap.popMin() == 5)
-        #expect(try heap.popMin() == 7)
+        #expect(try heap.pop() == 1)
+        #expect(try heap.pop() == 3)
+        #expect(try heap.pop() == 5)
+        #expect(try heap.pop() == 7)
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Pop max in order")
+    @Test("Pop in order (max-heap)")
     func popMaxInOrder() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .descending)
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
         _ = heap.push(1)
 
-        #expect(try heap.popMax() == 7)
-        #expect(try heap.popMax() == 5)
-        #expect(try heap.popMax() == 3)
-        #expect(try heap.popMax() == 1)
+        #expect(try heap.pop() == 7)
+        #expect(try heap.pop() == 5)
+        #expect(try heap.pop() == 3)
+        #expect(try heap.pop() == 1)
         #expect(heap.isEmpty == true)
     }
 
     @Test("Pop throws when empty")
     func popThrowsWhenEmpty() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
-        #expect(throws: __Heap.Binary.Fixed.Error.empty) {
-            try heap.popMin()
-        }
-        #expect(throws: __Heap.Binary.Fixed.Error.empty) {
-            try heap.popMax()
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
+        #expect(throws: __Heap.Fixed.Error.empty) {
+            try heap.pop()
         }
     }
 
     @Test("Take returns nil when empty")
     func takeReturnsNilWhenEmpty() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
-        #expect(heap.takeMin() == nil)
-        #expect(heap.takeMax() == nil)
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
+        #expect(heap.take == nil)
     }
 
     @Test("Clear removes all elements")
     func clearRemovesAllElements() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
         _ = heap.push(3)
@@ -134,18 +143,18 @@ struct HeapBinaryFixedTests {
         #expect(heap.capacity == 10)  // Capacity unchanged
     }
 
-    @Test("Single element min equals max")
-    func singleElementMinEqualsMax() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+    @Test("Single element")
+    func singleElement() throws {
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(42)
 
-        #expect(heap.peekMin() == 42)
-        #expect(heap.peekMax() == 42)
+        #expect(heap.peek == 42)
+        #expect(heap.count == 1)
     }
 
     @Test("Copy-on-write semantics")
     func copyOnWriteSemantics() throws {
-        var heap1 = try Heap<Int>.Binary.Fixed(capacity: 10)
+        var heap1 = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap1.push(5)
         _ = heap1.push(3)
 
@@ -155,27 +164,26 @@ struct HeapBinaryFixedTests {
 
         #expect(heap1.count == 3)
         #expect(heap2.count == 2)
-        #expect(heap1.peekMin() == 1)
-        #expect(heap2.peekMin() == 3)
+        #expect(heap1.peek == 1)
+        #expect(heap2.peek == 3)
     }
 
     @Test("Init from sequence")
     func initFromSequence() throws {
-        let heap = try Heap<Int>.Binary.Fixed([5, 3, 7, 1, 9], capacity: 10)
+        let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
         #expect(heap.count == 5)
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMax() == 9)
+        #expect(heap.peek == 1)
     }
 
     @Test("Init from sequence truncates to capacity")
     func initFromSequenceTruncates() throws {
-        let heap = try Heap<Int>.Binary.Fixed([1, 2, 3, 4, 5], capacity: 3)
+        let heap = try Heap<Int>.Fixed([1, 2, 3, 4, 5], capacity: 3, order: .ascending)
         #expect(heap.count == 3)
     }
 
     @Test("Sequence conformance")
     func sequenceConformance() throws {
-        let heap = try Heap<Int>.Binary.Fixed([5, 3, 7, 1, 9], capacity: 10)
+        let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
         var elements: [Int] = []
         for element in heap {
             elements.append(element)
@@ -186,7 +194,7 @@ struct HeapBinaryFixedTests {
 
     @Test("forEach with borrowing access")
     func forEachBorrowingAccess() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
         _ = heap.push(3)
@@ -198,23 +206,20 @@ struct HeapBinaryFixedTests {
         #expect(sum == 6)
     }
 
-    @Test("withMin and withMax borrowing")
-    func withMinMaxBorrowing() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 10)
+    @Test("withPriority borrowing access")
+    func withPriorityBorrowing() throws {
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
 
-        let minValue = heap.withMin { $0 * 2 }
-        #expect(minValue == 6)
-
-        let maxValue = heap.withMax { $0 * 2 }
-        #expect(maxValue == 14)
+        let value = heap.withPriority { $0 * 2 }
+        #expect(value == 6)  // 3 * 2 (min element)
     }
 
     @Test("Truncate reduces count")
     func truncateReducesCount() throws {
-        var heap = try Heap<Int>.Binary.Fixed([1, 2, 3, 4, 5], capacity: 10)
+        var heap = try Heap<Int>.Fixed([1, 2, 3, 4, 5], capacity: 10, order: .ascending)
         #expect(heap.count == 5)
 
         heap.truncate(to: 3)
@@ -223,7 +228,7 @@ struct HeapBinaryFixedTests {
 
     @Test("Zero capacity heap")
     func zeroCapacityHeap() throws {
-        var heap = try Heap<Int>.Binary.Fixed(capacity: 0)
+        var heap = try Heap<Int>.Fixed(capacity: 0, order: .ascending)
         #expect(heap.isEmpty == true)
         #expect(heap.isFull == true)  // Zero capacity means full
 
@@ -239,8 +244,8 @@ struct HeapBinaryFixedTests {
 
 // MARK: - ~Copyable Element Tests
 
-@Suite("Heap.Binary.Fixed with ~Copyable elements")
-struct HeapBinaryFixedNonCopyableTests {
+@Suite("Heap.Fixed with ~Copyable elements")
+struct HeapFixedNonCopyableTests {
     /// A move-only resource for testing.
     struct UniqueResource: ~Copyable, Comparison_Primitives.Comparison.`Protocol` {
         let id: Int
@@ -260,7 +265,7 @@ struct HeapBinaryFixedNonCopyableTests {
 
     @Test("Push and access ~Copyable elements")
     func pushAndAccess() throws {
-        var heap = try Heap<UniqueResource>.Binary.Fixed(capacity: 10)
+        var heap = try Heap<UniqueResource>.Fixed(capacity: 10, order: .ascending)
 
         _ = heap.push(UniqueResource(id: 10))
         _ = heap.push(UniqueResource(id: 5))
@@ -268,16 +273,13 @@ struct HeapBinaryFixedNonCopyableTests {
 
         #expect(heap.count == 3)
 
-        let minId = heap.withMin { $0.id }
+        let minId = heap.withPriority { $0.id }
         #expect(minId == 5)
-
-        let maxId = heap.withMax { $0.id }
-        #expect(maxId == 15)
     }
 
     @Test("Overflow preserves ~Copyable element")
     func overflowPreservesElement() throws {
-        var heap = try Heap<UniqueResource>.Binary.Fixed(capacity: 2)
+        var heap = try Heap<UniqueResource>.Fixed(capacity: 2, order: .ascending)
         _ = heap.push(UniqueResource(id: 1))
         _ = heap.push(UniqueResource(id: 2))
 
@@ -292,7 +294,7 @@ struct HeapBinaryFixedNonCopyableTests {
 
     @Test("forEach with ~Copyable elements")
     func forEachNonCopyable() throws {
-        var heap = try Heap<UniqueResource>.Binary.Fixed(capacity: 10)
+        var heap = try Heap<UniqueResource>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(UniqueResource(id: 3))
         _ = heap.push(UniqueResource(id: 1))
         _ = heap.push(UniqueResource(id: 2))
@@ -304,3 +306,5 @@ struct HeapBinaryFixedNonCopyableTests {
         #expect(Set(ids) == Set([1, 2, 3]))
     }
 }
+
+// Note: Tests for Heap.MinMax.Fixed will be added when that variant is fully implemented.

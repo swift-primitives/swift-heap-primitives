@@ -21,6 +21,18 @@ let package = Package(
             targets: ["Heap Primitives Core"]
         ),
         .library(
+            name: "Heap Fixed Primitives",
+            targets: ["Heap Fixed Primitives"]
+        ),
+        .library(
+            name: "Heap Static Primitives",
+            targets: ["Heap Static Primitives"]
+        ),
+        .library(
+            name: "Heap Small Primitives",
+            targets: ["Heap Small Primitives"]
+        ),
+        .library(
             name: "Heap Min Primitives",
             targets: ["Heap Min Primitives"]
         ),
@@ -52,6 +64,20 @@ let package = Package(
                 .product(name: "Input Primitives", package: "swift-input-primitives"),
             ]
         ),
+        // Per-variant modules: Swift.Sequence conformances (Element: Copyable)
+        // Separate modules to avoid constraint poisoning on Core types
+        .target(
+            name: "Heap Fixed Primitives",
+            dependencies: ["Heap Primitives Core"]
+        ),
+        .target(
+            name: "Heap Static Primitives",
+            dependencies: ["Heap Primitives Core"]
+        ),
+        .target(
+            name: "Heap Small Primitives",
+            dependencies: ["Heap Primitives Core"]
+        ),
         // Stub modules for future heap variants
         .target(
             name: "Heap Min Primitives",
@@ -63,13 +89,19 @@ let package = Package(
         ),
         .target(
             name: "Heap MinMax Primitives",
-            dependencies: ["Heap Primitives Core"]
+            dependencies: [
+                "Heap Primitives Core",
+                .product(name: "Property Primitives", package: "swift-property-primitives"),
+            ]
         ),
         // Public: Re-exports all heap modules
         .target(
             name: "Heap Primitives",
             dependencies: [
                 "Heap Primitives Core",
+                "Heap Fixed Primitives",
+                "Heap Static Primitives",
+                "Heap Small Primitives",
                 "Heap Min Primitives",
                 "Heap Max Primitives",
                 "Heap MinMax Primitives",
