@@ -115,18 +115,18 @@ public struct Heap<Element: ~Copyable>: ~Copyable {
         package var _cachedPtr: UnsafeMutablePointer<Element> {
             unsafe _storage.withUnsafeMutablePointerToElements { unsafe $0 }
         }
-    }
 
-    // MARK: - Fixed Push Outcome (nested at Heap level to inherit ~Copyable context)
+        // MARK: - Push Outcome
 
-    /// Outcome of a push operation on a fixed heap.
-    public enum FixedPush: ~Copyable {
-        /// Outcome of pushing an element.
-        public enum Outcome: ~Copyable {
-            /// The element was successfully inserted.
-            case inserted
-            /// The heap was full; the element is returned to the caller.
-            case overflow(Element)
+        /// Outcome of a push operation on a fixed heap.
+        public enum Push: ~Copyable {
+            /// Outcome of pushing an element.
+            public enum Outcome: ~Copyable {
+                /// The element was successfully inserted.
+                case inserted
+                /// The heap was full; the element is returned to the caller.
+                case overflow(Element)
+            }
         }
     }
 

@@ -72,7 +72,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
         }
 
         // Find max (at index 1 or 2) using < operator
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
 
         // Swap with last, remove last, trickle down
@@ -91,7 +91,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
     package mutating func _swapElements(at i: Int, _ j: Int) {
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         let temp = unsafe (ptr + i).move()
         unsafe (ptr + i).initialize(to: (ptr + j).move())
         unsafe (ptr + j).initialize(to: temp)
@@ -109,7 +109,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
         let parent = node.parent()
         var node = node
 
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
 
         let nodeIsLess = unsafe ptr[node.offset] < ptr[parent.offset]
         let parentIsLess = unsafe ptr[parent.offset] < ptr[node.offset]
@@ -146,7 +146,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func _trickleDownMin(_ startNode: Heap<Element>.Node) {
         var node = startNode
         let count = _storage.header
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
 
         while true {
             let leftChild = node.leftChild()
@@ -203,7 +203,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func _trickleDownMax(_ startNode: Heap<Element>.Node) {
         var node = startNode
         let count = _storage.header
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
 
         while true {
             let leftChild = node.leftChild()
@@ -390,7 +390,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
         if count == 1 { return body(unsafe _cachedPtr[0]) }
         if count == 2 { return body(unsafe _cachedPtr[1]) }
 
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
         return body(unsafe ptr[maxIndex])
     }
@@ -404,7 +404,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         for i in 0..<count {
             body(unsafe ptr[i])
         }
@@ -439,7 +439,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
             _storage._copyAllElements(to: newStorage, count: currentCount)
             newStorage.header = currentCount
             _storage = newStorage
-            unsafe (_cachedPtr = _storage._elementsPointer)
+            _cachedPtr = _storage._elementsPointer
         }
     }
 
@@ -558,7 +558,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
         }
 
         self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
-        unsafe (self._cachedPtr = _storage._elementsPointer)
+        self._cachedPtr = _storage._elementsPointer
         self.capacity = capacity
 
         for element in elements {
