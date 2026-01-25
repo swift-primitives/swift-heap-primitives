@@ -31,8 +31,8 @@ extension Heap.Fixed: Swift.Sequence where Element: Copyable {
 
         @inlinable
         public mutating func next() -> Element? {
-            guard _index.position.rawValue < _storage.header else { return nil }
-            defer { _index = Heap<Element>.Index(__unchecked: (), position: _index.position.rawValue + 1) }
+            guard _index < _storage.count else { return nil }
+            defer { _index = (_index + 1)! }
             return _storage.read(at: _index)
         }
     }

@@ -229,18 +229,22 @@ extension Heap: Swift.Sequence where Element: Copyable {
         let _storage: Heap<Element>.Storage
 
         @usableFromInline
+        let _end: Heap<Element>.Index.Count
+
+        @usableFromInline
         var _index: Heap<Element>.Index = .zero
 
         @usableFromInline
         init(_storage: Heap<Element>.Storage) {
             self._storage = _storage
+            self._end = _storage.count
         }
 
         @inlinable
         public mutating func next() -> Element? {
-            guard _index.position.rawValue < _storage.count.rawValue else { return nil }
+            guard _index < _end else { return nil }
             let element = _storage.read(at: _index)
-            _index = Heap<Element>.Index(__unchecked: (), position: _index.position.rawValue + 1)
+            _index = (_index + 1)!
             return element
         }
     }

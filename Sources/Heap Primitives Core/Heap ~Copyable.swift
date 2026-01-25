@@ -312,7 +312,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public func leftChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
         let childPosition = 2 * index.position.rawValue + 1
-        guard Heap<Element>.Index.Count(__unchecked: childPosition) < count else { return nil }
+        guard childPosition < count.rawValue else { return nil }
         return try? Heap<Element>.Index(childPosition)
     }
 
@@ -323,7 +323,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public func rightChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
         let childPosition = 2 * index.position.rawValue + 2
-        guard Heap<Element>.Index.Count(__unchecked: childPosition) < count else { return nil }
+        guard childPosition < count.rawValue else { return nil }
         return try? Heap<Element>.Index(childPosition)
     }
 
