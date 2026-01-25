@@ -1,8 +1,8 @@
 // ===----------------------------------------------------------------------===//
 //
-// This source file is part of the swift-standards open source project
+// This source file is part of the swift-primitives open source project
 //
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-primitives project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
@@ -12,11 +12,11 @@
 import Testing
 @testable import Heap_Primitives
 
-@Suite("Heap")
-struct HeapTests {
+@Suite("Heap.Binary")
+struct HeapBinaryTests {
     @Test("Min-max heap provides both min and max")
     func minMaxHeapOrdering() throws {
-        var heap: Heap<Int> = [5, 3, 7, 1, 9]
+        var heap: Heap<Int>.Binary = [5, 3, 7, 1, 9]
 
         #expect(heap.peek.min == 1)
         #expect(heap.peek.max == 9)
@@ -29,7 +29,7 @@ struct HeapTests {
 
     @Test("Pop min in order")
     func popMinInOrder() throws {
-        var heap: Heap<Int> = [5, 3, 7, 1]
+        var heap: Heap<Int>.Binary = [5, 3, 7, 1]
 
         #expect(try heap.pop.min() == 1)
         #expect(try heap.pop.min() == 3)
@@ -40,7 +40,7 @@ struct HeapTests {
 
     @Test("Pop max in order")
     func popMaxInOrder() throws {
-        var heap: Heap<Int> = [5, 3, 7, 1]
+        var heap: Heap<Int>.Binary = [5, 3, 7, 1]
 
         #expect(try heap.pop.max() == 7)
         #expect(try heap.pop.max() == 5)
@@ -51,7 +51,7 @@ struct HeapTests {
 
     @Test("Peek does not remove")
     func peekDoesNotRemove() {
-        let heap: Heap<Int> = [3, 1, 2]
+        let heap: Heap<Int>.Binary = [3, 1, 2]
 
         #expect(heap.peek.min == 1)
         #expect(heap.peek.min == 1)
@@ -62,7 +62,7 @@ struct HeapTests {
 
     @Test("Empty heap")
     func emptyHeap() {
-        var heap = Heap<Int>()
+        var heap = Heap<Int>.Binary()
         #expect(heap.isEmpty == true)
         #expect(heap.peek.min == nil)
         #expect(heap.peek.max == nil)
@@ -72,7 +72,7 @@ struct HeapTests {
 
     @Test("Single element")
     func singleElement() throws {
-        var heap: Heap<Int> = [42]
+        var heap: Heap<Int>.Binary = [42]
         #expect(heap.isEmpty == false)
         #expect(heap.count == 1)
         #expect(heap.peek.min == 42)
@@ -83,7 +83,7 @@ struct HeapTests {
 
     @Test("Remove all")
     func removeAll() {
-        var heap: Heap<Int> = [1, 2, 3]
+        var heap: Heap<Int>.Binary = [1, 2, 3]
         #expect(heap.count == 3)
 
         heap.removeAll()
@@ -92,7 +92,7 @@ struct HeapTests {
 
     @Test("Duplicate elements")
     func duplicateElements() {
-        var heap: Heap<Int> = [5, 5, 5]
+        var heap: Heap<Int>.Binary = [5, 5, 5]
 
         #expect(heap.take.min == 5)
         #expect(heap.take.min == 5)
@@ -102,7 +102,7 @@ struct HeapTests {
 
     @Test("Push elements")
     func pushElements() {
-        var heap = Heap<Int>()
+        var heap = Heap<Int>.Binary()
         heap.push(5)
         heap.push(3)
         heap.push(7)
@@ -114,25 +114,25 @@ struct HeapTests {
 
     @Test("Take returns nil when empty")
     func takeReturnsNil() {
-        var heap = Heap<Int>()
+        var heap = Heap<Int>.Binary()
         #expect(heap.take.min == nil)
         #expect(heap.take.max == nil)
     }
 
     @Test("Pop throws when empty")
     func popThrowsWhenEmpty() {
-        var heap = Heap<Int>()
-        #expect(throws: Heap<Int>.Error.self) {
+        var heap = Heap<Int>.Binary()
+        #expect(throws: Heap<Int>.Binary.Error.self) {
             try heap.pop.min()
         }
-        #expect(throws: Heap<Int>.Error.self) {
+        #expect(throws: Heap<Int>.Binary.Error.self) {
             try heap.pop.max()
         }
     }
 
     @Test("Copy-on-write semantics")
     func copyOnWrite() {
-        var heap1: Heap<Int> = [5, 3, 7]
+        var heap1: Heap<Int>.Binary = [5, 3, 7]
         let heap2 = heap1
 
         heap1.push(1)
@@ -163,11 +163,11 @@ struct UniqueResource: ~Copyable, Comparison_Primitives.Comparison.`Protocol` {
     }
 }
 
-@Suite("Heap with ~Copyable elements")
-struct HeapNonCopyableTests {
+@Suite("Heap.Binary with ~Copyable elements")
+struct HeapBinaryNonCopyableTests {
     @Test("Push and access ~Copyable elements")
     func pushAndAccess() {
-        var heap = Heap<UniqueResource>()
+        var heap = Heap<UniqueResource>.Binary()
 
         heap.push(UniqueResource(id: 10))
         heap.push(UniqueResource(id: 5))
@@ -186,7 +186,7 @@ struct HeapNonCopyableTests {
 
     @Test("forEach with ~Copyable elements")
     func forEachAccess() {
-        var heap = Heap<UniqueResource>()
+        var heap = Heap<UniqueResource>.Binary()
         heap.push(UniqueResource(id: 3))
         heap.push(UniqueResource(id: 1))
         heap.push(UniqueResource(id: 2))
@@ -204,7 +204,7 @@ struct HeapNonCopyableTests {
 
     @Test("Empty ~Copyable heap")
     func emptyNonCopyableHeap() {
-        let heap = Heap<UniqueResource>()
+        let heap = Heap<UniqueResource>.Binary()
 
         let isEmpty = heap.isEmpty
         let count = heap.count
@@ -220,7 +220,7 @@ struct HeapNonCopyableTests {
 
     @Test("Single ~Copyable element")
     func singleNonCopyableElement() {
-        var heap = Heap<UniqueResource>()
+        var heap = Heap<UniqueResource>.Binary()
         heap.push(UniqueResource(id: 42))
 
         let count = heap.count
@@ -235,7 +235,7 @@ struct HeapNonCopyableTests {
 
     @Test("Remove all ~Copyable elements")
     func removeAllNonCopyable() {
-        var heap = Heap<UniqueResource>()
+        var heap = Heap<UniqueResource>.Binary()
         heap.push(UniqueResource(id: 1))
         heap.push(UniqueResource(id: 2))
         heap.push(UniqueResource(id: 3))
@@ -253,7 +253,7 @@ struct HeapNonCopyableTests {
 
     @Test("Heap ordering with ~Copyable elements")
     func heapOrderingNonCopyable() {
-        var heap = Heap<UniqueResource>()
+        var heap = Heap<UniqueResource>.Binary()
 
         // Push in non-sorted order
         heap.push(UniqueResource(id: 50))

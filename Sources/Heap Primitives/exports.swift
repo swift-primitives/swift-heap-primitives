@@ -1,7 +1,8 @@
 // exports.swift
-// Re-export dependencies for consumers.
+// Re-export all heap modules for consumers.
+// Users import Heap_Primitives and get everything.
 
-@_exported import Index_Primitives
-@_exported import Collection_Primitives
-@_exported import Input_Primitives
-@_exported import Array_Primitives
+@_exported public import Heap_Primitives_Core
+@_exported public import Heap_Min_Primitives
+@_exported public import Heap_Max_Primitives
+@_exported public import Heap_MinMax_Primitives

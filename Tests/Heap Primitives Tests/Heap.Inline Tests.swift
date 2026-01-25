@@ -1,8 +1,8 @@
 // ===----------------------------------------------------------------------===//
 //
-// This source file is part of the swift-standards open source project
+// This source file is part of the swift-primitives open source project
 //
-// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-standards project authors
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-primitives project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
@@ -12,11 +12,11 @@
 import Testing
 @testable import Heap_Primitives
 
-@Suite("Heap.Inline")
-struct HeapInlineTests {
+@Suite("Heap.Binary.Static")
+struct HeapBinaryStaticTests {
     @Test("Init creates empty heap")
     func initCreatesEmpty() {
-        let heap = Heap<Int>.Inline<8>()
+        let heap = Heap<Int>.Binary.Static<8>()
         #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
         #expect(heap.isFull == false)
@@ -24,7 +24,7 @@ struct HeapInlineTests {
 
     @Test("Push returns inserted on success")
     func pushReturnsInserted() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         let outcome = heap.push(42)
         switch outcome {
         case .inserted:
@@ -37,7 +37,7 @@ struct HeapInlineTests {
 
     @Test("Push returns overflow when full")
     func pushReturnsOverflowWhenFull() {
-        var heap = Heap<Int>.Inline<2>()
+        var heap = Heap<Int>.Binary.Static<2>()
         _ = heap.push(1)
         _ = heap.push(2)
         #expect(heap.isFull == true)
@@ -54,7 +54,7 @@ struct HeapInlineTests {
 
     @Test("Min-max ordering")
     func minMaxOrdering() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
@@ -66,7 +66,7 @@ struct HeapInlineTests {
 
     @Test("Pop min in order")
     func popMinInOrder() throws {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
@@ -81,7 +81,7 @@ struct HeapInlineTests {
 
     @Test("Pop max in order")
     func popMaxInOrder() throws {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
@@ -96,25 +96,25 @@ struct HeapInlineTests {
 
     @Test("Pop throws when empty")
     func popThrowsWhenEmpty() {
-        var heap = Heap<Int>.Inline<8>()
-        #expect(throws: __Heap.Inline.Error.empty) {
+        var heap = Heap<Int>.Binary.Static<8>()
+        #expect(throws: __Heap.Binary.Static.Error.empty) {
             try heap.popMin()
         }
-        #expect(throws: __Heap.Inline.Error.empty) {
+        #expect(throws: __Heap.Binary.Static.Error.empty) {
             try heap.popMax()
         }
     }
 
     @Test("Take returns nil when empty")
     func takeReturnsNilWhenEmpty() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         #expect(heap.takeMin() == nil)
         #expect(heap.takeMax() == nil)
     }
 
     @Test("Clear removes all elements")
     func clearRemovesAllElements() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(1)
         _ = heap.push(2)
         _ = heap.push(3)
@@ -126,7 +126,7 @@ struct HeapInlineTests {
 
     @Test("Single element min equals max")
     func singleElementMinEqualsMax() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(42)
 
         #expect(heap.peekMin() == 42)
@@ -135,7 +135,7 @@ struct HeapInlineTests {
 
     @Test("Fill to capacity")
     func fillToCapacity() {
-        var heap = Heap<Int>.Inline<4>()
+        var heap = Heap<Int>.Binary.Static<4>()
         _ = heap.push(4)
         _ = heap.push(2)
         _ = heap.push(3)
@@ -149,7 +149,7 @@ struct HeapInlineTests {
 
     @Test("forEach with borrowing access")
     func forEachBorrowingAccess() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(1)
         _ = heap.push(2)
         _ = heap.push(3)
@@ -163,7 +163,7 @@ struct HeapInlineTests {
 
     @Test("withMin and withMax borrowing")
     func withMinMaxBorrowing() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(5)
         _ = heap.push(3)
         _ = heap.push(7)
@@ -177,7 +177,7 @@ struct HeapInlineTests {
 
     @Test("Truncate reduces count")
     func truncateReducesCount() {
-        var heap = Heap<Int>.Inline<8>()
+        var heap = Heap<Int>.Binary.Static<8>()
         _ = heap.push(1)
         _ = heap.push(2)
         _ = heap.push(3)
@@ -190,7 +190,7 @@ struct HeapInlineTests {
 
     @Test("Large capacity heap")
     func largeCapacityHeap() {
-        var heap = Heap<Int>.Inline<16>()
+        var heap = Heap<Int>.Binary.Static<16>()
         for i in 0..<16 {
             _ = heap.push(i)
         }
@@ -202,8 +202,8 @@ struct HeapInlineTests {
 
 // MARK: - ~Copyable Element Tests
 
-@Suite("Heap.Inline with ~Copyable elements")
-struct HeapInlineNonCopyableTests {
+@Suite("Heap.Binary.Static with ~Copyable elements")
+struct HeapBinaryStaticNonCopyableTests {
     /// A move-only resource for testing.
     struct UniqueResource: ~Copyable, Comparison_Primitives.Comparison.`Protocol` {
         let id: Int
@@ -223,7 +223,7 @@ struct HeapInlineNonCopyableTests {
 
     @Test("Push and access ~Copyable elements")
     func pushAndAccess() {
-        var heap = Heap<UniqueResource>.Inline<8>()
+        var heap = Heap<UniqueResource>.Binary.Static<8>()
 
         _ = heap.push(UniqueResource(id: 10))
         _ = heap.push(UniqueResource(id: 5))
@@ -240,7 +240,7 @@ struct HeapInlineNonCopyableTests {
 
     @Test("Overflow preserves ~Copyable element")
     func overflowPreservesElement() {
-        var heap = Heap<UniqueResource>.Inline<2>()
+        var heap = Heap<UniqueResource>.Binary.Static<2>()
         _ = heap.push(UniqueResource(id: 1))
         _ = heap.push(UniqueResource(id: 2))
 
@@ -255,7 +255,7 @@ struct HeapInlineNonCopyableTests {
 
     @Test("forEach with ~Copyable elements")
     func forEachNonCopyable() {
-        var heap = Heap<UniqueResource>.Inline<8>()
+        var heap = Heap<UniqueResource>.Binary.Static<8>()
         _ = heap.push(UniqueResource(id: 3))
         _ = heap.push(UniqueResource(id: 1))
         _ = heap.push(UniqueResource(id: 2))
@@ -270,7 +270,7 @@ struct HeapInlineNonCopyableTests {
     @Test("Deinit properly cleans up ~Copyable elements")
     func deinitCleansUp() {
         // This test ensures no crash on deallocation
-        var heap = Heap<UniqueResource>.Inline<4>()
+        var heap = Heap<UniqueResource>.Binary.Static<4>()
         _ = heap.push(UniqueResource(id: 1))
         _ = heap.push(UniqueResource(id: 2))
         _ = heap.push(UniqueResource(id: 3))
