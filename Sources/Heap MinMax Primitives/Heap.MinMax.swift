@@ -19,6 +19,7 @@ public import Heap_Primitives_Core
 
 extension Heap.MinMax {
     /// Fixed-capacity min-max heap.
+    @safe
     public struct Fixed: ~Copyable {
         @usableFromInline
         var _storage: Heap<Element>.Storage
@@ -39,77 +40,32 @@ extension Heap.MinMax {
             }
             self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
             self.capacity = capacity
-            self._cachedPtr = _storage._elementsPointer
+            unsafe (self._cachedPtr = _storage._elementsPointer)
         }
     }
 
     /// Compile-time capacity min-max heap with inline storage.
     public struct Static<let capacity: Int>: ~Copyable {
+        /// Inline storage for elements.
         @usableFromInline
-        package static var _maxStride: Int { 64 }
+        package var inline: Heap<Element>.Storage.Inline<capacity>
 
-        @usableFromInline
-        package var _storage: InlineArray<capacity, (Int, Int, Int, Int, Int, Int, Int, Int)>
+        /// Current element count.
+        public var count: Heap<Element>.Index.Count
 
-        @usableFromInline
-        package var _count: Int
-
+        /// Workaround for Swift compiler bug.
         @usableFromInline
         package var _deinitWorkaround: AnyObject? = nil
 
         /// Creates an empty inline min-max heap.
         @inlinable
         public init() {
-            precondition(
-                MemoryLayout<Element>.stride <= Self._maxStride,
-                "Element stride exceeds inline storage slot size"
-            )
-            precondition(
-                MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment,
-                "Element alignment exceeds inline storage alignment"
-            )
-            self._storage = InlineArray(repeating: (0, 0, 0, 0, 0, 0, 0, 0))
-            self._count = 0
+            self.inline = Heap<Element>.Storage.Inline<capacity>()
+            self.count = .zero
         }
 
         deinit {
-            let count = _count
-            guard count > 0 else { return }
-
-            let stride = MemoryLayout<Element>.stride
-
-            unsafe Swift.withUnsafePointer(to: _storage) { storagePtr in
-                let basePtr = unsafe UnsafeMutableRawPointer(mutating: UnsafeRawPointer(storagePtr))
-                for i in 0..<count {
-                    let elementPtr = unsafe (basePtr + i * stride)
-                        .assumingMemoryBound(to: Element.self)
-                    unsafe elementPtr.deinitialize(count: 1)
-                }
-            }
-        }
-
-        @usableFromInline
-        @unsafe
-        package mutating func _pointerToElement(at index: Int) -> UnsafeMutablePointer<Element> {
-            let stride = MemoryLayout<Element>.stride
-            return unsafe Swift.withUnsafeMutablePointer(to: &_storage) { storagePtr in
-                let basePtr = UnsafeMutableRawPointer(storagePtr)
-                let elementPtr = unsafe (basePtr + index * stride)
-                    .assumingMemoryBound(to: Element.self)
-                return unsafe elementPtr
-            }
-        }
-
-        @usableFromInline
-        @unsafe
-        package func _readPointerToElement(at index: Int) -> UnsafePointer<Element> {
-            let stride = MemoryLayout<Element>.stride
-            return unsafe Swift.withUnsafePointer(to: _storage) { storagePtr in
-                let basePtr = unsafe UnsafeRawPointer(storagePtr)
-                let elementPtr = unsafe (basePtr + index * stride)
-                    .assumingMemoryBound(to: Element.self)
-                return unsafe elementPtr
-            }
+            inline.deinitialize(count: count)
         }
 
         public enum Push: ~Copyable {
@@ -123,106 +79,57 @@ extension Heap.MinMax {
     /// Min-max heap with small-buffer optimization.
     @safe
     public struct Small<let inlineCapacity: Int>: ~Copyable {
+        /// Inline storage for elements.
         @usableFromInline
-        package static var _maxStride: Int { 64 }
+        package var inline: Heap<Element>.Storage.Inline<inlineCapacity>
 
-        @usableFromInline
-        package var _inline: InlineArray<inlineCapacity, (Int, Int, Int, Int, Int, Int, Int, Int)>
+        /// Current element count (valid elements in either inline or heap storage).
+        public var count: Heap<Element>.Index.Count
 
+        /// Heap storage when spilled. Nil when using inline storage.
         @usableFromInline
-        package var _count: Int
+        package var heap: Heap<Element>.Storage?
 
+        /// Cached pointer to heap elements. Only valid when heap is non-nil.
         @usableFromInline
-        package var _heap: Heap<Element>.Storage?
-
-        @usableFromInline
-        package var _heapPtr: UnsafeMutablePointer<Element>?
+        package var heapPtr: UnsafeMutablePointer<Element>?
 
         /// Creates an empty small min-max heap.
         @inlinable
         public init() {
-            precondition(
-                MemoryLayout<Element>.stride <= Self._maxStride,
-                "Element stride exceeds inline storage slot size"
-            )
-            precondition(
-                MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment,
-                "Element alignment exceeds inline storage alignment"
-            )
-            self._inline = InlineArray(repeating: (0, 0, 0, 0, 0, 0, 0, 0))
-            self._count = 0
-            self._heap = nil
-            unsafe self._heapPtr = nil
+            self.inline = Heap<Element>.Storage.Inline<inlineCapacity>()
+            self.count = .zero
+            self.heap = nil
+            unsafe self.heapPtr = nil
         }
 
         deinit {
-            let count = _count
-            guard count > 0 else { return }
+            guard count > .zero else { return }
 
-            if let heap = _heap {
-                heap.header = count
+            if let heapState = heap {
+                heapState.header = count.rawValue
             } else {
-                let stride = MemoryLayout<Element>.stride
-                unsafe Swift.withUnsafeBytes(of: _inline) { bytes in
-                    let basePtr = unsafe UnsafeMutableRawPointer(mutating: bytes.baseAddress!)
-                    for i in 0..<count {
-                        let elementPtr = unsafe (basePtr + i * stride)
-                            .assumingMemoryBound(to: Element.self)
-                        unsafe elementPtr.deinitialize(count: 1)
-                    }
-                }
+                inline.deinitialize(count: count)
             }
         }
 
+        /// Whether the heap is currently using heap storage.
         @inlinable
-        public var isSpilled: Bool { _heap != nil }
+        public var isSpilled: Bool { heap != nil }
 
+        /// Spills inline storage to heap.
         @usableFromInline
-        @unsafe
-        package mutating func _inlinePointerToElement(at index: Int) -> UnsafeMutablePointer<Element> {
-            let stride = MemoryLayout<Element>.stride
-            return unsafe Swift.withUnsafeMutablePointer(to: &_inline) { storagePtr in
-                let basePtr = UnsafeMutableRawPointer(storagePtr)
-                let elementPtr = unsafe (basePtr + index * stride)
-                    .assumingMemoryBound(to: Element.self)
-                return unsafe elementPtr
-            }
-        }
-
-        @usableFromInline
-        @unsafe
-        package func _inlineReadPointerToElement(at index: Int) -> UnsafePointer<Element> {
-            let stride = MemoryLayout<Element>.stride
-            return unsafe Swift.withUnsafePointer(to: _inline) { storagePtr in
-                let basePtr = unsafe UnsafeRawPointer(storagePtr)
-                let elementPtr = unsafe (basePtr + index * stride)
-                    .assumingMemoryBound(to: Element.self)
-                return unsafe elementPtr
-            }
-        }
-
-        @usableFromInline
-        package mutating func _spillToHeap(minimumCapacity: Int) {
-            precondition(_heap == nil, "Already spilled")
+        package mutating func spillToHeap(minimumCapacity: Int) {
+            precondition(heap == nil, "Already spilled")
 
             let newCapacity = Swift.max(minimumCapacity, inlineCapacity * 2, 8)
             let newStorage = Heap<Element>.Storage.create(minimumCapacity: newCapacity)
-            newStorage.header = _count
+            newStorage.header = count.rawValue
 
-            let stride = MemoryLayout<Element>.stride
-            _ = unsafe Swift.withUnsafeBytes(of: _inline) { bytes in
-                unsafe newStorage.withUnsafeMutablePointerToElements { heapPtr in
-                    let inlineBase = unsafe UnsafeMutableRawPointer(mutating: bytes.baseAddress!)
-                    for i in 0..<_count {
-                        let inlineElement = unsafe (inlineBase + i * stride)
-                            .assumingMemoryBound(to: Element.self)
-                        unsafe (heapPtr + i).initialize(to: inlineElement.move())
-                    }
-                }
-            }
+            inline.move(to: newStorage, count: count)
 
-            _heap = newStorage
-            unsafe (_heapPtr = newStorage._elementsPointer)
+            heap = newStorage
+            unsafe (heapPtr = newStorage._elementsPointer)
         }
     }
 

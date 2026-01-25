@@ -9,20 +9,45 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Range_Primitives
+
 // MARK: - Properties
 
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
-    /// The current number of elements in the heap.
-    @inlinable
-    public var count: Int { _count }
-
     /// Whether the heap is empty.
     @inlinable
-    public var isEmpty: Bool { _count == 0 }
+    public var isEmpty: Bool { count == .zero }
 
     /// Whether the heap is full.
     @inlinable
-    public var isFull: Bool { _count == capacity }
+    public var isFull: Bool { count.rawValue == capacity }
+}
+
+// MARK: - Index Navigation
+
+extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
+    /// Returns the index of the parent of the element at the given index.
+    @inlinable
+    package func parentIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        guard index.position > 0 else { return nil }
+        return try? Heap<Element>.Index((index.position.rawValue - 1) / 2)
+    }
+
+    /// Returns the index of the left child of the element at the given index.
+    @inlinable
+    package func leftChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        let childPosition = 2 * index.position.rawValue + 1
+        guard childPosition < count.rawValue else { return nil }
+        return try? Heap<Element>.Index(childPosition)
+    }
+
+    /// Returns the index of the right child of the element at the given index.
+    @inlinable
+    package func rightChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        let childPosition = 2 * index.position.rawValue + 2
+        guard childPosition < count.rawValue else { return nil }
+        return try? Heap<Element>.Index(childPosition)
+    }
 }
 
 // MARK: - Internal Heap Operations
@@ -30,36 +55,36 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Inserts an element and restores heap property.
     @usableFromInline
-    package mutating func _insert(_ element: consuming Element) {
-        let index = _count
-        unsafe _pointerToElement(at: index).initialize(to: element)
-        _count += 1
-        _bubbleUp(index)
+    package mutating func insert(_ element: consuming Element) {
+        let index = Heap<Element>.Index(__unchecked: (), position: count.rawValue)
+        inline.initialize(to: element, at: index)
+        count = Heap<Element>.Index.Count(__unchecked: count.rawValue + 1)
+        bubbleUp(index)
     }
 
     /// Removes and returns the priority element.
     @usableFromInline
-    package mutating func _removePriority() -> Element? {
-        guard !isEmpty else { return nil }
+    package mutating func removePriority() -> Element? {
+        guard count > .zero else { return nil }
 
-        if count == 1 {
-            _count = 0
-            return unsafe _pointerToElement(at: 0).move()
+        if count.rawValue == 1 {
+            count = .zero
+            return inline.move(at: .zero)
         }
 
-        let lastIndex = _count - 1
-        _swapElements(at: 0, lastIndex)
-        _count -= 1
-        let removed = unsafe _pointerToElement(at: lastIndex).move()
-        _trickleDown(0)
+        let lastIndex = Heap<Element>.Index(__unchecked: (), position: count.rawValue - 1)
+        swapElements(at: .zero, lastIndex)
+        count = Heap<Element>.Index.Count(__unchecked: count.rawValue - 1)
+        let removed = inline.move(at: lastIndex)
+        trickleDown(.zero)
         return removed
     }
 
     /// Swaps elements at two indices.
     @usableFromInline
-    package mutating func _swapElements(at i: Int, _ j: Int) {
-        let ptrI = unsafe _pointerToElement(at: i)
-        let ptrJ = unsafe _pointerToElement(at: j)
+    package mutating func swapElements(at i: Heap<Element>.Index, _ j: Heap<Element>.Index) {
+        let ptrI = unsafe inline.pointer(at: i)
+        let ptrJ = unsafe inline.pointer(at: j)
         let temp = unsafe ptrI.move()
         unsafe ptrI.initialize(to: ptrJ.move())
         unsafe ptrJ.initialize(to: temp)
@@ -71,28 +96,24 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element up.
     @usableFromInline
-    package mutating func _bubbleUp(_ index: Int) {
-        guard index > 0 else { return }
-
+    package mutating func bubbleUp(_ index: Heap<Element>.Index) {
         var current = index
 
         switch order {
         case .ascending:
-            while current > 0 {
-                let parentIndex = (current &- 1) / 2
-                if unsafe _readPointerToElement(at: current).pointee < _readPointerToElement(at: parentIndex).pointee {
-                    _swapElements(at: current, parentIndex)
-                    current = parentIndex
+            while let parent = parentIndex(of: current) {
+                if unsafe inline.read(at: current).pointee < inline.read(at: parent).pointee {
+                    swapElements(at: current, parent)
+                    current = parent
                 } else {
                     break
                 }
             }
         case .descending:
-            while current > 0 {
-                let parentIndex = (current &- 1) / 2
-                if unsafe _readPointerToElement(at: parentIndex).pointee < _readPointerToElement(at: current).pointee {
-                    _swapElements(at: current, parentIndex)
-                    current = parentIndex
+            while let parent = parentIndex(of: current) {
+                if unsafe inline.read(at: parent).pointee < inline.read(at: current).pointee {
+                    swapElements(at: current, parent)
+                    current = parent
                 } else {
                     break
                 }
@@ -106,53 +127,45 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element down.
     @usableFromInline
-    package mutating func _trickleDown(_ startIndex: Int) {
+    package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
         var current = startIndex
 
         switch order {
         case .ascending:
-            while true {
-                let leftChild = current &* 2 &+ 1
-                guard leftChild < _count else { break }
-
-                let rightChild = leftChild + 1
+            while let leftChild = leftChildIndex(of: current) {
                 var smallest = current
 
-                if unsafe _readPointerToElement(at: leftChild).pointee < _readPointerToElement(at: smallest).pointee {
+                if unsafe inline.read(at: leftChild).pointee < inline.read(at: smallest).pointee {
                     smallest = leftChild
                 }
-                if rightChild < _count {
-                    if unsafe _readPointerToElement(at: rightChild).pointee < _readPointerToElement(at: smallest).pointee {
+                if let rightChild = rightChildIndex(of: current) {
+                    if unsafe inline.read(at: rightChild).pointee < inline.read(at: smallest).pointee {
                         smallest = rightChild
                     }
                 }
 
                 if smallest == current { break }
 
-                _swapElements(at: current, smallest)
+                swapElements(at: current, smallest)
                 current = smallest
             }
 
         case .descending:
-            while true {
-                let leftChild = current &* 2 &+ 1
-                guard leftChild < _count else { break }
-
-                let rightChild = leftChild + 1
+            while let leftChild = leftChildIndex(of: current) {
                 var largest = current
 
-                if unsafe _readPointerToElement(at: largest).pointee < _readPointerToElement(at: leftChild).pointee {
+                if unsafe inline.read(at: largest).pointee < inline.read(at: leftChild).pointee {
                     largest = leftChild
                 }
-                if rightChild < _count {
-                    if unsafe _readPointerToElement(at: largest).pointee < _readPointerToElement(at: rightChild).pointee {
+                if let rightChild = rightChildIndex(of: current) {
+                    if unsafe inline.read(at: largest).pointee < inline.read(at: rightChild).pointee {
                         largest = rightChild
                     }
                 }
 
                 if largest == current { break }
 
-                _swapElements(at: current, largest)
+                swapElements(at: current, largest)
                 current = largest
             }
         }
@@ -164,13 +177,15 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Converts storage to valid heap in O(n).
     @usableFromInline
-    package mutating func _heapify() {
-        guard _count > 1 else { return }
+    package mutating func heapify() {
+        let countValue = count.rawValue
+        guard countValue > 1 else { return }
 
-        var i = _count / 2 - 1
-        while i >= 0 {
-            _trickleDown(i)
-            i -= 1
+        var position = countValue / 2 - 1
+        while position >= 0 {
+            let index = Heap<Element>.Index(__unchecked: (), position: position)
+            trickleDown(index)
+            position -= 1
         }
     }
 }
@@ -189,10 +204,10 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     @discardableResult
     public mutating func push(_ element: consuming Element) -> Push.Outcome {
-        guard _count < capacity else {
+        guard count.rawValue < capacity else {
             return .overflow(element)
         }
-        _insert(element)
+        insert(element)
         return .inserted
     }
 
@@ -203,7 +218,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public var take: Element? {
         mutating get {
-            _removePriority()
+            removePriority()
         }
     }
 
@@ -214,7 +229,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func pop() throws(__Heap.Static.Error) -> Element {
-        guard let element = _removePriority() else {
+        guard let element = removePriority() else {
             throw .empty
         }
         return element
@@ -225,16 +240,8 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func clear() {
-        let stride = MemoryLayout<Element>.stride
-        unsafe Swift.withUnsafeMutablePointer(to: &_storage) { storagePtr in
-            let basePtr = UnsafeMutableRawPointer(storagePtr)
-            for i in 0..<_count {
-                let elementPtr = unsafe (basePtr + i * stride)
-                    .assumingMemoryBound(to: Element.self)
-                unsafe elementPtr.deinitialize(count: 1)
-            }
-        }
-        _count = 0
+        inline.deinitialize(count: count)
+        count = .zero
     }
 }
 
@@ -248,8 +255,8 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(1)
     @inlinable
     public func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
-        guard count > 0 else { return nil }
-        return unsafe body(_readPointerToElement(at: 0).pointee)
+        guard count > .zero else { return nil }
+        return unsafe body(inline.read(at: .zero).pointee)
     }
 
     /// Calls the given closure for each element in heap order.
@@ -261,8 +268,8 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        for i in 0..<count {
-            body(unsafe _readPointerToElement(at: i).pointee)
+        (0..<count).forEach { index in
+            body(unsafe inline.read(at: index).pointee)
         }
     }
 }
@@ -279,7 +286,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Returns whether the given index represents a valid position in the heap.
     @inlinable
     public func isValid(_ index: Heap<Element>.Index) -> Bool {
-        index >= .zero && index.position.rawValue < _count
+        index >= .zero && index.position.rawValue < count.rawValue
     }
 }
 
@@ -293,7 +300,7 @@ extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var peek: Element? {
         guard !isEmpty else { return nil }
-        return unsafe _readPointerToElement(at: 0).pointee
+        return unsafe inline.read(at: .zero).pointee
     }
 }
 
@@ -308,18 +315,12 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(k) where k is the number of removed elements.
     @inlinable
     public mutating func truncate(to newCount: Int) {
-        guard newCount < _count else { return }
+        guard newCount < count.rawValue else { return }
         let targetCount = Swift.max(0, newCount)
+        let targetCountTyped = Heap<Element>.Index.Count(__unchecked: targetCount)
 
-        let stride = MemoryLayout<Element>.stride
-        unsafe Swift.withUnsafeMutablePointer(to: &_storage) { storagePtr in
-            let basePtr = UnsafeMutableRawPointer(storagePtr)
-            for i in targetCount..<_count {
-                let elementPtr = unsafe (basePtr + i * stride)
-                    .assumingMemoryBound(to: Element.self)
-                unsafe elementPtr.deinitialize(count: 1)
-            }
-        }
-        _count = targetCount
+        // Use Int..<Count pattern for Range.Lazy creation
+        inline.deinitialize(in: targetCount..<count)
+        count = targetCountTyped
     }
 }

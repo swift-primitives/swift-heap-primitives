@@ -22,7 +22,7 @@ extension Heap.Fixed: Swift.Sequence where Element: Copyable {
         let _storage: Heap<Element>.Storage
 
         @usableFromInline
-        var _index: Int = 0
+        var _index: Heap<Element>.Index = .zero
 
         @usableFromInline
         init(_storage: Heap<Element>.Storage) {
@@ -31,9 +31,9 @@ extension Heap.Fixed: Swift.Sequence where Element: Copyable {
 
         @inlinable
         public mutating func next() -> Element? {
-            guard _index < _storage.header else { return nil }
-            defer { _index += 1 }
-            return _storage._readElement(at: _index)
+            guard _index.position.rawValue < _storage.header else { return nil }
+            defer { _index = Heap<Element>.Index(__unchecked: (), position: _index.position.rawValue + 1) }
+            return _storage.read(at: _index)
         }
     }
 
@@ -44,5 +44,5 @@ extension Heap.Fixed: Swift.Sequence where Element: Copyable {
 
     /// Returns the count as the underestimated count since we know the exact size.
     @inlinable
-    public var underestimatedCount: Int { count }
+    public var underestimatedCount: Int { _storage.header }
 }

@@ -9,12 +9,14 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Range_Primitives
+
 // MARK: - Properties
 
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// The current number of elements in the heap.
     @inlinable
-    public var count: Int { _storage.header }
+    public var count: Heap<Element>.Index.Count { _storage.count }
 
     /// Whether the heap is empty.
     @inlinable
@@ -25,40 +27,67 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     public var isFull: Bool { _storage.header == capacity }
 }
 
+// MARK: - Index Navigation
+
+extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
+    /// Returns the index of the parent of the element at the given index.
+    @inlinable
+    package func parentIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        guard index.position > 0 else { return nil }
+        return try? Heap<Element>.Index((index.position.rawValue - 1) / 2)
+    }
+
+    /// Returns the index of the left child of the element at the given index.
+    @inlinable
+    package func leftChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        let childPosition = 2 * index.position.rawValue + 1
+        guard Heap<Element>.Index.Count(__unchecked: childPosition) < count else { return nil }
+        return try? Heap<Element>.Index(childPosition)
+    }
+
+    /// Returns the index of the right child of the element at the given index.
+    @inlinable
+    package func rightChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        let childPosition = 2 * index.position.rawValue + 2
+        guard Heap<Element>.Index.Count(__unchecked: childPosition) < count else { return nil }
+        return try? Heap<Element>.Index(childPosition)
+    }
+}
+
 // MARK: - Internal Heap Operations
 
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Inserts an element and restores heap property.
     @usableFromInline
-    package mutating func _insert(_ element: consuming Element) {
-        let index = _storage.header
-        _storage._initializeElement(at: index, to: element)
+    package mutating func insert(_ element: consuming Element) {
+        let index = Heap<Element>.Index(__unchecked: (), position: _storage.header)
+        _storage.initialize(to: element, at: index)
         _storage.header += 1
-        _bubbleUp(index)
+        bubbleUp(index)
     }
 
     /// Removes and returns the priority element.
     @usableFromInline
-    package mutating func _removePriority() -> Element? {
+    package mutating func removePriority() -> Element? {
         guard !isEmpty else { return nil }
 
         if count == 1 {
             _storage.header = 0
-            return _storage._moveElement(at: 0)
+            return _storage.move(at: .zero)
         }
 
-        let lastIndex = _storage.header - 1
-        _swapElements(at: 0, lastIndex)
+        let lastIndex = Heap<Element>.Index(__unchecked: (), position: _storage.header - 1)
+        swapElements(at: .zero, lastIndex)
         _storage.header -= 1
-        let removed = _storage._moveElement(at: lastIndex)
-        _trickleDown(0)
+        let removed = _storage.move(at: lastIndex)
+        trickleDown(.zero)
         return removed
     }
 
     /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
-    package mutating func _swapElements(at i: Int, _ j: Int) {
-        let ptr = _cachedPtr
+    package mutating func swapElements(at i: Heap<Element>.Index, _ j: Heap<Element>.Index) {
+        let ptr = unsafe _cachedPtr
         let temp = unsafe (ptr + i).move()
         unsafe (ptr + i).initialize(to: (ptr + j).move())
         unsafe (ptr + j).initialize(to: temp)
@@ -70,29 +99,25 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element up.
     @usableFromInline
-    package mutating func _bubbleUp(_ index: Int) {
-        guard index > 0 else { return }
-
+    package mutating func bubbleUp(_ index: Heap<Element>.Index) {
         var current = index
-        let ptr = _cachedPtr
+        let ptr = unsafe _cachedPtr
 
         switch order {
         case .ascending:
-            while current > 0 {
-                let parentIndex = (current - 1) / 2
-                if unsafe ptr[current] < ptr[parentIndex] {
-                    _swapElements(at: current, parentIndex)
-                    current = parentIndex
+            while let parent = parentIndex(of: current) {
+                if unsafe ptr[current] < ptr[parent] {
+                    swapElements(at: current, parent)
+                    current = parent
                 } else {
                     break
                 }
             }
         case .descending:
-            while current > 0 {
-                let parentIndex = (current - 1) / 2
-                if unsafe ptr[parentIndex] < ptr[current] {
-                    _swapElements(at: current, parentIndex)
-                    current = parentIndex
+            while let parent = parentIndex(of: current) {
+                if unsafe ptr[parent] < ptr[current] {
+                    swapElements(at: current, parent)
+                    current = parent
                 } else {
                     break
                 }
@@ -106,24 +131,19 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element down.
     @usableFromInline
-    package mutating func _trickleDown(_ startIndex: Int) {
+    package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
         var current = startIndex
-        let count = _storage.header
-        let ptr = _cachedPtr
+        let ptr = unsafe _cachedPtr
 
         switch order {
         case .ascending:
-            while true {
-                let leftChild = 2 * current + 1
-                guard leftChild < count else { break }
-
-                let rightChild = leftChild + 1
+            while let leftChild = leftChildIndex(of: current) {
                 var smallest = current
 
                 if unsafe ptr[leftChild] < ptr[smallest] {
                     smallest = leftChild
                 }
-                if rightChild < count {
+                if let rightChild = rightChildIndex(of: current) {
                     if unsafe ptr[rightChild] < ptr[smallest] {
                         smallest = rightChild
                     }
@@ -131,22 +151,18 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 
                 if smallest == current { break }
 
-                _swapElements(at: current, smallest)
+                swapElements(at: current, smallest)
                 current = smallest
             }
 
         case .descending:
-            while true {
-                let leftChild = 2 * current + 1
-                guard leftChild < count else { break }
-
-                let rightChild = leftChild + 1
+            while let leftChild = leftChildIndex(of: current) {
                 var largest = current
 
                 if unsafe ptr[largest] < ptr[leftChild] {
                     largest = leftChild
                 }
-                if rightChild < count {
+                if let rightChild = rightChildIndex(of: current) {
                     if unsafe ptr[largest] < ptr[rightChild] {
                         largest = rightChild
                     }
@@ -154,7 +170,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 
                 if largest == current { break }
 
-                _swapElements(at: current, largest)
+                swapElements(at: current, largest)
                 current = largest
             }
         }
@@ -166,14 +182,15 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Converts storage to valid heap in O(n).
     @usableFromInline
-    package mutating func _heapify() {
-        let count = _storage.header
-        guard count > 1 else { return }
+    package mutating func heapify() {
+        let countValue = _storage.header
+        guard countValue > 1 else { return }
 
-        var i = count / 2 - 1
-        while i >= 0 {
-            _trickleDown(i)
-            i -= 1
+        var position = countValue / 2 - 1
+        while position >= 0 {
+            let index = Heap<Element>.Index(__unchecked: (), position: position)
+            trickleDown(index)
+            position -= 1
         }
     }
 }
@@ -195,7 +212,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
         guard _storage.header < capacity else {
             return .overflow(element)
         }
-        _insert(element)
+        insert(element)
         return .inserted
     }
 
@@ -206,7 +223,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public var take: Element? {
         mutating get {
-            _removePriority()
+            removePriority()
         }
     }
 
@@ -217,7 +234,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func pop() throws(__Heap.Fixed.Error) -> Element {
-        guard let element = _removePriority() else {
+        guard let element = removePriority() else {
             throw .empty
         }
         return element
@@ -230,9 +247,9 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func clear() {
-        let count = _storage.header
-        if count > 0 {
-            _storage._deinitializeElements(in: 0..<count)
+        let count = _storage.count
+        if count > .zero {
+            _storage.deinitialize(in: 0..<count)
         }
         _storage.header = 0
     }
@@ -261,9 +278,9 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        let ptr = _cachedPtr
-        for i in 0..<count {
-            body(unsafe ptr[i])
+        let ptr = unsafe _cachedPtr
+        (0..<_storage.count).forEach { index in
+            body(unsafe ptr[index])
         }
     }
 }
@@ -280,7 +297,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Returns whether the given index represents a valid position in the heap.
     @inlinable
     public func isValid(_ index: Heap<Element>.Index) -> Bool {
-        index >= .zero && index.position.rawValue < count
+        index >= .zero && index < count
     }
 }
 
@@ -289,14 +306,14 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Ensures the storage is uniquely referenced before mutation.
     @usableFromInline
-    package mutating func _makeUnique() {
+    package mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
             let newStorage = Heap<Element>.Storage.create(minimumCapacity: capacity)
-            let currentCount = _storage.header
-            _storage._copyAllElements(to: newStorage, count: currentCount)
-            newStorage.header = currentCount
+            let currentCount = _storage.count
+            _storage.copy(to: newStorage, count: currentCount)
+            newStorage.header = currentCount.rawValue
             _storage = newStorage
-            _cachedPtr = _storage._elementsPointer
+            unsafe (_cachedPtr = _storage._elementsPointer)
         }
     }
 
@@ -308,11 +325,11 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     @discardableResult
     public mutating func push(_ element: Element) -> Heap.Push.Outcome {
-        _makeUnique()
+        makeUnique()
         guard _storage.header < capacity else {
             return .overflow(element)
         }
-        _insert(element)
+        insert(element)
         return .inserted
     }
 
@@ -320,16 +337,16 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var take: Element? {
         mutating get {
-            _makeUnique()
-            return _removePriority()
+            makeUnique()
+            return removePriority()
         }
     }
 
     /// Pops and returns the priority element (CoW-aware).
     @inlinable
     public mutating func pop() throws(__Heap.Fixed.Error) -> Element {
-        _makeUnique()
-        guard let element = _removePriority() else {
+        makeUnique()
+        guard let element = removePriority() else {
             throw .empty
         }
         return element
@@ -338,10 +355,10 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Removes all elements from the heap (CoW-aware).
     @inlinable
     public mutating func clear() {
-        _makeUnique()
-        let count = _storage.header
-        if count > 0 {
-            _storage._deinitializeElements(in: 0..<count)
+        makeUnique()
+        let count = _storage.count
+        if count > .zero {
+            _storage.deinitialize(in: 0..<count)
         }
         _storage.header = 0
     }
@@ -357,14 +374,14 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var peek: Element? {
         guard !isEmpty else { return nil }
-        return _storage._readElement(at: 0)
+        return _storage.read(at: .zero)
     }
 
     /// Returns the element at the given typed index, or nil if out of bounds.
     @inlinable
     public func element(at index: Heap<Element>.Index) -> Element? {
         guard isValid(index) else { return nil }
-        return _storage._readElement(at: index.position.rawValue)
+        return _storage.read(at: index)
     }
 }
 
@@ -391,18 +408,19 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
         }
 
         self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
-        self._cachedPtr = _storage._elementsPointer
+        unsafe self._cachedPtr = _storage._elementsPointer
         self.capacity = capacity
         self.order = order
 
         for element in elements {
             if _storage.header >= capacity { break }
-            _storage._initializeElement(at: _storage.header, to: element)
+            let index = Heap<Element>.Index(__unchecked: (), position: _storage.header)
+            _storage.initialize(to: element, at: index)
             _storage.header += 1
         }
 
         if _storage.header > 1 {
-            _heapify()
+            heapify()
         }
     }
 }
@@ -418,11 +436,12 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(k) where k is the number of removed elements.
     @inlinable
     public mutating func truncate(to newCount: Int) {
-        let currentCount = _storage.header
-        guard newCount < currentCount else { return }
+        let currentCount = _storage.count
+        guard newCount < currentCount.rawValue else { return }
         let targetCount = Swift.max(0, newCount)
 
-        _storage._deinitializeElements(in: targetCount..<currentCount)
+        // Use Int..<Count pattern for Range.Lazy creation
+        _storage.deinitialize(in: targetCount..<currentCount)
         _storage.header = targetCount
     }
 }
@@ -431,12 +450,13 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Removes elements beyond the specified count (CoW-aware).
     @inlinable
     public mutating func truncate(to newCount: Int) {
-        _makeUnique()
-        let currentCount = _storage.header
-        guard newCount < currentCount else { return }
+        makeUnique()
+        let currentCount = _storage.count
+        guard newCount < currentCount.rawValue else { return }
         let targetCount = Swift.max(0, newCount)
 
-        _storage._deinitializeElements(in: targetCount..<currentCount)
+        // Use Int..<Count pattern for Range.Lazy creation
+        _storage.deinitialize(in: targetCount..<currentCount)
         _storage.header = targetCount
     }
 }
@@ -474,7 +494,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
         @_lifetime(&self)
         @inlinable
         mutating get {
-            _makeUnique()
+            makeUnique()
             return unsafe MutableSpan(_unsafeStart: _cachedPtr, count: _storage.header)
         }
     }

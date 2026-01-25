@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Property_Primitives
+public import Range_Primitives
 
 // MARK: - Sequence Init (Copyable only)
 
@@ -27,11 +28,11 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
         unsafe (self._cachedPtr = _storage._elementsPointer)
 
         for element in elements {
-            _appendWithoutHeapify(element)
+            appendWithoutHeapify(element)
         }
 
         if _storage.header > 1 {
-            _heapify()
+            heapify()
         }
     }
 }
@@ -41,12 +42,12 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
 extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// Ensures the storage is uniquely referenced before mutation.
     @usableFromInline
-    package mutating func _makeUnique() {
+    package mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
             let newStorage = Heap<Element>.Storage.create(minimumCapacity: _storage.capacity)
-            let currentCount = _storage.header
-            _storage._copyAllElements(to: newStorage, count: currentCount)
-            newStorage.header = currentCount
+            let currentCount = _storage.count
+            _storage.copy(to: newStorage, count: currentCount)
+            newStorage.header = currentCount.rawValue
             _storage = newStorage
             unsafe (_cachedPtr = _storage._elementsPointer)  // CRITICAL: Update cached pointer
         }
@@ -65,8 +66,8 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func push(_ element: Element) {
-        _makeUnique()
-        _insert(element)
+        makeUnique()
+        insert(element)
     }
 }
 
@@ -83,15 +84,15 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var peek: Element? {
         guard !isEmpty else { return nil }
-        return _storage._readElement(at: 0)
+        return _storage.read(at: .zero)
     }
 
     /// Replaces the priority element and returns the old value.
     @usableFromInline
-    package mutating func _replacePriority(with replacement: Element) -> Element {
-        let removed = _storage._readElement(at: 0)
-        _storage._writeElement(at: 0, replacement)
-        _trickleDown(0)
+    package mutating func replacePriority(with replacement: Element) -> Element {
+        let removed = _storage.read(at: .zero)
+        _storage.write(replacement, at: .zero)
+        trickleDown(.zero)
         return removed
     }
 
@@ -103,9 +104,9 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var unordered: [Element] {
         var result: [Element] = []
-        result.reserveCapacity(count)
-        for i in 0..<count {
-            result.append(_storage._readElement(at: i))
+        result.reserveCapacity(_storage.header)
+        (0..<_storage.count).forEach { index in
+            result.append(_storage.read(at: index))
         }
         return result
     }
@@ -121,7 +122,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public func element(at index: Heap<Element>.Index) -> Element? {
         guard isValid(index) else { return nil }
-        return _storage._readElement(at: index.position.rawValue)
+        return _storage.read(at: index)
     }
 }
 
@@ -138,8 +139,8 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func pop() throws(Heap.Error) -> Element {
-        _makeUnique()
-        guard let element = _removePriority() else {
+        makeUnique()
+        guard let element = removePriority() else {
             throw .empty
         }
         return element
@@ -164,8 +165,8 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var take: Element? {
         mutating get {
-            _makeUnique()
-            return _removePriority()
+            makeUnique()
+            return removePriority()
         }
     }
 }
@@ -177,12 +178,13 @@ extension Heap: Equatable where Element: Equatable & Copyable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         guard lhs.count == rhs.count else { return false }
         guard lhs.order == rhs.order else { return false }
-        for i in 0..<lhs.count {
-            if lhs._storage._readElement(at: i) != rhs._storage._readElement(at: i) {
-                return false
+        var result = true
+        (0..<lhs._storage.count).forEach { index in
+            if lhs._storage.read(at: index) != rhs._storage.read(at: index) {
+                result = false
             }
         }
-        return true
+        return result
     }
 }
 
@@ -193,8 +195,8 @@ extension Heap: Hashable where Element: Hashable & Copyable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(count)
         hasher.combine(order)
-        for i in 0..<count {
-            hasher.combine(_storage._readElement(at: i))
+        (0..<_storage.count).forEach { index in
+            hasher.combine(_storage.read(at: index))
         }
     }
 }
@@ -227,7 +229,7 @@ extension Heap: Swift.Sequence where Element: Copyable {
         let _storage: Heap<Element>.Storage
 
         @usableFromInline
-        var _index: Int = 0
+        var _index: Heap<Element>.Index = .zero
 
         @usableFromInline
         init(_storage: Heap<Element>.Storage) {
@@ -236,9 +238,10 @@ extension Heap: Swift.Sequence where Element: Copyable {
 
         @inlinable
         public mutating func next() -> Element? {
-            guard _index < _storage.header else { return nil }
-            defer { _index += 1 }
-            return _storage._readElement(at: _index)
+            guard _index.position.rawValue < _storage.count.rawValue else { return nil }
+            let element = _storage.read(at: _index)
+            _index = Heap<Element>.Index(__unchecked: (), position: _index.position.rawValue + 1)
+            return element
         }
     }
 

@@ -48,6 +48,7 @@ let package = Package(
     dependencies: [
         .package(path: "../swift-comparison-primitives"),
         .package(path: "../swift-index-primitives"),
+        .package(path: "../swift-range-primitives"),
         .package(path: "../swift-collection-primitives"),
         .package(path: "../swift-input-primitives"),
         .package(path: "../swift-property-primitives"),
@@ -59,6 +60,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
+                .product(name: "Range Primitives", package: "swift-range-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
                 .product(name: "Collection Primitives", package: "swift-collection-primitives"),
                 .product(name: "Input Primitives", package: "swift-input-primitives"),
