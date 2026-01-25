@@ -28,6 +28,8 @@
 /// - ``Heap/MinMax``: Alternative double-ended (stub)
 public struct Heap<Element: ~Copyable>: ~Copyable {
 
+    public typealias Pointer = Swift.UnsafeMutablePointer<Element>
+    
     // MARK: - Storage Class
 
     /// Internal storage class for Heap variants.
@@ -112,21 +114,23 @@ public struct Heap<Element: ~Copyable>: ~Copyable {
         public let capacity: Int
 
         @usableFromInline
-        package var _cachedPtr: UnsafeMutablePointer<Element> {
+        package var _cachedPtr: Pointer {
             unsafe _storage.withUnsafeMutablePointerToElements { unsafe $0 }
         }
 
-        // MARK: - Push Outcome
+        
+    }
+    
+    // MARK: - Push Outcome
 
-        /// Outcome of a push operation on a fixed heap.
-        public enum Push: ~Copyable {
-            /// Outcome of pushing an element.
-            public enum Outcome: ~Copyable {
-                /// The element was successfully inserted.
-                case inserted
-                /// The heap was full; the element is returned to the caller.
-                case overflow(Element)
-            }
+    /// Outcome of a push operation on a fixed heap.
+    public enum Push: ~Copyable {
+        /// Outcome of pushing an element.
+        public enum Outcome: ~Copyable {
+            /// The element was successfully inserted.
+            case inserted
+            /// The heap was full; the element is returned to the caller.
+            case overflow(Element)
         }
     }
 
@@ -542,8 +546,8 @@ extension Heap.Small: @unchecked Sendable where Element: Sendable {}
 
 // MARK: - Push.Outcome Conditional Conformances
 
-extension Heap.Fixed.Push.Outcome: Copyable where Element: Copyable {}
-extension Heap.Fixed.Push.Outcome: Sendable where Element: Sendable {}
+extension Heap.Push.Outcome: Copyable where Element: Copyable {}
+extension Heap.Push.Outcome: Sendable where Element: Sendable {}
 extension Heap.Static.Push.Outcome: Copyable where Element: Copyable {}
 extension Heap.Static.Push.Outcome: Sendable where Element: Sendable {}
 

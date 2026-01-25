@@ -298,7 +298,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     @discardableResult
-    public mutating func push(_ element: consuming Element) -> Push.Outcome {
+    public mutating func push(_ element: consuming Element) -> Heap.Push.Outcome {
         guard _storage.header < capacity else {
             return .overflow(element)
         }
@@ -450,7 +450,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     @discardableResult
-    public mutating func push(_ element: Element) -> Push.Outcome {
+    public mutating func push(_ element: Element) -> Heap.Push.Outcome {
         _makeUnique()
         guard _storage.header < capacity else {
             return .overflow(element)
