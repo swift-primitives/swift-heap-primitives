@@ -114,9 +114,7 @@ public struct Heap<Element: ~Copyable>: ~Copyable {
         public let capacity: Int
 
         @usableFromInline
-        package var _cachedPtr: Pointer {
-            unsafe _storage.withUnsafeMutablePointerToElements { unsafe $0 }
-        }
+        package var _cachedPtr: Pointer
 
         
     }
