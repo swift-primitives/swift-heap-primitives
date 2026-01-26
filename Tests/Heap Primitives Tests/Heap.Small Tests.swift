@@ -153,7 +153,7 @@ struct HeapSmallTests {
         heap.push(2)
         heap.push(3)
 
-        heap.clear()
+        heap.remove.all()
         #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
     }
@@ -167,7 +167,7 @@ struct HeapSmallTests {
         heap.push(4)
         #expect(heap.isSpilled == true)
 
-        heap.clear()
+        heap.remove.all()
         #expect(heap.isEmpty == true)
         #expect(heap.isSpilled == true)  // Still spilled, storage not reclaimed
     }

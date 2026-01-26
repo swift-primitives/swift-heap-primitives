@@ -94,7 +94,7 @@ extension Heap.MinMax {
 
         /// Cached pointer to heap elements. Only valid when heap is non-nil.
         @usableFromInline
-        package var heapPtr: Heap.Pointer?
+        package var heapPtr: UnsafeMutablePointer<Element>?
 
         /// Creates an empty small min-max heap.
         @inlinable

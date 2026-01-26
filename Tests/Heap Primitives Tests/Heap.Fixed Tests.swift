@@ -137,7 +137,7 @@ struct HeapFixedTests {
         _ = heap.push(2)
         _ = heap.push(3)
 
-        heap.clear()
+        heap.remove.all()
         #expect(heap.isEmpty == true)
         #expect(heap.count == 0)
         #expect(heap.capacity == 10)  // Capacity unchanged
