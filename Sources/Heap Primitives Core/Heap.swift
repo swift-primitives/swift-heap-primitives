@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Range_Primitives
+import Range_Primitives
 
 // MARK: - Heap (Canonical Single-Ended Binary Heap)
 
@@ -79,7 +79,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     public let order: Order
 
     @usableFromInline
-    package var _storage: Storage
+    package var _storage: Heap.Storage
 
     /// Cached pointer to element storage. Stored in struct to enable efficient access.
     /// CRITICAL: Must be updated whenever _storage is replaced (reallocation, CoW copy).
@@ -94,7 +94,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     @inlinable
     public init(order: Order = .ascending) {
         self.order = order
-        self._storage = Storage.create()
+        self._storage = Heap<Element>.Storage.create()
         unsafe (self._cachedPtr = _storage._elementsPointer)
     }
 
@@ -109,78 +109,12 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     /// inherits the `~Copyable` suppression from the outer type.
     @usableFromInline
     package final class Storage: ManagedBuffer<Int, Element> {
-
-        /// Creates empty storage with no capacity.
-        @usableFromInline
-        package static func create() -> Storage {
-            let storage = Storage.create(minimumCapacity: 0) { _ in 0 }
-            return unsafe unsafeDowncast(storage, to: Storage.self)
-        }
-
-        /// Creates storage with the specified minimum capacity.
-        @usableFromInline
-        package static func create(minimumCapacity: Int) -> Storage {
-            let requestedCapacity = Swift.max(minimumCapacity, 4)
-            let storage = Storage.create(minimumCapacity: requestedCapacity) { _ in 0 }
-            return unsafe unsafeDowncast(storage, to: Storage.self)
-        }
-
-        /// Typed count for this storage.
-        @usableFromInline
-        package var count: Heap.Index.Count {
-            Heap.Index.Count(__unchecked: header)
-        }
-
         deinit {
             let count = self.count
             guard count > .zero else { return }
             _ = unsafe withUnsafeMutablePointerToElements { elements in
                 (0..<count).forEach { index in
                     unsafe (elements + index).deinitialize(count: 1)
-                }
-            }
-        }
-
-        /// Returns pointer to element storage.
-        @usableFromInline
-        package var _elementsPointer: UnsafeMutablePointer<Element> {
-            unsafe withUnsafeMutablePointerToElements { unsafe $0 }
-        }
-
-        /// Initializes element at the given index.
-        @usableFromInline
-        package func initialize(to element: consuming Element, at index: Heap.Index) {
-            let ptr = unsafe withUnsafeMutablePointerToElements { unsafe $0 + index }
-            unsafe ptr.initialize(to: element)
-        }
-
-        /// Moves element from the given index.
-        @usableFromInline
-        package func move(at index: Heap.Index) -> Element {
-            unsafe withUnsafeMutablePointerToElements { elements in
-                unsafe (elements + index).move()
-            }
-        }
-
-        /// Deinitializes elements in the given range.
-        @usableFromInline
-        package func deinitialize(in range: Range.Lazy<Heap.Index>) {
-            _ = unsafe withUnsafeMutablePointerToElements { elements in
-                range.forEach { index in
-                    unsafe (elements + index).deinitialize(count: 1)
-                }
-            }
-        }
-
-        /// Moves all elements to new storage.
-        @usableFromInline
-        package func move(to newStorage: Storage, count: Heap.Index.Count) {
-            guard count > .zero else { return }
-            _ = unsafe withUnsafeMutablePointerToElements { old in
-                unsafe newStorage.withUnsafeMutablePointerToElements { new in
-                    (0..<count).forEach { index in
-                        unsafe (new + index).initialize(to: (old + index).move())
-                    }
                 }
             }
         }
@@ -207,14 +141,17 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         ///   - order: The ordering direction. Defaults to `.ascending` (min-heap).
         /// - Throws: ``Fixed/Error/invalidCapacity`` if capacity is negative.
         @inlinable
-        public init(capacity: Int, order: Order = .ascending) throws(__Heap.Fixed.Error) {
+        public init(
+            capacity: Int,
+            order: Order = .ascending
+        ) throws(__Heap.Fixed.Error) {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
-            self._storage = Heap.Storage.create(minimumCapacity: capacity)
+            self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
             self.capacity = capacity
             self.order = order
-            self._cachedPtr = _storage._elementsPointer
+            unsafe self._cachedPtr = _storage._elementsPointer
         }
     }
 
@@ -315,25 +252,6 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
                 inline.deinitialize(count: count)
             }
         }
-
-        /// Whether the heap is currently using heap storage.
-        @inlinable
-        public var isSpilled: Bool { heap != nil }
-
-        /// Spills inline storage to heap.
-        @usableFromInline
-        package mutating func spillToHeap(minimumCapacity: Int) {
-            precondition(heap == nil, "Already spilled")
-
-            let newCapacity = Swift.max(minimumCapacity, inlineCapacity * 2, 8)
-            let newStorage = Storage.create(minimumCapacity: newCapacity)
-            newStorage.header = count.rawValue
-
-            inline.move(to: newStorage, count: count)
-
-            heap = newStorage
-            unsafe (heapPtr = newStorage._elementsPointer)
-        }
     }
 
     // MARK: - MinMax Heap (Declaration Only)
@@ -359,8 +277,6 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             self._storage = Heap.Storage.create()
             unsafe (self._cachedPtr = _storage._elementsPointer)
         }
-
-        // Note: No deinit needed - Storage handles cleanup
     }
 
     // MARK: - Ordering Typealias
@@ -429,47 +345,3 @@ extension Heap.Small {
     public typealias Error = __Heap.Small.Error
 }
 
-// MARK: - Copy-on-Write Storage Extensions (Copyable elements only)
-
-extension Heap.Storage where Element: Copyable {
-    /// Copies all elements to new storage (for CoW).
-    @usableFromInline
-    package func copy(to newStorage: Heap.Storage, count: Heap.Index.Count) {
-        guard count > .zero else { return }
-        _ = unsafe withUnsafeMutablePointerToElements { old in
-            unsafe newStorage.withUnsafeMutablePointerToElements { new in
-                (0..<count).forEach { index in
-                    unsafe (new + index).initialize(to: old[index])
-                }
-            }
-        }
-    }
-
-    /// Reads element at the given index.
-    @usableFromInline
-    package func read(at index: Heap.Index) -> Element {
-        unsafe withUnsafeMutablePointerToElements { elements in
-            unsafe elements[index]
-        }
-    }
-
-    /// Writes element at the given index (assumes already initialized).
-    @usableFromInline
-    package func write(_ element: Element, at index: Heap.Index) {
-        unsafe withUnsafeMutablePointerToElements { elements in
-            unsafe (elements + index).pointee = element
-        }
-    }
-
-    /// Swaps elements at two indices.
-    @usableFromInline
-    package func swap(at i: Heap.Index, _ j: Heap.Index) {
-        unsafe withUnsafeMutablePointerToElements { elements in
-            let ptrI = unsafe elements + i
-            let ptrJ = unsafe elements + j
-            let temp = unsafe ptrI.pointee
-            unsafe (ptrI.pointee = ptrJ.pointee)
-            unsafe (ptrJ.pointee = temp)
-        }
-    }
-}

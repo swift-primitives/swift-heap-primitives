@@ -45,7 +45,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         internal let _count: Index.Count
 
         @inlinable
-        internal init(_count: Index.Count) {
+        package init(_count: Index.Count) {
             self._count = _count
         }
 
@@ -114,50 +114,6 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Fixed Navigate Accessor
 
-extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// Index of the root element, or `nil` if the heap is empty.
-    @inlinable
-    public var root: Heap.Index? {
-        isEmpty ? nil : .zero
-    }
 
-    /// Navigation accessor for index operations.
-    @inlinable
-    public var navigate: Heap.Navigate {
-        Heap.Navigate(_count: count)
-    }
-}
 
-// MARK: - Static Navigate Accessor
-
-extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
-    /// Index of the root element, or `nil` if the heap is empty.
-    @inlinable
-    public var root: Heap.Index? {
-        isEmpty ? nil : .zero
-    }
-
-    /// Navigation accessor for index operations.
-    @inlinable
-    public var navigate: Heap.Navigate {
-        Heap.Navigate(_count: count)
-    }
-}
-
-// MARK: - Small Navigate Accessor
-
-extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
-    /// Index of the root element, or `nil` if the heap is empty.
-    @inlinable
-    public var root: Heap.Index? {
-        isEmpty ? nil : .zero
-    }
-
-    /// Navigation accessor for index operations.
-    @inlinable
-    public var navigate: Heap.Navigate {
-        Heap.Navigate(_count: count)
-    }
-}

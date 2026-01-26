@@ -36,7 +36,7 @@ extension Heap.MinMax {
         /// - Parameter capacity: Maximum number of elements.
         /// - Throws: Error if capacity is negative.
         @inlinable
-        public init(capacity: Int) throws(__Heap.Fixed.Error) {
+        public init(capacity: Int) throws(Heap.Fixed.Error) {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }

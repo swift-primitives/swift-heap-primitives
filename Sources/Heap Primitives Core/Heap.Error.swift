@@ -91,32 +91,6 @@ public enum __Heap {
             case empty
         }
     }
-
-    // MARK: - Backward Compatibility
-
-    /// Backward compatibility namespace for existing code using `__Heap.Binary.*`
-    public enum Binary {
-        /// Backward compatibility alias.
-        public typealias Error = __Heap.Error
-
-        /// Backward compatibility namespace.
-        public enum Fixed {
-            /// Backward compatibility alias.
-            public typealias Error = __Heap.Fixed.Error
-        }
-
-        /// Backward compatibility namespace.
-        public enum Static {
-            /// Backward compatibility alias.
-            public typealias Error = __Heap.Static.Error
-        }
-
-        /// Backward compatibility namespace.
-        public enum Small {
-            /// Backward compatibility alias.
-            public typealias Error = __Heap.Small.Error
-        }
-    }
 }
 
 // MARK: - Hoisted Error CustomStringConvertible
@@ -150,11 +124,3 @@ extension __Heap.Static.Error: CustomStringConvertible {
     }
 }
 
-extension __Heap.Small.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .empty:
-            return "operation attempted on empty heap"
-        }
-    }
-}

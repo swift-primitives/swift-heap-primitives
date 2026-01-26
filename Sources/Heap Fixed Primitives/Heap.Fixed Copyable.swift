@@ -16,8 +16,8 @@ public import Heap_Primitives_Core
 // Bridge to Swift.Sequence for `for-in` loops and stdlib algorithms.
 // Separate module to avoid constraint poisoning on Core types.
 
-extension Heap.Fixed: Swift.Sequence where Element: Copyable {
-    /// Returns the count as the underestimated count since we know the exact size.
-    @inlinable
-    public var underestimatedCount: Int { _storage.header }
-}
+//extension Heap.Fixed: Swift.Sequence where Element: Copyable {
+//    /// Returns the count as the underestimated count since we know the exact size.
+//    @inlinable
+//    public var underestimatedCount: Int { _storage.header }
+//}
