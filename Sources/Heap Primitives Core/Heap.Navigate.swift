@@ -125,8 +125,8 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Navigation accessor for index operations.
     @inlinable
-    public var navigate: Heap<Element>.Navigate {
-        Heap<Element>.Navigate(_count: count)
+    public var navigate: Heap.Navigate {
+        Heap.Navigate(_count: count)
     }
 }
 
@@ -141,8 +141,8 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Navigation accessor for index operations.
     @inlinable
-    public var navigate: Heap<Element>.Navigate {
-        Heap<Element>.Navigate(_count: count)
+    public var navigate: Heap.Navigate {
+        Heap.Navigate(_count: count)
     }
 }
 
@@ -157,7 +157,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Navigation accessor for index operations.
     @inlinable
-    public var navigate: Heap<Element>.Navigate {
-        Heap<Element>.Navigate(_count: count)
+    public var navigate: Heap.Navigate {
+        Heap.Navigate(_count: count)
     }
 }

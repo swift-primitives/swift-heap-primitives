@@ -442,8 +442,8 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     public init(
         _ elements: some Swift.Sequence<Element>,
         capacity: Int,
-        order: Heap<Element>.Order = .ascending
-    ) throws(__Heap.Fixed.Error) {
+        order: Heap.Order = .ascending
+    ) throws(Heap.Fixed.Error) {
         guard capacity >= 0 else {
             throw .invalidCapacity
         }

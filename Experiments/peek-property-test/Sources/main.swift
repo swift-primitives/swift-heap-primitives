@@ -11,7 +11,7 @@
 //
 // Migration pattern used:
 //   - Tag: enum Peek {} (added to Extremum namespaces)
-//   - Typealias: uses existing Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>.MinMax>
+//   - Typealias: uses existing Property<Tag> = Property_Primitives.Property<Tag, Heap.MinMax>
 //   - Accessor: var peek: Property<Peek>.Typed<Element> { Property.Typed(self) }
 //   - Extension: on Property_Primitives.Property.Typed with constraints
 //

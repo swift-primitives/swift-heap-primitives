@@ -36,7 +36,7 @@ extension Heap.MinMax {
         /// - Parameter capacity: Maximum number of elements.
         /// - Throws: Error if capacity is negative.
         @inlinable
-        public init(capacity: Int) throws(__Heap.Fixed.Error) {
+        public init(capacity: Int) throws(Heap.Fixed.Error) {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
@@ -184,7 +184,7 @@ extension Heap.MinMax.Static.Push.Outcome: Sendable where Element: Sendable {}
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Property typealias for accessor patterns (~Copyable).
-    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>.MinMax>
+    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap.MinMax>
 }
 
 // MARK: - Remove Accessor
