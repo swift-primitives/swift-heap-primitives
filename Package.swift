@@ -52,6 +52,7 @@ let package = Package(
         .package(path: "../swift-collection-primitives"),
         .package(path: "../swift-input-primitives"),
         .package(path: "../swift-property-primitives"),
+        .package(path: "../swift-sequence-primitives"),
     ],
     targets: [
         // Core: Heap struct (binary min-max heap) + Fixed + Static + Small + Storage + Node + Error
@@ -64,6 +65,7 @@ let package = Package(
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
                 .product(name: "Collection Primitives", package: "swift-collection-primitives"),
                 .product(name: "Input Primitives", package: "swift-input-primitives"),
+                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
             ]
         ),
         // Per-variant modules: Swift.Sequence conformances (Element: Copyable)
@@ -94,6 +96,7 @@ let package = Package(
             dependencies: [
                 "Heap Primitives Core",
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
+                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
             ]
         ),
         // Public: Re-exports all heap modules

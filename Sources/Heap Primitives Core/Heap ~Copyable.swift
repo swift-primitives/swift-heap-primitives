@@ -322,6 +322,10 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
     ///   For sorted iteration, repeatedly call `take`.
     ///
+    /// - Note: For `Copyable` elements, prefer the `.forEach { }` accessor which
+    ///   provides additional operations like `.forEach.consuming { }`.
+    ///   This method directly supports `~Copyable` elements.
+    ///
     /// - Parameter body: A closure that receives a borrowed reference to each element.
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable

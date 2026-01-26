@@ -461,6 +461,10 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     }
 
     /// Calls the given closure for each element in heap order.
+    ///
+    /// - Note: For `Copyable` elements, prefer the `.forEach { }` accessor which
+    ///   provides additional operations like `.forEach.consuming { }`.
+    ///   This method directly supports `~Copyable` elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
         let ptr = unsafe _cachedPtr
