@@ -28,32 +28,6 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Index Navigation
-
-extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
-    /// Returns the index of the parent of the element at the given index.
-    @inlinable
-    package func parentIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        guard index.position > 0 else { return nil }
-        return try? Heap<Element>.Index((index.position.rawValue - 1) / 2)
-    }
-
-    /// Returns the index of the left child of the element at the given index.
-    @inlinable
-    package func leftChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 1
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-
-    /// Returns the index of the right child of the element at the given index.
-    @inlinable
-    package func rightChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 2
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-}
 
 // MARK: - Internal Pointer Access
 
@@ -138,10 +112,11 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func bubbleUp(_ index: Heap<Element>.Index) {
         var current = index
+        let nav = navigate
 
         switch order {
         case .ascending:
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 if unsafe readPointer(at: current).pointee < readPointer(at: parent).pointee {
                     swapElements(at: current, parent)
                     current = parent
@@ -150,7 +125,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
                 }
             }
         case .descending:
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 if unsafe readPointer(at: parent).pointee < readPointer(at: current).pointee {
                     swapElements(at: current, parent)
                     current = parent
@@ -169,16 +144,17 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
         var current = startIndex
+        let nav = navigate
 
         switch order {
         case .ascending:
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
                 if unsafe readPointer(at: leftChild).pointee < readPointer(at: smallest).pointee {
                     smallest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe readPointer(at: rightChild).pointee < readPointer(at: smallest).pointee {
                         smallest = rightChild
                     }
@@ -191,13 +167,13 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
             }
 
         case .descending:
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
                 if unsafe readPointer(at: largest).pointee < readPointer(at: leftChild).pointee {
                     largest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe readPointer(at: largest).pointee < readPointer(at: rightChild).pointee {
                         largest = rightChild
                     }

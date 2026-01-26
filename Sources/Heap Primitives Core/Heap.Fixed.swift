@@ -27,32 +27,6 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     public var isFull: Bool { _storage.header == capacity }
 }
 
-// MARK: - Index Navigation
-
-extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// Returns the index of the parent of the element at the given index.
-    @inlinable
-    package func parentIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        guard index.position > 0 else { return nil }
-        return try? Heap<Element>.Index((index.position.rawValue - 1) / 2)
-    }
-
-    /// Returns the index of the left child of the element at the given index.
-    @inlinable
-    package func leftChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 1
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-
-    /// Returns the index of the right child of the element at the given index.
-    @inlinable
-    package func rightChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 2
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-}
 
 // MARK: - Internal Heap Operations
 
@@ -102,10 +76,11 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func bubbleUp(_ index: Heap<Element>.Index) {
         var current = index
         let ptr = unsafe _cachedPtr
+        let nav = navigate
 
         switch order {
         case .ascending:
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 if unsafe ptr[current] < ptr[parent] {
                     swapElements(at: current, parent)
                     current = parent
@@ -114,7 +89,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
                 }
             }
         case .descending:
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 if unsafe ptr[parent] < ptr[current] {
                     swapElements(at: current, parent)
                     current = parent
@@ -134,16 +109,17 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
         var current = startIndex
         let ptr = unsafe _cachedPtr
+        let nav = navigate
 
         switch order {
         case .ascending:
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
                 if unsafe ptr[leftChild] < ptr[smallest] {
                     smallest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe ptr[rightChild] < ptr[smallest] {
                         smallest = rightChild
                     }
@@ -156,13 +132,13 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             }
 
         case .descending:
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
                 if unsafe ptr[largest] < ptr[leftChild] {
                     largest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe ptr[largest] < ptr[rightChild] {
                         largest = rightChild
                     }
@@ -285,21 +261,6 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Index Operations
-
-extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// Returns the index of the root element, or nil if the heap is empty.
-    @inlinable
-    public func rootIndex() -> Heap<Element>.Index? {
-        isEmpty ? nil : .zero
-    }
-
-    /// Returns whether the given index represents a valid position in the heap.
-    @inlinable
-    public func isValid(_ index: Heap<Element>.Index) -> Bool {
-        index >= .zero && index < count
-    }
-}
 
 // MARK: - Copy-on-Write (Copyable elements only)
 
@@ -380,7 +341,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Returns the element at the given typed index, or nil if out of bounds.
     @inlinable
     public func element(at index: Heap<Element>.Index) -> Element? {
-        guard isValid(index) else { return nil }
+        guard navigate.isValid(index) else { return nil }
         return _storage.read(at: index)
     }
 }

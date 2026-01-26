@@ -23,32 +23,6 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     public var isFull: Bool { count.rawValue == capacity }
 }
 
-// MARK: - Index Navigation
-
-extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
-    /// Returns the index of the parent of the element at the given index.
-    @inlinable
-    package func parentIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        guard index.position > 0 else { return nil }
-        return try? Heap<Element>.Index((index.position.rawValue - 1) / 2)
-    }
-
-    /// Returns the index of the left child of the element at the given index.
-    @inlinable
-    package func leftChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 1
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-
-    /// Returns the index of the right child of the element at the given index.
-    @inlinable
-    package func rightChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 2
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-}
 
 // MARK: - Internal Heap Operations
 
@@ -98,10 +72,11 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func bubbleUp(_ index: Heap<Element>.Index) {
         var current = index
+        let nav = navigate
 
         switch order {
         case .ascending:
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 if unsafe inline.read(at: current).pointee < inline.read(at: parent).pointee {
                     swapElements(at: current, parent)
                     current = parent
@@ -110,7 +85,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
                 }
             }
         case .descending:
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 if unsafe inline.read(at: parent).pointee < inline.read(at: current).pointee {
                     swapElements(at: current, parent)
                     current = parent
@@ -129,16 +104,17 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
         var current = startIndex
+        let nav = navigate
 
         switch order {
         case .ascending:
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
                 if unsafe inline.read(at: leftChild).pointee < inline.read(at: smallest).pointee {
                     smallest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe inline.read(at: rightChild).pointee < inline.read(at: smallest).pointee {
                         smallest = rightChild
                     }
@@ -151,13 +127,13 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
             }
 
         case .descending:
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
                 if unsafe inline.read(at: largest).pointee < inline.read(at: leftChild).pointee {
                     largest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe inline.read(at: largest).pointee < inline.read(at: rightChild).pointee {
                         largest = rightChild
                     }
@@ -274,21 +250,6 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Index Operations
-
-extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
-    /// Returns the index of the root element, or nil if the heap is empty.
-    @inlinable
-    public func rootIndex() -> Heap<Element>.Index? {
-        isEmpty ? nil : .zero
-    }
-
-    /// Returns whether the given index represents a valid position in the heap.
-    @inlinable
-    public func isValid(_ index: Heap<Element>.Index) -> Bool {
-        index >= .zero && index.position.rawValue < count.rawValue
-    }
-}
 
 // MARK: - Peek (Copyable elements)
 

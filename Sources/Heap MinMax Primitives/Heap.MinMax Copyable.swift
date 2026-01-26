@@ -57,67 +57,6 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Peek/Pop/Take Methods
-
-extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
-    /// Returns the minimum element without removing it.
-    @inlinable
-    public func peekMin() -> Element? {
-        guard !isEmpty else { return nil }
-        return _storage.read(at: .zero)
-    }
-
-    /// Returns the maximum element without removing it.
-    @inlinable
-    public func peekMax() -> Element? {
-        guard !isEmpty else { return nil }
-        if count == 1 { return _storage.read(at: .zero) }
-        if count == 2 {
-            let index = Heap<Element>.Index(__unchecked: (), position: 1)
-            return _storage.read(at: index)
-        }
-
-        let idx1 = Heap<Element>.Index(__unchecked: (), position: 1)
-        let idx2 = Heap<Element>.Index(__unchecked: (), position: 2)
-        let e1 = _storage.read(at: idx1)
-        let e2 = _storage.read(at: idx2)
-        return e1 < e2 ? e2 : e1
-    }
-
-    /// Removes and returns the minimum element.
-    @inlinable
-    public mutating func popMin() throws(Error) -> Element {
-        makeUnique()
-        guard let element = removeMin() else {
-            throw .empty
-        }
-        return element
-    }
-
-    /// Removes and returns the maximum element.
-    @inlinable
-    public mutating func popMax() throws(Error) -> Element {
-        makeUnique()
-        guard let element = removeMax() else {
-            throw .empty
-        }
-        return element
-    }
-
-    /// Removes and returns the minimum element, or nil if empty.
-    @inlinable
-    public mutating func takeMin() -> Element? {
-        makeUnique()
-        return removeMin()
-    }
-
-    /// Removes and returns the maximum element, or nil if empty.
-    @inlinable
-    public mutating func takeMax() -> Element? {
-        makeUnique()
-        return removeMax()
-    }
-}
 
 // MARK: - Equatable (Copyable only)
 

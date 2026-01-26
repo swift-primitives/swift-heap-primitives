@@ -121,7 +121,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// - Returns: The element at the index, or `nil` if out of bounds.
     @inlinable
     public func element(at index: Heap<Element>.Index) -> Element? {
-        guard isValid(index) else { return nil }
+        guard navigate.isValid(index) else { return nil }
         return _storage.read(at: index)
     }
 }

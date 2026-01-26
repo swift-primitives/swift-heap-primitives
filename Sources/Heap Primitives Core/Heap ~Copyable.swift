@@ -117,11 +117,12 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func bubbleUp(_ index: Heap<Element>.Index) {
         var current = index
         let ptr = unsafe _cachedPtr
+        let nav = navigate
 
         switch order {
         case .ascending:
             // Min-heap: bubble up while element < parent
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 // If current < parent, swap
                 if unsafe ptr[current] < ptr[parent] {
                     swapElements(at: current, parent)
@@ -132,7 +133,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             }
         case .descending:
             // Max-heap: bubble up while element > parent
-            while let parent = parentIndex(of: current) {
+            while let parent = nav.parent(of: current) {
                 // If current > parent (parent < current), swap
                 if unsafe ptr[parent] < ptr[current] {
                     swapElements(at: current, parent)
@@ -156,18 +157,19 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
         var current = startIndex
         let ptr = unsafe _cachedPtr
+        let nav = navigate
 
         switch order {
         case .ascending:
             // Min-heap: trickle down, swapping with smaller child
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
                 // Find smallest among current and children
                 if unsafe ptr[leftChild] < ptr[smallest] {
                     smallest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe ptr[rightChild] < ptr[smallest] {
                         smallest = rightChild
                     }
@@ -181,7 +183,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 
         case .descending:
             // Max-heap: trickle down, swapping with larger child
-            while let leftChild = leftChildIndex(of: current) {
+            while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
                 // Find largest among current and children
@@ -189,7 +191,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
                 if unsafe ptr[largest] < ptr[leftChild] {
                     largest = leftChild
                 }
-                if let rightChild = rightChildIndex(of: current) {
+                if let rightChild = nav.child(.right, of: current) {
                     if unsafe ptr[largest] < ptr[rightChild] {
                         largest = rightChild
                     }
@@ -284,55 +286,3 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Index Operations
-
-extension Heap where Element: ~Copyable & Comparison.`Protocol` {
-    /// Returns the index of the root element, or nil if the heap is empty.
-    ///
-    /// - Returns: Index of root element (position 0), or `nil` if empty.
-    @inlinable
-    public func rootIndex() -> Heap<Element>.Index? {
-        isEmpty ? nil : .zero
-    }
-
-    /// Returns the index of the parent of the element at the given index.
-    ///
-    /// - Parameter index: The index of the child element.
-    /// - Returns: Index of the parent, or `nil` if the index is the root.
-    @inlinable
-    public func parentIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        guard index.position > 0 else { return nil }
-        return try? Heap<Element>.Index((index.position.rawValue - 1) / 2)
-    }
-
-    /// Returns the index of the left child of the element at the given index.
-    ///
-    /// - Parameter index: The index of the parent element.
-    /// - Returns: Index of the left child, or `nil` if no left child exists.
-    @inlinable
-    public func leftChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 1
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-
-    /// Returns the index of the right child of the element at the given index.
-    ///
-    /// - Parameter index: The index of the parent element.
-    /// - Returns: Index of the right child, or `nil` if no right child exists.
-    @inlinable
-    public func rightChildIndex(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
-        let childPosition = 2 * index.position.rawValue + 2
-        guard childPosition < count.rawValue else { return nil }
-        return try? Heap<Element>.Index(childPosition)
-    }
-
-    /// Returns whether the given index represents a valid position in the heap.
-    ///
-    /// - Parameter index: The index to validate.
-    /// - Returns: `true` if the index is within bounds.
-    @inlinable
-    public func isValid(_ index: Heap<Element>.Index) -> Bool {
-        index >= .zero && index < count
-    }
-}

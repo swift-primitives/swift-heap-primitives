@@ -112,23 +112,23 @@ struct HeapMinMaxTests {
     func minMaxHeapOrdering() throws {
         var heap: Heap<Int>.MinMax = [5, 3, 7, 1, 9]
 
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMax() == 9)
+        #expect(heap.peek.min == 1)
+        #expect(heap.peek.max == 9)
 
-        #expect(try heap.popMin() == 1)
-        #expect(try heap.popMax() == 9)
-        #expect(heap.peekMin() == 3)
-        #expect(heap.peekMax() == 7)
+        #expect(try heap.min.pop() == 1)
+        #expect(try heap.max.pop() == 9)
+        #expect(heap.peek.min == 3)
+        #expect(heap.peek.max == 7)
     }
 
     @Test("Pop min in order")
     func popMinInOrder() throws {
         var heap: Heap<Int>.MinMax = [5, 3, 7, 1]
 
-        #expect(try heap.popMin() == 1)
-        #expect(try heap.popMin() == 3)
-        #expect(try heap.popMin() == 5)
-        #expect(try heap.popMin() == 7)
+        #expect(try heap.min.pop() == 1)
+        #expect(try heap.min.pop() == 3)
+        #expect(try heap.min.pop() == 5)
+        #expect(try heap.min.pop() == 7)
         #expect(heap.isEmpty == true)
     }
 
@@ -136,10 +136,10 @@ struct HeapMinMaxTests {
     func popMaxInOrder() throws {
         var heap: Heap<Int>.MinMax = [5, 3, 7, 1]
 
-        #expect(try heap.popMax() == 7)
-        #expect(try heap.popMax() == 5)
-        #expect(try heap.popMax() == 3)
-        #expect(try heap.popMax() == 1)
+        #expect(try heap.max.pop() == 7)
+        #expect(try heap.max.pop() == 5)
+        #expect(try heap.max.pop() == 3)
+        #expect(try heap.max.pop() == 1)
         #expect(heap.isEmpty == true)
     }
 
@@ -147,10 +147,10 @@ struct HeapMinMaxTests {
     func peekDoesNotRemove() {
         let heap: Heap<Int>.MinMax = [3, 1, 2]
 
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMin() == 1)
-        #expect(heap.peekMax() == 3)
-        #expect(heap.peekMax() == 3)
+        #expect(heap.peek.min == 1)
+        #expect(heap.peek.min == 1)
+        #expect(heap.peek.max == 3)
+        #expect(heap.peek.max == 3)
         #expect(heap.count == 3)
     }
 
@@ -158,10 +158,10 @@ struct HeapMinMaxTests {
     func emptyHeap() {
         var heap = Heap<Int>.MinMax()
         #expect(heap.isEmpty == true)
-        #expect(heap.peekMin() == nil)
-        #expect(heap.peekMax() == nil)
-        #expect(heap.takeMin() == nil)
-        #expect(heap.takeMax() == nil)
+        #expect(heap.peek.min == nil)
+        #expect(heap.peek.max == nil)
+        #expect(heap.min.take == nil)
+        #expect(heap.max.take == nil)
     }
 
     @Test("Single element")
@@ -169,9 +169,9 @@ struct HeapMinMaxTests {
         var heap: Heap<Int>.MinMax = [42]
         #expect(heap.isEmpty == false)
         #expect(heap.count == 1)
-        #expect(heap.peekMin() == 42)
-        #expect(heap.peekMax() == 42)
-        #expect(try heap.popMin() == 42)
+        #expect(heap.peek.min == 42)
+        #expect(heap.peek.max == 42)
+        #expect(try heap.min.pop() == 42)
         #expect(heap.isEmpty == true)
     }
 
@@ -179,21 +179,21 @@ struct HeapMinMaxTests {
     func duplicateElements() {
         var heap: Heap<Int>.MinMax = [5, 5, 5]
 
-        #expect(heap.takeMin() == 5)
-        #expect(heap.takeMin() == 5)
-        #expect(heap.takeMin() == 5)
-        #expect(heap.takeMin() == nil)
+        #expect(heap.min.take == 5)
+        #expect(heap.min.take == 5)
+        #expect(heap.min.take == 5)
+        #expect(heap.min.take == nil)
     }
 
     @Test("Alternating min/max pops")
     func alternatingPops() throws {
         var heap: Heap<Int>.MinMax = [1, 2, 3, 4, 5]
 
-        #expect(try heap.popMin() == 1)
-        #expect(try heap.popMax() == 5)
-        #expect(try heap.popMin() == 2)
-        #expect(try heap.popMax() == 4)
-        #expect(try heap.popMin() == 3)
+        #expect(try heap.min.pop() == 1)
+        #expect(try heap.max.pop() == 5)
+        #expect(try heap.min.pop() == 2)
+        #expect(try heap.max.pop() == 4)
+        #expect(try heap.min.pop() == 3)
         #expect(heap.isEmpty == true)
     }
 }
