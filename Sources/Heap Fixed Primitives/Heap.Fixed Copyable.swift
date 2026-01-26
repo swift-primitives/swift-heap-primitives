@@ -17,6 +17,10 @@ public import Heap_Primitives_Core
 // Separate module to avoid constraint poisoning on Core types.
 
 extension Heap.Fixed: Swift.Sequence where Element: Copyable {
+    // Note: Unlike Heap.Iterator and Heap.MinMax.Iterator, this iterator computes
+    // `_storage.count` on each iteration instead of caching `_end`. Adding an `_end`
+    // field causes cross-module struct initialization issues. Semantically correct
+    // but slightly less optimal.
     public struct Iterator: IteratorProtocol {
         @usableFromInline
         let _storage: Heap<Element>.Storage
