@@ -48,7 +48,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 
         // Growth factor 2.0, minimum capacity 4
         let newCapacity = Swift.max(minimumCapacity.rawValue, _storage.capacity * 2, 4)
-        let newStorage = Heap<Element>.Storage.create(minimumCapacity: newCapacity)
+        let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
         let currentCount = _storage.count
 
         _storage.move(to: newStorage, count: currentCount)
@@ -266,7 +266,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         _storage.header = 0
 
         if !keepingCapacity {
-            _storage = Heap<Element>.Storage.create()
+            _storage = Heap.Storage.create()
             unsafe (_cachedPtr = _storage._elementsPointer)
         }
     }
@@ -315,7 +315,7 @@ where Tag == Heap<Element>.Remove,
         unsafe base.pointee._storage.header = 0
 
         if !keepingCapacity {
-            unsafe base.pointee._storage = Heap<Element>.Storage.create()
+            unsafe base.pointee._storage = Heap.Storage.create()
             unsafe (base.pointee._cachedPtr = base.pointee._storage._elementsPointer)
         }
     }

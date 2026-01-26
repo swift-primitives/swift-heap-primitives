@@ -24,7 +24,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public init(_ elements: some Swift.Sequence<Element>, order: Order = .ascending) {
         self.order = order
-        self._storage = Heap<Element>.Storage.create()
+        self._storage = Heap.Storage.create()
         unsafe (self._cachedPtr = _storage._elementsPointer)
 
         for element in elements {
@@ -44,7 +44,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
-            let newStorage = Heap<Element>.Storage.create(minimumCapacity: _storage.capacity)
+            let newStorage = Heap.Storage.create(minimumCapacity: _storage.capacity)
             let currentCount = _storage.count
             _storage.copy(to: newStorage, count: currentCount)
             newStorage.header = currentCount.rawValue
@@ -226,7 +226,7 @@ extension Heap: Swift.Sequence where Element: Copyable {
 
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _storage: Heap<Element>.Storage
+        let _storage: Heap.Storage
 
         @usableFromInline
         let _end: Heap<Element>.Index.Count
@@ -235,7 +235,7 @@ extension Heap: Swift.Sequence where Element: Copyable {
         var _index: Heap<Element>.Index = .zero
 
         @usableFromInline
-        init(_storage: Heap<Element>.Storage) {
+        init(_storage: Heap.Storage) {
             self._storage = _storage
             self._end = _storage.count
         }

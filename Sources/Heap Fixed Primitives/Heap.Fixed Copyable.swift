@@ -23,13 +23,13 @@ extension Heap.Fixed: Swift.Sequence where Element: Copyable {
     // but slightly less optimal.
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _storage: Heap<Element>.Storage
+        let _storage: Heap.Storage
 
         @usableFromInline
-        var _index: Heap<Element>.Index = .zero
+        var _index: Heap.Index = .zero
 
         @usableFromInline
-        init(_storage: Heap<Element>.Storage) {
+        init(_storage: Heap.Storage) {
             self._storage = _storage
         }
 

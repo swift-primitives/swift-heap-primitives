@@ -33,7 +33,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         guard _storage.capacity < minimumCapacity.rawValue else { return }
 
         let newCapacity = Swift.max(minimumCapacity.rawValue, _storage.capacity * 2, 4)
-        let newStorage = Heap<Element>.Storage.create(minimumCapacity: newCapacity)
+        let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
         let currentCount = _storage.count
 
         _storage.move(to: newStorage, count: currentCount)
@@ -448,7 +448,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         _storage.header = 0
 
         if !keepingCapacity {
-            _storage = Heap<Element>.Storage.create()
+            _storage = Heap.Storage.create()
             unsafe (_cachedPtr = _storage._elementsPointer)
         }
     }

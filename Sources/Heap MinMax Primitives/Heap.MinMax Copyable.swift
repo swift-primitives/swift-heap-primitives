@@ -36,7 +36,7 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
-            let newStorage = Heap<Element>.Storage.create(minimumCapacity: _storage.capacity)
+            let newStorage = Heap.Storage.create(minimumCapacity: _storage.capacity)
             let currentCount = _storage.count
             _storage.copy(to: newStorage, count: currentCount)
             newStorage.header = currentCount.rawValue
@@ -111,7 +111,7 @@ extension Heap.MinMax: Swift.Sequence where Element: Copyable {
 
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _storage: Heap<Element>.Storage
+        let _storage: Heap.Storage
 
         @usableFromInline
         let _end: Heap<Element>.Index.Count
@@ -120,7 +120,7 @@ extension Heap.MinMax: Swift.Sequence where Element: Copyable {
         var _index: Heap<Element>.Index = .zero
 
         @usableFromInline
-        init(_storage: Heap<Element>.Storage) {
+        init(_storage: Heap.Storage) {
             self._storage = _storage
             self._end = _storage.count
         }

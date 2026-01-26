@@ -169,7 +169,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Precondition: Heap storage must have sufficient capacity.
     /// - Postcondition: Elements are moved to heap, inline slots are deinitialized.
     @usableFromInline
-    package mutating func move(to heapStorage: Heap<Element>.Storage, count: Heap<Element>.Index.Count) {
+    package mutating func move(to heapStorage: Heap.Storage, count: Heap<Element>.Index.Count) {
         guard count > .zero else { return }
         let stride = MemoryLayout<Element>.stride
         unsafe Swift.withUnsafePointer(to: raw) { rawPointer in
@@ -195,7 +195,7 @@ extension Heap.Storage.Inline where Element: Copyable {
     /// - Precondition: Elements at indices 0..<count must be initialized.
     /// - Precondition: Heap storage must have sufficient capacity.
     @usableFromInline
-    package func copy(to heapStorage: Heap<Element>.Storage, count: Heap<Element>.Index.Count) {
+    package func copy(to heapStorage: Heap.Storage, count: Heap<Element>.Index.Count) {
         guard count > .zero else { return }
         let stride = MemoryLayout<Element>.stride
         unsafe Swift.withUnsafePointer(to: raw) { rawPointer in

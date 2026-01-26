@@ -296,7 +296,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         }
 
         let newCapacity = Swift.max(minimumCapacity, oldStorage.capacity * 2)
-        let newStorage = Heap<Element>.Storage.create(minimumCapacity: newCapacity)
+        let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
 
         oldStorage.move(to: newStorage, count: count)
         newStorage.header = count.rawValue

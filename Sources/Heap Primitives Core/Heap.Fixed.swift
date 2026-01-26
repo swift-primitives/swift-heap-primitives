@@ -327,7 +327,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
-            let newStorage = Heap<Element>.Storage.create(minimumCapacity: capacity)
+            let newStorage = Heap.Storage.create(minimumCapacity: capacity)
             let currentCount = _storage.count
             _storage.copy(to: newStorage, count: currentCount)
             newStorage.header = currentCount.rawValue
@@ -448,7 +448,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
             throw .invalidCapacity
         }
 
-        self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
+        self._storage = Heap.Storage.create(minimumCapacity: capacity)
         unsafe self._cachedPtr = _storage._elementsPointer
         self.capacity = capacity
         self.order = order

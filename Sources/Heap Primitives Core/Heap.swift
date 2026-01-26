@@ -241,7 +241,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     public struct Static<let capacity: Int>: ~Copyable {
         /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap<Element>.Storage.Inline<capacity>
+        package var inline: Heap.Storage.Inline<capacity>
 
         /// Current element count.
         public var count: Heap<Element>.Index.Count
@@ -258,7 +258,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
         @inlinable
         public init(order: Order = .ascending) {
-            self.inline = Heap<Element>.Storage.Inline<capacity>()
+            self.inline = Heap.Storage.Inline<capacity>()
             self.count = .zero
             self.order = order
         }
@@ -291,7 +291,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     public struct Small<let inlineCapacity: Int>: ~Copyable {
         /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap<Element>.Storage.Inline<inlineCapacity>
+        package var inline: Heap.Storage.Inline<inlineCapacity>
 
         /// Current element count (valid elements in either inline or heap storage).
         public var count: Heap<Element>.Index.Count
@@ -312,7 +312,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
         @inlinable
         public init(order: Order = .ascending) {
-            self.inline = Heap<Element>.Storage.Inline<inlineCapacity>()
+            self.inline = Heap.Storage.Inline<inlineCapacity>()
             self.count = .zero
             self.order = order
             self.heap = nil

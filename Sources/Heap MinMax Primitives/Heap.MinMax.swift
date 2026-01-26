@@ -24,12 +24,12 @@ extension Heap.MinMax {
     @safe
     public struct Fixed: ~Copyable {
         @usableFromInline
-        var _storage: Heap<Element>.Storage
+        var _storage: Heap.Storage
 
         public let capacity: Int
 
         @usableFromInline
-        package var _cachedPtr: Heap<Element>.Pointer
+        package var _cachedPtr: Heap.Pointer
 
         /// Creates an empty fixed-capacity min-max heap.
         ///
@@ -40,7 +40,7 @@ extension Heap.MinMax {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
-            self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
+            self._storage = Heap.Storage.create(minimumCapacity: capacity)
             self.capacity = capacity
             unsafe (self._cachedPtr = _storage._elementsPointer)
         }
@@ -50,7 +50,7 @@ extension Heap.MinMax {
     public struct Static<let capacity: Int>: ~Copyable {
         /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap<Element>.Storage.Inline<capacity>
+        package var inline: Heap.Storage.Inline<capacity>
 
         /// Current element count.
         public var count: Heap<Element>.Index.Count
@@ -62,7 +62,7 @@ extension Heap.MinMax {
         /// Creates an empty inline min-max heap.
         @inlinable
         public init() {
-            self.inline = Heap<Element>.Storage.Inline<capacity>()
+            self.inline = Heap.Storage.Inline<capacity>()
             self.count = .zero
         }
 
@@ -83,14 +83,14 @@ extension Heap.MinMax {
     public struct Small<let inlineCapacity: Int>: ~Copyable {
         /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap<Element>.Storage.Inline<inlineCapacity>
+        package var inline: Heap.Storage.Inline<inlineCapacity>
 
         /// Current element count (valid elements in either inline or heap storage).
         public var count: Heap<Element>.Index.Count
 
         /// Heap storage when spilled. Nil when using inline storage.
         @usableFromInline
-        package var heap: Heap<Element>.Storage?
+        package var heap: Heap.Storage?
 
         /// Cached pointer to heap elements. Only valid when heap is non-nil.
         @usableFromInline
@@ -99,7 +99,7 @@ extension Heap.MinMax {
         /// Creates an empty small min-max heap.
         @inlinable
         public init() {
-            self.inline = Heap<Element>.Storage.Inline<inlineCapacity>()
+            self.inline = Heap.Storage.Inline<inlineCapacity>()
             self.count = .zero
             self.heap = nil
             unsafe self.heapPtr = nil
@@ -125,7 +125,7 @@ extension Heap.MinMax {
             precondition(heap == nil, "Already spilled")
 
             let newCapacity = Swift.max(minimumCapacity, inlineCapacity * 2, 8)
-            let newStorage = Heap<Element>.Storage.create(minimumCapacity: newCapacity)
+            let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
             newStorage.header = count.rawValue
 
             inline.move(to: newStorage, count: count)
@@ -230,7 +230,7 @@ where Tag == Heap<Element>.MinMax.Remove,
         unsafe base.pointee._storage.header = 0
 
         if !keepingCapacity {
-            unsafe base.pointee._storage = Heap<Element>.Storage.create()
+            unsafe base.pointee._storage = Heap.Storage.create()
             unsafe (base.pointee._cachedPtr = base.pointee._storage._elementsPointer)
         }
     }
