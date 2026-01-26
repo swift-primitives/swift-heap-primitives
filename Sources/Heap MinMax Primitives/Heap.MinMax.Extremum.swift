@@ -20,56 +20,14 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Namespace for maximum element operations.
     public enum Max {}
+
+    /// Namespace for peek operations.
+    public enum Peek {}
 }
 
-// MARK: - Peek Accessor (Non-Mutating)
+// MARK: - Peek Accessor (Property.Typed)
 
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
-    /// Accessor for non-mutating peek operations.
-    ///
-    /// A simple struct that provides read-only access to min/max elements
-    /// without requiring a mutating context.
-    public struct PeekAccessor {
-        @usableFromInline
-        internal let _storage: Heap<Element>.Storage
-
-        @inlinable
-        internal init(storage: Heap<Element>.Storage) {
-            self._storage = storage
-        }
-
-        /// The minimum element, or `nil` if the heap is empty.
-        ///
-        /// - Complexity: O(1)
-        @inlinable
-        public var min: Element? {
-            guard _storage.header > 0 else { return nil }
-            return _storage.read(at: .zero)
-        }
-
-        /// The maximum element, or `nil` if the heap is empty.
-        ///
-        /// - Complexity: O(1)
-        @inlinable
-        public var max: Element? {
-            guard _storage.header > 0 else { return nil }
-            let count = _storage.count
-            if count == 1 {
-                return _storage.read(at: .zero)
-            }
-            if count == 2 {
-                let index = Heap<Element>.Index(__unchecked: (), position: 1)
-                return _storage.read(at: index)
-            }
-
-            let idx1 = Heap<Element>.Index(__unchecked: (), position: 1)
-            let idx2 = Heap<Element>.Index(__unchecked: (), position: 2)
-            let e1 = _storage.read(at: idx1)
-            let e2 = _storage.read(at: idx2)
-            return e1 < e2 ? e2 : e1
-        }
-    }
-
     /// Non-mutating accessor for peeking at min/max elements.
     ///
     /// Use this for read-only access:
@@ -81,8 +39,45 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// let largest = heap.peek.max   // 8
     /// ```
     @inlinable
-    public var peek: PeekAccessor {
-        PeekAccessor(storage: _storage)
+    public var peek: Property<Peek>.Typed<Element> {
+        Property_Primitives.Property.Typed(self)
+    }
+}
+
+extension Property_Primitives.Property.Typed
+where Tag == Heap<Element>.MinMax.Peek,
+      Base == Heap<Element>.MinMax,
+      Element: Copyable & Comparison.`Protocol`
+{
+    /// The minimum element, or `nil` if the heap is empty.
+    ///
+    /// - Complexity: O(1)
+    @inlinable
+    public var min: Element? {
+        guard base._storage.header > 0 else { return nil }
+        return base._storage.read(at: .zero)
+    }
+
+    /// The maximum element, or `nil` if the heap is empty.
+    ///
+    /// - Complexity: O(1)
+    @inlinable
+    public var max: Element? {
+        guard base._storage.header > 0 else { return nil }
+        let count = base._storage.count
+        if count == 1 {
+            return base._storage.read(at: .zero)
+        }
+        if count == 2 {
+            let index = Heap<Element>.Index(__unchecked: (), position: 1)
+            return base._storage.read(at: index)
+        }
+
+        let idx1 = Heap<Element>.Index(__unchecked: (), position: 1)
+        let idx2 = Heap<Element>.Index(__unchecked: (), position: 2)
+        let e1 = base._storage.read(at: idx1)
+        let e2 = base._storage.read(at: idx2)
+        return e1 < e2 ? e2 : e1
     }
 }
 
