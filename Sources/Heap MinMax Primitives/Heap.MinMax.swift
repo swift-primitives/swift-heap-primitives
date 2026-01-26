@@ -14,6 +14,7 @@
 // nested types and extensions for the MinMax heap.
 
 public import Heap_Primitives_Core
+public import Property_Primitives
 
 // MARK: - MinMax Nested Types
 
@@ -177,3 +178,10 @@ extension Heap.MinMax.Small {
 // MARK: - Push Outcome Conformances
 
 extension Heap.MinMax.Static.Push.Outcome: Sendable where Element: Sendable {}
+
+// MARK: - Property Typealias
+
+extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
+    /// Property typealias for accessor patterns.
+    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>.MinMax>
+}

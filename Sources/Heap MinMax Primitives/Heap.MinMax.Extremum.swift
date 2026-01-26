@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitives_Core
+public import Property_Primitives
 
 // MARK: - Extremum Namespaces
 
@@ -85,57 +86,9 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Min Accessor (Mutating)
+// MARK: - Min Accessor (Property.View.Typed)
 
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
-    /// Accessor for minimum element operations.
-    ///
-    /// A simple struct that provides access to min operations without
-    /// compound method names.
-    public struct MinAccessor {
-        @usableFromInline
-        internal var _base: UnsafeMutablePointer<Heap<Element>.MinMax>
-
-        @inlinable
-        internal init(_ base: UnsafeMutablePointer<Heap<Element>.MinMax>) {
-            unsafe _base = base
-        }
-
-        /// Returns the minimum element without removing it.
-        ///
-        /// - Returns: The minimum element, or `nil` if the heap is empty.
-        /// - Complexity: O(1)
-        @inlinable
-        public var peek: Element? {
-            guard !(unsafe _base.pointee.isEmpty) else { return nil }
-            return unsafe _base.pointee._storage.read(at: .zero)
-        }
-
-        /// Removes and returns the minimum element.
-        ///
-        /// - Returns: The minimum element.
-        /// - Throws: ``Heap/MinMax/Error/empty`` if the heap is empty.
-        /// - Complexity: O(log n)
-        @inlinable
-        public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-            unsafe _base.pointee.makeUnique()
-            guard let element = unsafe _base.pointee.removeMin() else {
-                throw .empty
-            }
-            return element
-        }
-
-        /// Removes and returns the minimum element, or nil if empty.
-        ///
-        /// - Returns: The minimum element, or `nil` if the heap is empty.
-        /// - Complexity: O(log n)
-        @inlinable
-        public var take: Element? {
-            unsafe _base.pointee.makeUnique()
-            return unsafe _base.pointee.removeMin()
-        }
-    }
-
     /// Accessor for minimum element operations.
     ///
     /// Use this to peek, pop, or take the minimum element:
@@ -147,77 +100,60 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// let removed = try heap.min.pop()  // 1 (removes and returns)
     /// let taken = heap.min.take         // next min or nil
     /// ```
-    public var min: MinAccessor {
-        mutating get {
-            unsafe MinAccessor(&self)
+    public var min: Property<Min>.View.Typed<Element> {
+        mutating _read {
+            yield unsafe Property<Min>.View.Typed(&self)
+        }
+        mutating _modify {
+            var view = unsafe Property<Min>.View.Typed<Element>(&self)
+            yield &view
         }
     }
 }
 
-// MARK: - Max Accessor
-
-extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
-    /// Accessor for maximum element operations.
+extension Property_Primitives.Property.View.Typed
+where Tag == Heap<Element>.MinMax.Min,
+      Base == Heap<Element>.MinMax,
+      Element: Copyable & Comparison.`Protocol`
+{
+    /// Returns the minimum element without removing it.
     ///
-    /// A simple struct that provides access to max operations without
-    /// compound method names.
-    public struct MaxAccessor {
-        @usableFromInline
-        internal var _base: UnsafeMutablePointer<Heap<Element>.MinMax>
-
-        @inlinable
-        internal init(_ base: UnsafeMutablePointer<Heap<Element>.MinMax>) {
-            unsafe _base = base
-        }
-
-        /// Returns the maximum element without removing it.
-        ///
-        /// - Returns: The maximum element, or `nil` if the heap is empty.
-        /// - Complexity: O(1)
-        @inlinable
-        public var peek: Element? {
-            guard !(unsafe _base.pointee.isEmpty) else { return nil }
-            let count = unsafe _base.pointee.count
-            if count == 1 {
-                return unsafe _base.pointee._storage.read(at: .zero)
-            }
-            if count == 2 {
-                let index = Heap<Element>.Index(__unchecked: (), position: 1)
-                return unsafe _base.pointee._storage.read(at: index)
-            }
-
-            let idx1 = Heap<Element>.Index(__unchecked: (), position: 1)
-            let idx2 = Heap<Element>.Index(__unchecked: (), position: 2)
-            let e1 = unsafe _base.pointee._storage.read(at: idx1)
-            let e2 = unsafe _base.pointee._storage.read(at: idx2)
-            return e1 < e2 ? e2 : e1
-        }
-
-        /// Removes and returns the maximum element.
-        ///
-        /// - Returns: The maximum element.
-        /// - Throws: ``Heap/MinMax/Error/empty`` if the heap is empty.
-        /// - Complexity: O(log n)
-        @inlinable
-        public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-            unsafe _base.pointee.makeUnique()
-            guard let element = unsafe _base.pointee.removeMax() else {
-                throw .empty
-            }
-            return element
-        }
-
-        /// Removes and returns the maximum element, or nil if empty.
-        ///
-        /// - Returns: The maximum element, or `nil` if the heap is empty.
-        /// - Complexity: O(log n)
-        @inlinable
-        public var take: Element? {
-            unsafe _base.pointee.makeUnique()
-            return unsafe _base.pointee.removeMax()
-        }
+    /// - Returns: The minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public var peek: Element? {
+        guard !(unsafe base.pointee.isEmpty) else { return nil }
+        return unsafe base.pointee._storage.read(at: .zero)
     }
 
+    /// Removes and returns the minimum element.
+    ///
+    /// - Returns: The minimum element.
+    /// - Throws: ``Heap/MinMax/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
+        unsafe base.pointee.makeUnique()
+        guard let element = unsafe base.pointee.removeMin() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Removes and returns the minimum element, or nil if empty.
+    ///
+    /// - Returns: The minimum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public var take: Element? {
+        unsafe base.pointee.makeUnique()
+        return unsafe base.pointee.removeMin()
+    }
+}
+
+// MARK: - Max Accessor (Property.View.Typed)
+
+extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// Accessor for maximum element operations.
     ///
     /// Use this to peek, pop, or take the maximum element:
@@ -229,9 +165,66 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// let removed = try heap.max.pop()  // 8 (removes and returns)
     /// let taken = heap.max.take         // next max or nil
     /// ```
-    public var max: MaxAccessor {
-        mutating get {
-            unsafe MaxAccessor(&self)
+    public var max: Property<Max>.View.Typed<Element> {
+        mutating _read {
+            yield unsafe Property<Max>.View.Typed(&self)
         }
+        mutating _modify {
+            var view = unsafe Property<Max>.View.Typed<Element>(&self)
+            yield &view
+        }
+    }
+}
+
+extension Property_Primitives.Property.View.Typed
+where Tag == Heap<Element>.MinMax.Max,
+      Base == Heap<Element>.MinMax,
+      Element: Copyable & Comparison.`Protocol`
+{
+    /// Returns the maximum element without removing it.
+    ///
+    /// - Returns: The maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public var peek: Element? {
+        guard !(unsafe base.pointee.isEmpty) else { return nil }
+        let count = unsafe base.pointee.count
+        if count == 1 {
+            return unsafe base.pointee._storage.read(at: .zero)
+        }
+        if count == 2 {
+            let index = Heap<Element>.Index(__unchecked: (), position: 1)
+            return unsafe base.pointee._storage.read(at: index)
+        }
+
+        let idx1 = Heap<Element>.Index(__unchecked: (), position: 1)
+        let idx2 = Heap<Element>.Index(__unchecked: (), position: 2)
+        let e1 = unsafe base.pointee._storage.read(at: idx1)
+        let e2 = unsafe base.pointee._storage.read(at: idx2)
+        return e1 < e2 ? e2 : e1
+    }
+
+    /// Removes and returns the maximum element.
+    ///
+    /// - Returns: The maximum element.
+    /// - Throws: ``Heap/MinMax/Error/empty`` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
+        unsafe base.pointee.makeUnique()
+        guard let element = unsafe base.pointee.removeMax() else {
+            throw .empty
+        }
+        return element
+    }
+
+    /// Removes and returns the maximum element, or nil if empty.
+    ///
+    /// - Returns: The maximum element, or `nil` if the heap is empty.
+    /// - Complexity: O(log n)
+    @inlinable
+    public var take: Element? {
+        unsafe base.pointee.makeUnique()
+        return unsafe base.pointee.removeMax()
     }
 }
