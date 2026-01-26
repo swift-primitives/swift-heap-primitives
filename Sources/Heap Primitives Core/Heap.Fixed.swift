@@ -23,7 +23,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Property typealias for accessor patterns.
-    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>.Fixed>
+    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap.Fixed>
 }
 
 // MARK: - Properties

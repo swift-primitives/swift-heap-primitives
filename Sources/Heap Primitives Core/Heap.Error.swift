@@ -19,10 +19,10 @@
 // limitations with generic nested types.
 //
 // Use the typealias forms in your code:
-// - Heap<Element>.Error
-// - Heap<Element>.Fixed.Error
-// - Heap<Element>.Static.Error
-// - Heap<Element>.Small.Error
+// - Heap.Error
+// - Heap.Fixed.Error
+// - Heap.Static.Error
+// - Heap.Small.Error
 
 /// Hoisted namespace for Heap variant error types.
 ///

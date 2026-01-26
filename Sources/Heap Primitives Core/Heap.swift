@@ -187,7 +187,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     }
 
     // MARK: - Fixed Capacity Heap
-
+    @safe
     public struct Fixed: ~Copyable {
         @usableFromInline
         package var _storage: Heap.Storage
