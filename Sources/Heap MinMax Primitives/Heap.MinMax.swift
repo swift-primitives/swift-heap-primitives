@@ -20,121 +20,6 @@ public import Range_Primitives
 // MARK: - MinMax Nested Types
 
 extension Heap.MinMax {
-    /// Fixed-capacity min-max heap.
-    @safe
-    public struct Fixed: ~Copyable {
-        @usableFromInline
-        var _storage: Heap.Storage
-
-        public let capacity: Int
-
-        @usableFromInline
-        package var _cachedPtr: Heap.Pointer
-
-        /// Creates an empty fixed-capacity min-max heap.
-        ///
-        /// - Parameter capacity: Maximum number of elements.
-        /// - Throws: Error if capacity is negative.
-        @inlinable
-        public init(capacity: Int) throws(Heap.Fixed.Error) {
-            guard capacity >= 0 else {
-                throw .invalidCapacity
-            }
-            self._storage = Heap.Storage.create(minimumCapacity: capacity)
-            self.capacity = capacity
-            unsafe (self._cachedPtr = _storage._elementsPointer)
-        }
-    }
-
-    /// Compile-time capacity min-max heap with inline storage.
-    public struct Static<let capacity: Int>: ~Copyable {
-        /// Inline storage for elements.
-        @usableFromInline
-        package var inline: Heap.Storage.Inline<capacity>
-
-        /// Current element count.
-        public var count: Heap.Index.Count
-
-        /// Workaround for Swift compiler bug.
-        @usableFromInline
-        package var _deinitWorkaround: AnyObject? = nil
-
-        /// Creates an empty inline min-max heap.
-        @inlinable
-        public init() {
-            self.inline = Heap.Storage.Inline<capacity>()
-            self.count = .zero
-        }
-
-        deinit {
-            inline.deinitialize(count: count)
-        }
-
-        public enum Push: ~Copyable {
-            public enum Outcome: ~Copyable {
-                case inserted
-                case overflow(Element)
-            }
-        }
-    }
-
-    /// Min-max heap with small-buffer optimization.
-    @safe
-    public struct Small<let inlineCapacity: Int>: ~Copyable {
-        /// Inline storage for elements.
-        @usableFromInline
-        package var inline: Heap.Storage.Inline<inlineCapacity>
-
-        /// Current element count (valid elements in either inline or heap storage).
-        public var count: Heap.Index.Count
-
-        /// Heap storage when spilled. Nil when using inline storage.
-        @usableFromInline
-        package var heap: Heap.Storage?
-
-        /// Cached pointer to heap elements. Only valid when heap is non-nil.
-        @usableFromInline
-        package var heapPtr: UnsafeMutablePointer<Element>?
-
-        /// Creates an empty small min-max heap.
-        @inlinable
-        public init() {
-            self.inline = Heap.Storage.Inline<inlineCapacity>()
-            self.count = .zero
-            self.heap = nil
-            unsafe self.heapPtr = nil
-        }
-
-        deinit {
-            guard count > .zero else { return }
-
-            if let heapState = heap {
-                heapState.header = count.rawValue
-            } else {
-                inline.deinitialize(count: count)
-            }
-        }
-
-        /// Whether the heap is currently using heap storage.
-        @inlinable
-        public var isSpilled: Bool { heap != nil }
-
-        /// Spills inline storage to heap.
-        @usableFromInline
-        package mutating func spillToHeap(minimumCapacity: Int) {
-            precondition(heap == nil, "Already spilled")
-
-            let newCapacity = Swift.max(minimumCapacity, inlineCapacity * 2, 8)
-            let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
-            newStorage.header = count.rawValue
-
-            inline.move(to: newStorage, count: count)
-
-            heap = newStorage
-            unsafe (heapPtr = newStorage._elementsPointer)
-        }
-    }
-
     /// Which position in the heap to operate on (min or max).
     public enum Position: Sendable, Equatable {
         /// The minimum element.
@@ -176,9 +61,6 @@ extension Heap.MinMax.Small {
     public typealias Error = __Heap.Small.Error
 }
 
-// MARK: - Push Outcome Conformances
-
-extension Heap.MinMax.Static.Push.Outcome: Sendable where Element: Sendable {}
 
 // MARK: - Property Typealias
 

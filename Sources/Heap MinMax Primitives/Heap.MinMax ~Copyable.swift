@@ -12,6 +12,20 @@
 public import Heap_Primitives_Core
 public import Range_Primitives
 
+extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
+    /// Namespace for minimum element operations.
+    public enum Min {}
+
+    /// Namespace for maximum element operations.
+    public enum Max {}
+
+    /// Namespace for peek operations.
+    public enum Peek {}
+
+    /// Namespace for remove operations.
+    public enum Remove {}
+}
+
 // MARK: - Properties
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
