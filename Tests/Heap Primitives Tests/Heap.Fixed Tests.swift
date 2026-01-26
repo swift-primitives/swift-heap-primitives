@@ -27,7 +27,7 @@ struct HeapFixedTests {
 
     @Test("Init with negative capacity throws")
     func initNegativeCapacityThrows() {
-        #expect(throws: __Heap.Fixed.Error.invalidCapacity) {
+        #expect(throws: Heap<Int>.Fixed.Error.invalidCapacity) {
             _ = try Heap<Int>.Fixed(capacity: -1)
         }
     }
@@ -119,7 +119,7 @@ struct HeapFixedTests {
     @Test("Pop throws when empty")
     func popThrowsWhenEmpty() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
-        #expect(throws: __Heap.Fixed.Error.empty) {
+        #expect(throws: Heap<Int>.Fixed.Error.empty) {
             try heap.pop()
         }
     }

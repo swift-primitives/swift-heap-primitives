@@ -178,7 +178,7 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
             _storage.copy(to: newStorage, count: currentCount)
             newStorage.header = currentCount.rawValue
             _storage = newStorage
-            unsafe (_cachedPtr = _storage._elementsPointer)
+            (_cachedPtr = _storage._elementsPointer)
         }
     }
 }

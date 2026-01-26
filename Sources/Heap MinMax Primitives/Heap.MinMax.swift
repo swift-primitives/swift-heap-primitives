@@ -43,23 +43,17 @@ extension Heap.MinMax.Small: @unchecked Sendable where Element: Sendable {}
 
 extension Heap.MinMax {
     /// Errors that can occur during min-max heap operations.
-    public typealias Error = __Heap.Error
+    public typealias Error = Heap.Error
 }
 
 extension Heap.MinMax.Fixed {
     /// Errors that can occur during fixed min-max heap operations.
-    public typealias Error = __Heap.Fixed.Error
+    public typealias Error = Heap.Fixed.Error
 }
 
-extension Heap.MinMax.Static {
-    /// Errors that can occur during static min-max heap operations.
-    public typealias Error = __Heap.Static.Error
-}
-
-extension Heap.MinMax.Small {
-    /// Errors that can occur during small min-max heap operations.
-    public typealias Error = __Heap.Small.Error
-}
+// Note: Heap.MinMax.Static and Heap.MinMax.Small define their own Error enums
+// in their respective struct bodies because they have value generic parameters
+// that would require explicit generic arguments when referencing the base types.
 
 
 // MARK: - Property Typealias

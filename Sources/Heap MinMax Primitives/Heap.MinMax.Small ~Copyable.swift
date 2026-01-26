@@ -25,6 +25,6 @@ extension Heap.MinMax.Small {
         inline.move(to: newStorage, count: count)
 
         heap = newStorage
-        unsafe (heapPtr = newStorage._elementsPointer)
+        (heapPtr = newStorage._elementsPointer)
     }
 }

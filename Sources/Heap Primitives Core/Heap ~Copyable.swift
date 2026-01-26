@@ -11,6 +11,7 @@
 
 public import Range_Primitives
 public import Property_Primitives
+public import Pointer_Primitives
 
 // MARK: - Namespaces
 
@@ -56,7 +57,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         _storage.header = 0  // Prevent double-free
 
         _storage = newStorage
-        unsafe (_cachedPtr = _storage._elementsPointer)  // CRITICAL: Update cached pointer
+        (_cachedPtr = _storage._elementsPointer)  // CRITICAL: Update cached pointer
     }
 
     /// Reserves enough space to store the specified number of elements.
@@ -114,10 +115,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
     package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
-        let ptr = unsafe _cachedPtr
-        let temp = unsafe (ptr + i).move()
-        unsafe (ptr + i).initialize(to: (ptr + j).move())
-        unsafe (ptr + j).initialize(to: temp)
+        _cachedPtr.swapAt(i, j)
     }
 }
 
@@ -131,7 +129,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func bubbleUp(_ index: Heap.Index) {
         var current = index
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         let nav = navigate
 
         switch order {
@@ -139,7 +137,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             // Min-heap: bubble up while element < parent
             while let parent = nav.parent(of: current) {
                 // If current < parent, swap
-                if unsafe ptr[current] < ptr[parent] {
+                if ptr[current] < ptr[parent] {
                     swapElements(at: current, parent)
                     current = parent
                 } else {
@@ -150,7 +148,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             // Max-heap: bubble up while element > parent
             while let parent = nav.parent(of: current) {
                 // If current > parent (parent < current), swap
-                if unsafe ptr[parent] < ptr[current] {
+                if ptr[parent] < ptr[current] {
                     swapElements(at: current, parent)
                     current = parent
                 } else {
@@ -171,7 +169,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func trickleDown(_ startIndex: Heap.Index) {
         var current = startIndex
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         let nav = navigate
 
         switch order {
@@ -181,11 +179,11 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
                 var smallest = current
 
                 // Find smallest among current and children
-                if unsafe ptr[leftChild] < ptr[smallest] {
+                if ptr[leftChild] < ptr[smallest] {
                     smallest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if unsafe ptr[rightChild] < ptr[smallest] {
+                    if ptr[rightChild] < ptr[smallest] {
                         smallest = rightChild
                     }
                 }
@@ -203,11 +201,11 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 
                 // Find largest among current and children
                 // Using < operator: if largest < leftChild, then leftChild is larger
-                if unsafe ptr[largest] < ptr[leftChild] {
+                if ptr[largest] < ptr[leftChild] {
                     largest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if unsafe ptr[largest] < ptr[rightChild] {
+                    if ptr[largest] < ptr[rightChild] {
                         largest = rightChild
                     }
                 }
@@ -314,7 +312,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
         guard count > 0 else { return nil }
-        return body(unsafe _cachedPtr[0])
+        return body( _cachedPtr[0])
     }
 
     /// Calls the given closure for each element in heap order.
@@ -330,9 +328,9 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         (0..<_storage.count).forEach { index in
-            body(unsafe ptr[index])
+            body( ptr[index])
         }
     }
 }

@@ -5,10 +5,18 @@
 //  Created by Coen ten Thije Boonkkamp on 26/01/2026.
 //
 
+public import Pointer_Primitives
+
 extension Heap.MinMax {
     /// Min-max heap with small-buffer optimization.
     @safe
     public struct Small<let inlineCapacity: Int>: ~Copyable {
+        /// Errors that can occur during small min-max heap operations.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+
         /// Inline storage for elements.
         @usableFromInline
         package var inline: Heap.Storage.Inline<inlineCapacity>
@@ -22,7 +30,7 @@ extension Heap.MinMax {
 
         /// Cached pointer to heap elements. Only valid when heap is non-nil.
         @usableFromInline
-        package var heapPtr: UnsafeMutablePointer<Element>?
+        package var heapPtr: Pointer<Element>.Mutable?
 
         /// Creates an empty small min-max heap.
         @inlinable
@@ -30,7 +38,7 @@ extension Heap.MinMax {
             self.inline = Heap.Storage.Inline<inlineCapacity>()
             self.count = .zero
             self.heap = nil
-            unsafe self.heapPtr = nil
+            self.heapPtr = nil
         }
 
         deinit {

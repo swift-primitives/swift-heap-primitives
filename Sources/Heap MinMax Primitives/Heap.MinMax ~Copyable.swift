@@ -11,6 +11,7 @@
 
 public import Heap_Primitives_Core
 public import Range_Primitives
+public import Pointer_Primitives
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for minimum element operations.
@@ -55,7 +56,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         _storage.header = 0
 
         _storage = newStorage
-        unsafe (_cachedPtr = _storage._elementsPointer)
+        (_cachedPtr = _storage._elementsPointer)
     }
 
     /// Reserves enough space to store the specified number of elements.
@@ -110,6 +111,12 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             offset == 0
         }
 
+        /// Typed index for pointer access.
+        @inlinable
+        package var index: Heap.Index {
+            Heap.Index(__unchecked: (), position: offset)
+        }
+
         @inlinable
         package static var root: Self {
             Self(offset: 0, level: 0)
@@ -160,12 +167,6 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         package func firstGrandchild() -> Self {
             Self(offset: offset &* 4 &+ 3, level: level &+ 2)
         }
-
-        /// Converts offset to typed Index.
-        @inlinable
-        package var index: Heap.Index {
-            Heap.Index(__unchecked: (), position: offset)
-        }
     }
 }
 
@@ -209,11 +210,10 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             return _storage.move(at: .zero)
         }
 
-        let lastIndex = _storage.header - 1
-        swapElements(at: 0, lastIndex)
+        let lastNode = Node(offset: _storage.header - 1)
+        swapElements(at: Node.root.index, lastNode.index)
         _storage.header -= 1
-        let lastTypedIndex = Heap.Index(__unchecked: (), position: lastIndex)
-        let removed = _storage.move(at: lastTypedIndex)
+        let removed = _storage.move(at: lastNode.index)
         trickleDownMin(Node.root)
         return removed
     }
@@ -233,29 +233,27 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             return _storage.move(at: index)
         }
 
-        let ptr = unsafe _cachedPtr
-        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
+        let maxNode = _cachedPtr[Node.leftMax.index] < _cachedPtr[Node.rightMax.index]
+            ? Node.rightMax
+            : Node.leftMax
 
-        let lastIndex = _storage.header - 1
-        swapElements(at: maxIndex, lastIndex)
+        let lastOffset = _storage.header - 1
+        let lastNode = Node(offset: lastOffset)
+        swapElements(at: maxNode.index, lastNode.index)
         _storage.header -= 1
-        let lastTypedIndex = Heap.Index(__unchecked: (), position: lastIndex)
-        let removed = _storage.move(at: lastTypedIndex)
+        let removed = _storage.move(at: lastNode.index)
 
-        if maxIndex < _storage.header {
-            trickleDownMax(Node(offset: maxIndex, level: 1))
+        if maxNode.offset < _storage.header {
+            trickleDownMax(maxNode)
         }
 
         return removed
     }
 
-    /// Swaps elements at two node offsets using the cached pointer.
+    /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
-    package mutating func swapElements(at i: Int, _ j: Int) {
-        let ptr = unsafe _cachedPtr
-        let temp = unsafe (ptr + i).move()
-        unsafe (ptr + i).initialize(to: (ptr + j).move())
-        unsafe (ptr + j).initialize(to: temp)
+    package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
+        _cachedPtr.swapAt(i, j)
     }
 }
 
@@ -269,29 +267,27 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         let parent = node.parent()
         var node = node
 
-        let ptr = unsafe _cachedPtr
-
-        let nodeIsLess = unsafe ptr[node.offset] < ptr[parent.offset]
-        let parentIsLess = unsafe ptr[parent.offset] < ptr[node.offset]
+        let nodeIsLess = _cachedPtr[node.index] < _cachedPtr[parent.index]
+        let parentIsLess = _cachedPtr[parent.index] < _cachedPtr[node.index]
 
         if (node.isMinLevel && parentIsLess)
             || (!node.isMinLevel && nodeIsLess) {
-            swapElements(at: node.offset, parent.offset)
+            swapElements(at: node.index, parent.index)
             node = parent
         }
 
         if node.isMinLevel {
             while let grandparent = node.grandParent() {
-                let gpIsLess = unsafe ptr[grandparent.offset] < ptr[node.offset]
+                let gpIsLess = _cachedPtr[grandparent.index] < _cachedPtr[node.index]
                 guard !gpIsLess else { break }
-                swapElements(at: node.offset, grandparent.offset)
+                swapElements(at: node.index, grandparent.index)
                 node = grandparent
             }
         } else {
             while let grandparent = node.grandParent() {
-                let nodeIsLessGp = unsafe ptr[node.offset] < ptr[grandparent.offset]
+                let nodeIsLessGp = _cachedPtr[node.index] < _cachedPtr[grandparent.index]
                 guard !nodeIsLessGp else { break }
-                swapElements(at: node.offset, grandparent.offset)
+                swapElements(at: node.index, grandparent.index)
                 node = grandparent
             }
         }
@@ -305,25 +301,20 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func trickleDownMin(_ startNode: Node) {
         var node = startNode
         let count = _storage.header
-        let ptr = unsafe _cachedPtr
 
         while true {
             let leftChild = node.leftChild()
             if leftChild.offset >= count { break }
 
             var smallest = node
-            var smallestOffset = node.offset
-
             let rightChild = node.rightChild()
 
-            if unsafe ptr[leftChild.offset] < ptr[smallestOffset] {
+            if _cachedPtr[leftChild.index] < _cachedPtr[smallest.index] {
                 smallest = leftChild
-                smallestOffset = leftChild.offset
             }
             if rightChild.offset < count {
-                if unsafe ptr[rightChild.offset] < ptr[smallestOffset] {
+                if _cachedPtr[rightChild.index] < _cachedPtr[smallest.index] {
                     smallest = rightChild
-                    smallestOffset = rightChild.offset
                 }
             }
 
@@ -331,20 +322,20 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             for i in 0..<4 {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
-                if unsafe ptr[gcOffset] < ptr[smallestOffset] {
-                    smallest = Node(offset: gcOffset, level: gc0.level)
-                    smallestOffset = gcOffset
+                let gc = Node(offset: gcOffset, level: gc0.level)
+                if _cachedPtr[gc.index] < _cachedPtr[smallest.index] {
+                    smallest = gc
                 }
             }
 
             if smallest.offset == node.offset { break }
 
-            swapElements(at: node.offset, smallest.offset)
+            swapElements(at: node.index, smallest.index)
 
             if smallest.offset >= gc0.offset {
                 let parent = smallest.parent()
-                if unsafe ptr[parent.offset] < ptr[smallest.offset] {
-                    swapElements(at: smallest.offset, parent.offset)
+                if _cachedPtr[parent.index] < _cachedPtr[smallest.index] {
+                    swapElements(at: smallest.index, parent.index)
                 }
                 node = smallest
             } else {
@@ -361,25 +352,20 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func trickleDownMax(_ startNode: Node) {
         var node = startNode
         let count = _storage.header
-        let ptr = unsafe _cachedPtr
 
         while true {
             let leftChild = node.leftChild()
             if leftChild.offset >= count { break }
 
             var largest = node
-            var largestOffset = node.offset
-
             let rightChild = node.rightChild()
 
-            if unsafe ptr[largestOffset] < ptr[leftChild.offset] {
+            if _cachedPtr[largest.index] < _cachedPtr[leftChild.index] {
                 largest = leftChild
-                largestOffset = leftChild.offset
             }
             if rightChild.offset < count {
-                if unsafe ptr[largestOffset] < ptr[rightChild.offset] {
+                if _cachedPtr[largest.index] < _cachedPtr[rightChild.index] {
                     largest = rightChild
-                    largestOffset = rightChild.offset
                 }
             }
 
@@ -387,20 +373,20 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             for i in 0..<4 {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
-                if unsafe ptr[largestOffset] < ptr[gcOffset] {
-                    largest = Node(offset: gcOffset, level: gc0.level)
-                    largestOffset = gcOffset
+                let gc = Node(offset: gcOffset, level: gc0.level)
+                if _cachedPtr[largest.index] < _cachedPtr[gc.index] {
+                    largest = gc
                 }
             }
 
             if largest.offset == node.offset { break }
 
-            swapElements(at: node.offset, largest.offset)
+            swapElements(at: node.index, largest.index)
 
             if largest.offset >= gc0.offset {
                 let parent = largest.parent()
-                if unsafe ptr[largest.offset] < ptr[parent.offset] {
-                    swapElements(at: largest.offset, parent.offset)
+                if _cachedPtr[largest.index] < _cachedPtr[parent.index] {
+                    swapElements(at: largest.index, parent.index)
                 }
                 node = largest
             } else {
@@ -459,19 +445,20 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
         guard count > 0 else { return nil }
-        return body(unsafe _cachedPtr[0])
+        return body(_cachedPtr[Node.root.index])
     }
 
     /// Provides borrowing access to the maximum element.
     @inlinable
     public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
         guard count > 0 else { return nil }
-        if count == 1 { return body(unsafe _cachedPtr[0]) }
-        if count == 2 { return body(unsafe _cachedPtr[1]) }
+        if count == 1 { return body(_cachedPtr[Node.root.index]) }
+        if count == 2 { return body(_cachedPtr[Node.leftMax.index]) }
 
-        let ptr = unsafe _cachedPtr
-        let maxIndex = unsafe ptr[1] < ptr[2] ? 2 : 1
-        return body(unsafe ptr[maxIndex])
+        let maxNode = _cachedPtr[Node.leftMax.index] < _cachedPtr[Node.rightMax.index]
+            ? Node.rightMax
+            : Node.leftMax
+        return body(_cachedPtr[maxNode.index])
     }
 
     /// Calls the given closure for each element in heap order.
@@ -481,9 +468,8 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     ///   This method directly supports `~Copyable` elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        let ptr = unsafe _cachedPtr
-        (0..<_storage.count).forEach { index in
-            body(unsafe ptr[index])
+        (0..<count).forEach { index in
+            body(_cachedPtr[index])
         }
     }
 }

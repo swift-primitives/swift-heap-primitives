@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 26/01/2026.
 //
 
+public import Pointer_Primitives
+
 extension Heap.MinMax {
     /// Fixed-capacity min-max heap.
     @safe
@@ -15,7 +17,7 @@ extension Heap.MinMax {
         public let capacity: Int
 
         @usableFromInline
-        package var _cachedPtr: Heap.Pointer
+        package var _cachedPtr: Heap.Pointer.Mutable
 
         /// Creates an empty fixed-capacity min-max heap.
         ///
@@ -28,7 +30,7 @@ extension Heap.MinMax {
             }
             self._storage = Heap.Storage.create(minimumCapacity: capacity)
             self.capacity = capacity
-            unsafe (self._cachedPtr = _storage._elementsPointer)
+            self._cachedPtr = _storage._elementsPointer
         }
     }
 }

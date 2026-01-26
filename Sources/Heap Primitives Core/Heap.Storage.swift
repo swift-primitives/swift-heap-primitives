@@ -6,6 +6,7 @@
 //
 
 public import Range_Primitives
+public import Pointer_Primitives
 
 extension Heap.Storage where Element: ~Copyable {
     
@@ -33,8 +34,8 @@ extension Heap.Storage where Element: ~Copyable {
     
     /// Returns pointer to element storage.
     @usableFromInline
-    package var _elementsPointer: UnsafeMutablePointer<Element> {
-        unsafe withUnsafeMutablePointerToElements { unsafe $0 }
+    package var _elementsPointer: Pointer_Primitives.Pointer<Element>.Mutable {
+        unsafe Pointer_Primitives.Pointer<Element>.Mutable(withUnsafeMutablePointerToElements { unsafe $0 })
     }
 
     /// Initializes element at the given index.

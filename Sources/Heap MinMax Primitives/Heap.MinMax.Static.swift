@@ -10,6 +10,12 @@ import Heap_Primitives_Core
 extension Heap.MinMax {
     /// Compile-time capacity min-max heap with inline storage.
     public struct Static<let capacity: Int>: ~Copyable {
+        /// Errors that can occur during static min-max heap operations.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+
         /// Inline storage for elements.
         @usableFromInline
         package var inline: Heap.Storage.Inline<capacity>

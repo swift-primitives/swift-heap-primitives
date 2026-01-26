@@ -11,6 +11,7 @@
 
 public import Property_Primitives
 public import Range_Primitives
+public import Pointer_Primitives
 
 // MARK: - Sequence Init (Copyable only)
 
@@ -25,7 +26,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     public init(_ elements: some Swift.Sequence<Element>, order: Order = .ascending) {
         self.order = order
         self._storage = Heap.Storage.create()
-        unsafe (self._cachedPtr = _storage._elementsPointer)
+        self._cachedPtr = _storage._elementsPointer
 
         for element in elements {
             appendWithoutHeapify(element)
@@ -49,7 +50,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
             _storage.copy(to: newStorage, count: currentCount)
             newStorage.header = currentCount.rawValue
             _storage = newStorage
-            unsafe (_cachedPtr = _storage._elementsPointer)  // CRITICAL: Update cached pointer
+            _cachedPtr = _storage._elementsPointer  // CRITICAL: Update cached pointer
         }
     }
 }

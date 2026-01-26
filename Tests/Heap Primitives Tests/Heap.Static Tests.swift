@@ -109,7 +109,7 @@ struct HeapStaticTests {
     @Test("Pop throws when empty")
     func popThrowsWhenEmpty() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
-        #expect(throws: __Heap.Static.Error.empty) {
+        #expect(throws: Heap<Int>.Static<8>.Error.empty) {
             try heap.pop()
         }
     }

@@ -11,6 +11,7 @@
 
 public import Range_Primitives
 public import Property_Primitives
+public import Pointer_Primitives
 
 // MARK: - Namespaces
 
@@ -76,10 +77,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
     package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
-        let ptr = unsafe _cachedPtr
-        let temp = unsafe (ptr + i).move()
-        unsafe (ptr + i).initialize(to: (ptr + j).move())
-        unsafe (ptr + j).initialize(to: temp)
+        _cachedPtr.swapAt(i, j)
     }
 }
 
@@ -90,13 +88,13 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func bubbleUp(_ index: Heap.Index) {
         var current = index
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         let nav = navigate
 
         switch order {
         case .ascending:
             while let parent = nav.parent(of: current) {
-                if unsafe ptr[current] < ptr[parent] {
+                if ptr[current] < ptr[parent] {
                     swapElements(at: current, parent)
                     current = parent
                 } else {
@@ -105,7 +103,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             }
         case .descending:
             while let parent = nav.parent(of: current) {
-                if unsafe ptr[parent] < ptr[current] {
+                if ptr[parent] < ptr[current] {
                     swapElements(at: current, parent)
                     current = parent
                 } else {
@@ -123,7 +121,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func trickleDown(_ startIndex: Heap.Index) {
         var current = startIndex
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         let nav = navigate
 
         switch order {
@@ -131,11 +129,11 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
-                if unsafe ptr[leftChild] < ptr[smallest] {
+                if ptr[leftChild] < ptr[smallest] {
                     smallest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if unsafe ptr[rightChild] < ptr[smallest] {
+                    if ptr[rightChild] < ptr[smallest] {
                         smallest = rightChild
                     }
                 }
@@ -150,11 +148,11 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
-                if unsafe ptr[largest] < ptr[leftChild] {
+                if ptr[largest] < ptr[leftChild] {
                     largest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if unsafe ptr[largest] < ptr[rightChild] {
+                    if ptr[largest] < ptr[rightChild] {
                         largest = rightChild
                     }
                 }
@@ -224,7 +222,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Throws: ``Fixed/Error/empty`` if the heap is empty.
     /// - Complexity: O(log n)
     @inlinable
-    public mutating func pop() throws(__Heap.Fixed.Error) -> Element {
+    public mutating func pop() throws(Heap.Fixed.Error) -> Element {
         guard let element = removePriority() else {
             throw .empty
         }
@@ -284,8 +282,8 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(1)
     @inlinable
     public func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
-        guard count > 0 else { return nil }
-        return body(unsafe _cachedPtr[0])
+        guard count > .zero else { return nil }
+        return body( _cachedPtr[.zero])
     }
 
     /// Calls the given closure for each element in heap order.
@@ -301,9 +299,9 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        let ptr = unsafe _cachedPtr
+        let ptr = _cachedPtr
         (0..<_storage.count).forEach { index in
-            body(unsafe ptr[index])
+            body( ptr[index])
         }
     }
 }
@@ -321,7 +319,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
             _storage.copy(to: newStorage, count: currentCount)
             newStorage.header = currentCount.rawValue
             _storage = newStorage
-            unsafe (_cachedPtr = _storage._elementsPointer)
+            (_cachedPtr = _storage._elementsPointer)
         }
     }
 
@@ -352,7 +350,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
     /// Pops and returns the priority element (CoW-aware).
     @inlinable
-    public mutating func pop() throws(__Heap.Fixed.Error) -> Element {
+    public mutating func pop() throws(Heap.Fixed.Error) -> Element {
         makeUnique()
         guard let element = removePriority() else {
             throw .empty
@@ -479,11 +477,10 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// A read-only view of the heap's elements in heap order.
     ///
     /// Elements are in heap order, which is **not** sorted order.
+    @inlinable
     public var span: Span<Element> {
-        @_lifetime(borrow self)
-        @inlinable
-        borrowing get {
-            unsafe Span(_unsafeStart: _cachedPtr, count: _storage.header)
+        _read {
+            yield unsafe Span(_unsafeStart: _cachedPtr.base, count: _storage.header)
         }
     }
 
@@ -491,23 +488,29 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     ///
     /// - Warning: Modifying elements may break the heap invariant.
     ///   After modification, you may need to re-heapify.
+    @inlinable
     public var mutableSpan: MutableSpan<Element> {
-        @_lifetime(&self)
-        @inlinable
-        mutating get {
-            unsafe MutableSpan(_unsafeStart: _cachedPtr, count: _storage.header)
+        _read {
+            yield unsafe MutableSpan(_unsafeStart: _cachedPtr.base, count: _storage.header)
+        }
+        _modify {
+            var s = unsafe MutableSpan(_unsafeStart: _cachedPtr.base, count: _storage.header)
+            yield &s
         }
     }
 }
 
 extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// A mutable view of the heap's elements (CoW-aware).
+    @inlinable
     public var mutableSpan: MutableSpan<Element> {
-        @_lifetime(&self)
-        @inlinable
-        mutating get {
+        _read {
+            yield unsafe MutableSpan(_unsafeStart: _cachedPtr.base, count: _storage.header)
+        }
+        _modify {
             makeUnique()
-            return unsafe MutableSpan(_unsafeStart: _cachedPtr, count: _storage.header)
+            var s = unsafe MutableSpan(_unsafeStart: _cachedPtr.base, count: _storage.header)
+            yield &s
         }
     }
 }

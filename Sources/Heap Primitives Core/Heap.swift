@@ -62,7 +62,7 @@ import Range_Primitives
 @safe
 public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
-    public typealias Pointer = Pointer_Primitives.Pointer<Element>.Mutable
+    public typealias Pointer = Pointer_Primitives.Pointer<Element>
 
     // MARK: - Order Enum
 
@@ -72,6 +72,14 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         case ascending
         /// Descending order (max-heap): largest element has highest priority.
         case descending
+    }
+
+    // MARK: - Error Enum
+
+    /// Errors that can occur during heap operations.
+    public enum Error: Swift.Error, Sendable, Equatable {
+        /// An operation was attempted on an empty heap.
+        case empty
     }
 
     // MARK: - Stored Properties
@@ -85,7 +93,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     /// Cached pointer to element storage. Stored in struct to enable efficient access.
     /// CRITICAL: Must be updated whenever _storage is replaced (reallocation, CoW copy).
     @usableFromInline
-    package var _cachedPtr: UnsafeMutablePointer<Element>
+    package var _cachedPtr: Pointer.Mutable
 
     // MARK: - Init
 
@@ -96,7 +104,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     public init(order: Order = .ascending) {
         self.order = order
         self._storage = Heap<Element>.Storage.create()
-        unsafe (self._cachedPtr = _storage._elementsPointer)
+        self._cachedPtr = _storage._elementsPointer
     }
 
     // Note: No deinit needed - Storage handles cleanup
@@ -124,6 +132,14 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     // MARK: - Fixed Capacity Heap
     @safe
     public struct Fixed: ~Copyable {
+        /// Errors that can occur during fixed heap operations.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// The requested capacity is invalid (negative).
+            case invalidCapacity
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+
         @usableFromInline
         package var _storage: Heap.Storage
 
@@ -133,7 +149,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         public let order: Order
 
         @usableFromInline
-        package var _cachedPtr: Pointer
+        package var _cachedPtr: Pointer.Mutable
 
         /// Creates an empty fixed-capacity heap.
         ///
@@ -145,14 +161,14 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         public init(
             capacity: Int,
             order: Order = .ascending
-        ) throws(__Heap.Fixed.Error) {
+        ) throws(Fixed.Error) {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
             self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
             self.capacity = capacity
             self.order = order
-            unsafe self._cachedPtr = _storage._elementsPointer
+            self._cachedPtr = _storage._elementsPointer
         }
     }
 
@@ -177,6 +193,12 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     /// requiring no heap allocation. The capacity is specified as a compile-time
     /// generic parameter.
     public struct Static<let capacity: Int>: ~Copyable {
+        /// Errors that can occur during static heap operations.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+
         /// Inline storage for elements.
         @usableFromInline
         package var inline: Heap.Storage.Inline<capacity>
@@ -214,6 +236,12 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     /// then automatically spills to heap storage when that capacity is exceeded.
     @safe
     public struct Small<let inlineCapacity: Int>: ~Copyable {
+        /// Errors that can occur during small heap operations.
+        public enum Error: Swift.Error, Sendable, Equatable {
+            /// An operation was attempted on an empty heap.
+            case empty
+        }
+
         /// Inline storage for elements.
         @usableFromInline
         package var inline: Heap.Storage.Inline<inlineCapacity>
@@ -230,7 +258,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
         /// Cached pointer to heap elements. Only valid when heap is non-nil.
         @usableFromInline
-        package var heapPtr: Heap.Pointer?
+        package var heapPtr: Heap.Pointer.Mutable?
 
         /// Creates an empty small heap.
         ///
@@ -241,7 +269,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             self.count = .zero
             self.order = order
             self.heap = nil
-            unsafe self.heapPtr = nil
+            self.heapPtr = nil
         }
 
         deinit {
@@ -270,13 +298,13 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
         /// Cached pointer to element storage.
         @usableFromInline
-        package var _cachedPtr: UnsafeMutablePointer<Element>
+        package var _cachedPtr: Pointer.Mutable
 
         /// Creates an empty min-max heap.
         @inlinable
         public init() {
             self._storage = Heap.Storage.create()
-            unsafe (self._cachedPtr = _storage._elementsPointer)
+            self._cachedPtr = _storage._elementsPointer
         }
     }
 
