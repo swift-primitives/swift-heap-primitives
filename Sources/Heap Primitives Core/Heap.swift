@@ -9,6 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Pointer_Primitives
 import Range_Primitives
 
 // MARK: - Heap (Canonical Single-Ended Binary Heap)
@@ -61,7 +62,7 @@ import Range_Primitives
 @safe
 public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
-    public typealias Pointer = Swift.UnsafeMutablePointer<Element>
+    public typealias Pointer = Pointer_Primitives.Pointer<Element>.Mutable
 
     // MARK: - Order Enum
 
