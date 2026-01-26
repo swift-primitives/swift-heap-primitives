@@ -352,25 +352,6 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         }
         return element
     }
-
-    /// Removes all elements from the heap.
-    ///
-    /// Does not shrink back to inline storage if spilled.
-    ///
-    /// - Complexity: O(n) where n is the number of elements.
-    @inlinable
-    @available(*, deprecated, renamed: "remove.all()")
-    public mutating func clear() {
-        guard count > .zero else { return }
-
-        if let heapStorage = heap {
-            heapStorage.deinitialize(in: 0..<count)
-            heapStorage.header = 0
-        } else {
-            inline.deinitialize(count: count)
-        }
-        count = .zero
-    }
 }
 
 // MARK: - Borrowing Access (~Copyable elements)

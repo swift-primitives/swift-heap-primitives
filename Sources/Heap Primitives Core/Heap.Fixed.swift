@@ -230,21 +230,6 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
         }
         return element
     }
-
-    /// Removes all elements from the heap.
-    ///
-    /// The capacity remains unchanged.
-    ///
-    /// - Complexity: O(n) where n is the number of elements.
-    @inlinable
-    @available(*, deprecated, renamed: "remove.all()")
-    public mutating func clear() {
-        let count = _storage.count
-        if count > .zero {
-            _storage.deinitialize(in: 0..<count)
-        }
-        _storage.header = 0
-    }
 }
 
 // MARK: - Remove Accessor
@@ -369,18 +354,6 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
             throw .empty
         }
         return element
-    }
-
-    /// Removes all elements from the heap (CoW-aware).
-    @inlinable
-    @available(*, deprecated, renamed: "remove.all()")
-    public mutating func clear() {
-        makeUnique()
-        let count = _storage.count
-        if count > .zero {
-            _storage.deinitialize(in: 0..<count)
-        }
-        _storage.header = 0
     }
 }
 

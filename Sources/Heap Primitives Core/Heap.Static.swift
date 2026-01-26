@@ -225,16 +225,6 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
         }
         return element
     }
-
-    /// Removes all elements from the heap.
-    ///
-    /// - Complexity: O(n) where n is the number of elements.
-    @inlinable
-    @available(*, deprecated, renamed: "remove.all()")
-    public mutating func clear() {
-        inline.deinitialize(count: count)
-        count = .zero
-    }
 }
 
 // MARK: - Remove Accessor

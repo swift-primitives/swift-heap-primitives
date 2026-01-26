@@ -252,24 +252,6 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     public mutating func push(_ element: consuming Element) {
         insert(element)
     }
-
-    /// Removes all elements from the heap.
-    ///
-    /// - Parameter keepingCapacity: Whether to keep the current capacity.
-    @inlinable
-    @available(*, deprecated, renamed: "remove.all(keepingCapacity:)")
-    public mutating func removeAll(keepingCapacity: Bool = false) {
-        let currentCount = _storage.count
-        if currentCount > .zero {
-            _storage.deinitialize(in: 0..<currentCount)
-        }
-        _storage.header = 0
-
-        if !keepingCapacity {
-            _storage = Heap.Storage.create()
-            unsafe (_cachedPtr = _storage._elementsPointer)
-        }
-    }
 }
 
 // MARK: - Remove Accessor
