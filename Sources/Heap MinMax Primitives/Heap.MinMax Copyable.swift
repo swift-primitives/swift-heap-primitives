@@ -114,10 +114,10 @@ extension Heap.MinMax: Swift.Sequence where Element: Copyable {
         let _storage: Heap.Storage
 
         @usableFromInline
-        let _end: Heap<Element>.Index.Count
+        let _end: Heap.Index.Count
 
         @usableFromInline
-        var _index: Heap<Element>.Index = .zero
+        var _index: Heap.Index = .zero
 
         @usableFromInline
         init(_storage: Heap.Storage) {

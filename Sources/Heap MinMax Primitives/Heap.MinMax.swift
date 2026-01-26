@@ -53,7 +53,7 @@ extension Heap.MinMax {
         package var inline: Heap.Storage.Inline<capacity>
 
         /// Current element count.
-        public var count: Heap<Element>.Index.Count
+        public var count: Heap.Index.Count
 
         /// Workaround for Swift compiler bug.
         @usableFromInline
@@ -86,7 +86,7 @@ extension Heap.MinMax {
         package var inline: Heap.Storage.Inline<inlineCapacity>
 
         /// Current element count (valid elements in either inline or heap storage).
-        public var count: Heap<Element>.Index.Count
+        public var count: Heap.Index.Count
 
         /// Heap storage when spilled. Nil when using inline storage.
         @usableFromInline

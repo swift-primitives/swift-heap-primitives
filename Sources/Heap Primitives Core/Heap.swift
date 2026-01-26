@@ -127,8 +127,8 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
         /// Typed count for this storage.
         @usableFromInline
-        package var count: Heap<Element>.Index.Count {
-            Heap<Element>.Index.Count(__unchecked: header)
+        package var count: Heap.Index.Count {
+            Heap.Index.Count(__unchecked: header)
         }
 
         deinit {
@@ -149,14 +149,14 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
         /// Initializes element at the given index.
         @usableFromInline
-        package func initialize(to element: consuming Element, at index: Heap<Element>.Index) {
+        package func initialize(to element: consuming Element, at index: Heap.Index) {
             let ptr = unsafe withUnsafeMutablePointerToElements { unsafe $0 + index }
             unsafe ptr.initialize(to: element)
         }
 
         /// Moves element from the given index.
         @usableFromInline
-        package func move(at index: Heap<Element>.Index) -> Element {
+        package func move(at index: Heap.Index) -> Element {
             unsafe withUnsafeMutablePointerToElements { elements in
                 unsafe (elements + index).move()
             }
@@ -164,7 +164,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
         /// Deinitializes elements in the given range.
         @usableFromInline
-        package func deinitialize(in range: Range.Lazy<Heap<Element>.Index>) {
+        package func deinitialize(in range: Range.Lazy<Heap.Index>) {
             _ = unsafe withUnsafeMutablePointerToElements { elements in
                 range.forEach { index in
                     unsafe (elements + index).deinitialize(count: 1)
@@ -174,7 +174,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
         /// Moves all elements to new storage.
         @usableFromInline
-        package func move(to newStorage: Storage, count: Heap<Element>.Index.Count) {
+        package func move(to newStorage: Storage, count: Heap.Index.Count) {
             guard count > .zero else { return }
             _ = unsafe withUnsafeMutablePointerToElements { old in
                 unsafe newStorage.withUnsafeMutablePointerToElements { new in
@@ -244,7 +244,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         package var inline: Heap.Storage.Inline<capacity>
 
         /// Current element count.
-        public var count: Heap<Element>.Index.Count
+        public var count: Heap.Index.Count
 
         /// The ordering direction for this heap.
         public let order: Order
@@ -294,7 +294,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         package var inline: Heap.Storage.Inline<inlineCapacity>
 
         /// Current element count (valid elements in either inline or heap storage).
-        public var count: Heap<Element>.Index.Count
+        public var count: Heap.Index.Count
 
         /// The ordering direction for this heap.
         public let order: Order
@@ -449,7 +449,7 @@ extension Heap.Small {
 extension Heap.Storage where Element: Copyable {
     /// Copies all elements to new storage (for CoW).
     @usableFromInline
-    package func copy(to newStorage: Heap.Storage, count: Heap<Element>.Index.Count) {
+    package func copy(to newStorage: Heap.Storage, count: Heap.Index.Count) {
         guard count > .zero else { return }
         _ = unsafe withUnsafeMutablePointerToElements { old in
             unsafe newStorage.withUnsafeMutablePointerToElements { new in
@@ -462,7 +462,7 @@ extension Heap.Storage where Element: Copyable {
 
     /// Reads element at the given index.
     @usableFromInline
-    package func read(at index: Heap<Element>.Index) -> Element {
+    package func read(at index: Heap.Index) -> Element {
         unsafe withUnsafeMutablePointerToElements { elements in
             unsafe elements[index]
         }
@@ -470,7 +470,7 @@ extension Heap.Storage where Element: Copyable {
 
     /// Writes element at the given index (assumes already initialized).
     @usableFromInline
-    package func write(_ element: Element, at index: Heap<Element>.Index) {
+    package func write(_ element: Element, at index: Heap.Index) {
         unsafe withUnsafeMutablePointerToElements { elements in
             unsafe (elements + index).pointee = element
         }
@@ -478,7 +478,7 @@ extension Heap.Storage where Element: Copyable {
 
     /// Swaps elements at two indices.
     @usableFromInline
-    package func swap(at i: Heap<Element>.Index, _ j: Heap<Element>.Index) {
+    package func swap(at i: Heap.Index, _ j: Heap.Index) {
         unsafe withUnsafeMutablePointerToElements { elements in
             let ptrI = unsafe elements + i
             let ptrJ = unsafe elements + j

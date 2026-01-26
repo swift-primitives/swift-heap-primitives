@@ -120,7 +120,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// - Parameter index: The typed index of the element to access.
     /// - Returns: The element at the index, or `nil` if out of bounds.
     @inlinable
-    public func element(at index: Heap<Element>.Index) -> Element? {
+    public func element(at index: Heap.Index) -> Element? {
         guard navigate.isValid(index) else { return nil }
         return _storage.read(at: index)
     }
@@ -229,10 +229,10 @@ extension Heap: Swift.Sequence where Element: Copyable {
         let _storage: Heap.Storage
 
         @usableFromInline
-        let _end: Heap<Element>.Index.Count
+        let _end: Heap.Index.Count
 
         @usableFromInline
-        var _index: Heap<Element>.Index = .zero
+        var _index: Heap.Index = .zero
 
         @usableFromInline
         init(_storage: Heap.Storage) {

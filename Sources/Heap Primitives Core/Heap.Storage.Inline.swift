@@ -75,7 +75,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Precondition: Index must be in bounds (caller's responsibility).
     @usableFromInline
     @unsafe
-    package mutating func pointer(at index: Heap<Element>.Index) -> UnsafeMutablePointer<Element> {
+    package mutating func pointer(at index: Heap.Index) -> UnsafeMutablePointer<Element> {
         let stride = MemoryLayout<Element>.stride
         return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
             let base = UnsafeMutableRawPointer(rawPointer)
@@ -90,7 +90,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     ///   - index: The index to initialize.
     /// - Precondition: The slot at index must be uninitialized.
     @usableFromInline
-    package mutating func initialize(to element: consuming Element, at index: Heap<Element>.Index) {
+    package mutating func initialize(to element: consuming Element, at index: Heap.Index) {
         let ptr = unsafe pointer(at: index)
         unsafe ptr.initialize(to: element)
     }
@@ -102,7 +102,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Precondition: The slot at index must be initialized.
     /// - Postcondition: The slot at index is deinitialized.
     @usableFromInline
-    package mutating func move(at index: Heap<Element>.Index) -> Element {
+    package mutating func move(at index: Heap.Index) -> Element {
         unsafe pointer(at: index).move()
     }
 
@@ -117,7 +117,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Precondition: Index must be in bounds (caller's responsibility).
     @usableFromInline
     @unsafe
-    package func read(at index: Heap<Element>.Index) -> UnsafePointer<Element> {
+    package func read(at index: Heap.Index) -> UnsafePointer<Element> {
         let stride = MemoryLayout<Element>.stride
         return unsafe Swift.withUnsafePointer(to: raw) { rawPointer in
             let base = unsafe UnsafeRawPointer(rawPointer)
@@ -134,7 +134,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Postcondition: All slots in range are deinitialized.
     /// - Note: Non-mutating to allow use from deinit contexts.
     @usableFromInline
-    package func deinitialize(in range: Range.Lazy<Heap<Element>.Index>) {
+    package func deinitialize(in range: Range.Lazy<Heap.Index>) {
         let stride = MemoryLayout<Element>.stride
         unsafe Swift.withUnsafePointer(to: raw) { rawPointer in
             let base = unsafe UnsafeMutableRawPointer(mutating: UnsafeRawPointer(rawPointer))
@@ -153,7 +153,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Postcondition: All elements are deinitialized.
     /// - Note: Non-mutating to allow use from deinit contexts.
     @usableFromInline
-    package func deinitialize(count: Heap<Element>.Index.Count) {
+    package func deinitialize(count: Heap.Index.Count) {
         guard count > .zero else { return }
         deinitialize(in: 0..<count)
     }
@@ -169,7 +169,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Precondition: Heap storage must have sufficient capacity.
     /// - Postcondition: Elements are moved to heap, inline slots are deinitialized.
     @usableFromInline
-    package mutating func move(to heapStorage: Heap.Storage, count: Heap<Element>.Index.Count) {
+    package mutating func move(to heapStorage: Heap.Storage, count: Heap.Index.Count) {
         guard count > .zero else { return }
         let stride = MemoryLayout<Element>.stride
         unsafe Swift.withUnsafePointer(to: raw) { rawPointer in
@@ -195,7 +195,7 @@ extension Heap.Storage.Inline where Element: Copyable {
     /// - Precondition: Elements at indices 0..<count must be initialized.
     /// - Precondition: Heap storage must have sufficient capacity.
     @usableFromInline
-    package func copy(to heapStorage: Heap.Storage, count: Heap<Element>.Index.Count) {
+    package func copy(to heapStorage: Heap.Storage, count: Heap.Index.Count) {
         guard count > .zero else { return }
         let stride = MemoryLayout<Element>.stride
         unsafe Swift.withUnsafePointer(to: raw) { rawPointer in

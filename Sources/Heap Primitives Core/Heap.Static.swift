@@ -45,9 +45,9 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Inserts an element and restores heap property.
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
-        let index = Heap<Element>.Index(__unchecked: (), position: count.rawValue)
+        let index = Heap.Index(__unchecked: (), position: count.rawValue)
         inline.initialize(to: element, at: index)
-        count = Heap<Element>.Index.Count(__unchecked: count.rawValue + 1)
+        count = Heap.Index.Count(__unchecked: count.rawValue + 1)
         bubbleUp(index)
     }
 
@@ -61,9 +61,9 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
             return inline.move(at: .zero)
         }
 
-        let lastIndex = Heap<Element>.Index(__unchecked: (), position: count.rawValue - 1)
+        let lastIndex = Heap.Index(__unchecked: (), position: count.rawValue - 1)
         swapElements(at: .zero, lastIndex)
-        count = Heap<Element>.Index.Count(__unchecked: count.rawValue - 1)
+        count = Heap.Index.Count(__unchecked: count.rawValue - 1)
         let removed = inline.move(at: lastIndex)
         trickleDown(.zero)
         return removed
@@ -71,7 +71,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Swaps elements at two indices.
     @usableFromInline
-    package mutating func swapElements(at i: Heap<Element>.Index, _ j: Heap<Element>.Index) {
+    package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
         let ptrI = unsafe inline.pointer(at: i)
         let ptrJ = unsafe inline.pointer(at: j)
         let temp = unsafe ptrI.move()
@@ -85,7 +85,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element up.
     @usableFromInline
-    package mutating func bubbleUp(_ index: Heap<Element>.Index) {
+    package mutating func bubbleUp(_ index: Heap.Index) {
         var current = index
         let nav = navigate
 
@@ -117,7 +117,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element down.
     @usableFromInline
-    package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
+    package mutating func trickleDown(_ startIndex: Heap.Index) {
         var current = startIndex
         let nav = navigate
 
@@ -174,7 +174,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 
         var position = countValue / 2 - 1
         while position >= 0 {
-            let index = Heap<Element>.Index(__unchecked: (), position: position)
+            let index = Heap.Index(__unchecked: (), position: position)
             trickleDown(index)
             position -= 1
         }
@@ -331,7 +331,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     public mutating func truncate(to newCount: Int) {
         guard newCount < count.rawValue else { return }
         let targetCount = Swift.max(0, newCount)
-        let targetCountTyped = Heap<Element>.Index.Count(__unchecked: targetCount)
+        let targetCountTyped = Heap.Index.Count(__unchecked: targetCount)
 
         // Use Int..<Count pattern for Range.Lazy creation
         inline.deinitialize(in: targetCount..<count)

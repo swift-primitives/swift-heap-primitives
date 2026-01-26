@@ -96,7 +96,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Returns a pointer to the element at the given index.
     @usableFromInline
     @unsafe
-    package mutating func pointer(at index: Heap<Element>.Index) -> UnsafeMutablePointer<Element> {
+    package mutating func pointer(at index: Heap.Index) -> UnsafeMutablePointer<Element> {
         if let ptr = unsafe heapPtr {
             return unsafe ptr + index.position.rawValue
         } else {
@@ -107,7 +107,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Returns a read pointer to the element at the given index.
     @usableFromInline
     @unsafe
-    package func readPointer(at index: Heap<Element>.Index) -> UnsafePointer<Element> {
+    package func readPointer(at index: Heap.Index) -> UnsafePointer<Element> {
         if let ptr = unsafe heapPtr {
             return unsafe UnsafePointer(ptr + index.position.rawValue)
         } else {
@@ -122,9 +122,9 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Inserts an element and restores heap property.
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
-        let index = Heap<Element>.Index(__unchecked: (), position: count.rawValue)
+        let index = Heap.Index(__unchecked: (), position: count.rawValue)
         unsafe pointer(at: index).initialize(to: element)
-        count = Heap<Element>.Index.Count(__unchecked: count.rawValue + 1)
+        count = Heap.Index.Count(__unchecked: count.rawValue + 1)
         if heap != nil {
             heap!.header = count.rawValue
         }
@@ -144,9 +144,9 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
             return unsafe pointer(at: .zero).move()
         }
 
-        let lastIndex = Heap<Element>.Index(__unchecked: (), position: count.rawValue - 1)
+        let lastIndex = Heap.Index(__unchecked: (), position: count.rawValue - 1)
         swapElements(at: .zero, lastIndex)
-        count = Heap<Element>.Index.Count(__unchecked: count.rawValue - 1)
+        count = Heap.Index.Count(__unchecked: count.rawValue - 1)
         if heap != nil {
             heap!.header = count.rawValue
         }
@@ -157,7 +157,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Swaps elements at two indices.
     @usableFromInline
-    package mutating func swapElements(at i: Heap<Element>.Index, _ j: Heap<Element>.Index) {
+    package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
         let ptrI = unsafe pointer(at: i)
         let ptrJ = unsafe pointer(at: j)
         let temp = unsafe ptrI.move()
@@ -171,7 +171,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element up.
     @usableFromInline
-    package mutating func bubbleUp(_ index: Heap<Element>.Index) {
+    package mutating func bubbleUp(_ index: Heap.Index) {
         var current = index
         let nav = navigate
 
@@ -203,7 +203,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element down.
     @usableFromInline
-    package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
+    package mutating func trickleDown(_ startIndex: Heap.Index) {
         var current = startIndex
         let nav = navigate
 
@@ -260,7 +260,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 
         var position = countValue / 2 - 1
         while position >= 0 {
-            let index = Heap<Element>.Index(__unchecked: (), position: position)
+            let index = Heap.Index(__unchecked: (), position: position)
             trickleDown(index)
             position -= 1
         }
@@ -281,9 +281,9 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
             growHeap(minimumCapacity: count.rawValue + 1)
         }
 
-        let index = Heap<Element>.Index(__unchecked: (), position: count.rawValue)
+        let index = Heap.Index(__unchecked: (), position: count.rawValue)
         unsafe (heapPtr! + count.rawValue).initialize(to: element)
-        count = Heap<Element>.Index.Count(__unchecked: count.rawValue + 1)
+        count = Heap.Index.Count(__unchecked: count.rawValue + 1)
         heapStorage.header = count.rawValue
         bubbleUp(index)
     }
@@ -429,7 +429,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     public mutating func truncate(to newCount: Int) {
         guard newCount < count.rawValue else { return }
         let targetCount = Swift.max(0, newCount)
-        let targetCountTyped = Heap<Element>.Index.Count(__unchecked: targetCount)
+        let targetCountTyped = Heap.Index.Count(__unchecked: targetCount)
 
         // Use Int..<Count pattern for Range.Lazy creation
         if let heapStorage = heap {

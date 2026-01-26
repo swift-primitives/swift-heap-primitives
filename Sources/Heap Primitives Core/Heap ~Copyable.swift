@@ -31,7 +31,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// The number of elements in the heap.
     @inlinable
-    public var count: Heap<Element>.Index.Count { _storage.count }
+    public var count: Heap.Index.Count { _storage.count }
 
     /// Whether the heap is empty.
     @inlinable
@@ -76,7 +76,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func appendWithoutHeapify(_ element: consuming Element) {
         let newCount = Index.Count(__unchecked: _storage.header + 1)
         ensureCapacity(newCount)
-        let index = Heap<Element>.Index(__unchecked: (), position: _storage.header)
+        let index = Heap.Index(__unchecked: (), position: _storage.header)
         _storage.initialize(to: element, at: index)
         _storage.header += 1
     }
@@ -86,7 +86,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func insert(_ element: consuming Element) {
         let newCount = Index.Count(__unchecked: _storage.header + 1)
         ensureCapacity(newCount)
-        let index = Heap<Element>.Index(__unchecked: (), position: _storage.header)
+        let index = Heap.Index(__unchecked: (), position: _storage.header)
         _storage.initialize(to: element, at: index)
         _storage.header += 1
         bubbleUp(index)
@@ -103,7 +103,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         }
 
         // Swap root with last, remove last, trickle down
-        let lastIndex = Heap<Element>.Index(__unchecked: (), position: _storage.header - 1)
+        let lastIndex = Heap.Index(__unchecked: (), position: _storage.header - 1)
         swapElements(at: .zero, lastIndex)
         _storage.header -= 1
         let removed = _storage.move(at: lastIndex)
@@ -113,7 +113,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
-    package mutating func swapElements(at i: Heap<Element>.Index, _ j: Heap<Element>.Index) {
+    package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
         let ptr = unsafe _cachedPtr
         let temp = unsafe (ptr + i).move()
         unsafe (ptr + i).initialize(to: (ptr + j).move())
@@ -129,7 +129,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// For ascending order (min-heap): element bubbles up while smaller than parent.
     /// For descending order (max-heap): element bubbles up while larger than parent.
     @usableFromInline
-    package mutating func bubbleUp(_ index: Heap<Element>.Index) {
+    package mutating func bubbleUp(_ index: Heap.Index) {
         var current = index
         let ptr = unsafe _cachedPtr
         let nav = navigate
@@ -169,7 +169,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// For ascending order (min-heap): element trickles down to larger of children.
     /// For descending order (max-heap): element trickles down to smaller of children.
     @usableFromInline
-    package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
+    package mutating func trickleDown(_ startIndex: Heap.Index) {
         var current = startIndex
         let ptr = unsafe _cachedPtr
         let nav = navigate
@@ -234,7 +234,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         // Last non-leaf is at position (count / 2 - 1)
         var position = countValue / 2 - 1
         while position >= 0 {
-            let index = Heap<Element>.Index(__unchecked: (), position: position)
+            let index = Heap.Index(__unchecked: (), position: position)
             trickleDown(index)
             position -= 1
         }

@@ -31,7 +31,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// The current number of elements in the heap.
     @inlinable
-    public var count: Heap<Element>.Index.Count { _storage.count }
+    public var count: Heap.Index.Count { _storage.count }
 
     /// Whether the heap is empty.
     @inlinable
@@ -49,7 +49,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Inserts an element and restores heap property.
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
-        let index = Heap<Element>.Index(__unchecked: (), position: _storage.header)
+        let index = Heap.Index(__unchecked: (), position: _storage.header)
         _storage.initialize(to: element, at: index)
         _storage.header += 1
         bubbleUp(index)
@@ -65,7 +65,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             return _storage.move(at: .zero)
         }
 
-        let lastIndex = Heap<Element>.Index(__unchecked: (), position: _storage.header - 1)
+        let lastIndex = Heap.Index(__unchecked: (), position: _storage.header - 1)
         swapElements(at: .zero, lastIndex)
         _storage.header -= 1
         let removed = _storage.move(at: lastIndex)
@@ -75,7 +75,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
-    package mutating func swapElements(at i: Heap<Element>.Index, _ j: Heap<Element>.Index) {
+    package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
         let ptr = unsafe _cachedPtr
         let temp = unsafe (ptr + i).move()
         unsafe (ptr + i).initialize(to: (ptr + j).move())
@@ -88,7 +88,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element up.
     @usableFromInline
-    package mutating func bubbleUp(_ index: Heap<Element>.Index) {
+    package mutating func bubbleUp(_ index: Heap.Index) {
         var current = index
         let ptr = unsafe _cachedPtr
         let nav = navigate
@@ -121,7 +121,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element down.
     @usableFromInline
-    package mutating func trickleDown(_ startIndex: Heap<Element>.Index) {
+    package mutating func trickleDown(_ startIndex: Heap.Index) {
         var current = startIndex
         let ptr = unsafe _cachedPtr
         let nav = navigate
@@ -179,7 +179,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 
         var position = countValue / 2 - 1
         while position >= 0 {
-            let index = Heap<Element>.Index(__unchecked: (), position: position)
+            let index = Heap.Index(__unchecked: (), position: position)
             trickleDown(index)
             position -= 1
         }
@@ -420,7 +420,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
     /// Returns the element at the given typed index, or nil if out of bounds.
     @inlinable
-    public func element(at index: Heap<Element>.Index) -> Element? {
+    public func element(at index: Heap.Index) -> Element? {
         guard navigate.isValid(index) else { return nil }
         return _storage.read(at: index)
     }
@@ -455,7 +455,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
         for element in elements {
             if _storage.header >= capacity { break }
-            let index = Heap<Element>.Index(__unchecked: (), position: _storage.header)
+            let index = Heap.Index(__unchecked: (), position: _storage.header)
             _storage.initialize(to: element, at: index)
             _storage.header += 1
         }

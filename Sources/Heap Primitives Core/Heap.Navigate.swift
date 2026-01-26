@@ -54,9 +54,9 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         /// - Parameter index: The index of the child element.
         /// - Returns: Index of the parent, or `nil` if the index is the root.
         @inlinable
-        public func parent(of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        public func parent(of index: Heap.Index) -> Heap.Index? {
             guard index.position > 0 else { return nil }
-            return try? Heap<Element>.Index((index.position.rawValue - 1) / 2)
+            return try? Heap.Index((index.position.rawValue - 1) / 2)
         }
 
         /// Returns the index of the specified child of the element at the given index.
@@ -66,14 +66,14 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         ///   - index: The index of the parent element.
         /// - Returns: Index of the child, or `nil` if no such child exists.
         @inlinable
-        public func child(_ child: Child, of index: Heap<Element>.Index) -> Heap<Element>.Index? {
+        public func child(_ child: Child, of index: Heap.Index) -> Heap.Index? {
             let childPosition: Int
             switch child {
             case .left: childPosition = 2 * index.position.rawValue + 1
             case .right: childPosition = 2 * index.position.rawValue + 2
             }
             guard childPosition < _count.rawValue else { return nil }
-            return try? Heap<Element>.Index(childPosition)
+            return try? Heap.Index(childPosition)
         }
 
         /// Returns whether the given index represents a valid position.
@@ -81,7 +81,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         /// - Parameter index: The index to validate.
         /// - Returns: `true` if the index is within bounds.
         @inlinable
-        public func isValid(_ index: Heap<Element>.Index) -> Bool {
+        public func isValid(_ index: Heap.Index) -> Bool {
             index >= .zero && index < _count
         }
     }
@@ -95,7 +95,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// - Returns: Index of root element (position 0), or `nil` if empty.
     /// - Complexity: O(1)
     @inlinable
-    public var root: Heap<Element>.Index? {
+    public var root: Heap.Index? {
         isEmpty ? nil : .zero
     }
 
@@ -119,7 +119,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Index of the root element, or `nil` if the heap is empty.
     @inlinable
-    public var root: Heap<Element>.Index? {
+    public var root: Heap.Index? {
         isEmpty ? nil : .zero
     }
 
@@ -135,7 +135,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Index of the root element, or `nil` if the heap is empty.
     @inlinable
-    public var root: Heap<Element>.Index? {
+    public var root: Heap.Index? {
         isEmpty ? nil : .zero
     }
 
@@ -151,7 +151,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Index of the root element, or `nil` if the heap is empty.
     @inlinable
-    public var root: Heap<Element>.Index? {
+    public var root: Heap.Index? {
         isEmpty ? nil : .zero
     }
 

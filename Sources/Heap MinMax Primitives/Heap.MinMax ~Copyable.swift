@@ -17,7 +17,7 @@ public import Range_Primitives
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// The number of elements in the heap.
     @inlinable
-    public var count: Heap<Element>.Index.Count { _storage.count }
+    public var count: Heap.Index.Count { _storage.count }
 
     /// Whether the heap is empty.
     @inlinable
@@ -29,7 +29,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Ensures the storage has capacity for at least the specified number of elements.
     @usableFromInline
-    package mutating func ensureCapacity(_ minimumCapacity: Heap<Element>.Index.Count) {
+    package mutating func ensureCapacity(_ minimumCapacity: Heap.Index.Count) {
         guard _storage.capacity < minimumCapacity.rawValue else { return }
 
         let newCapacity = Swift.max(minimumCapacity.rawValue, _storage.capacity * 2, 4)
@@ -47,7 +47,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Reserves enough space to store the specified number of elements.
     @inlinable
     public mutating func reserve(_ minimumCapacity: Int) {
-        ensureCapacity(Heap<Element>.Index.Count(__unchecked: minimumCapacity))
+        ensureCapacity(Heap.Index.Count(__unchecked: minimumCapacity))
     }
 }
 
@@ -149,8 +149,8 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         /// Converts offset to typed Index.
         @inlinable
-        package var index: Heap<Element>.Index {
-            Heap<Element>.Index(__unchecked: (), position: offset)
+        package var index: Heap.Index {
+            Heap.Index(__unchecked: (), position: offset)
         }
     }
 }
@@ -168,19 +168,19 @@ extension Int {
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func appendWithoutHeapify(_ element: consuming Element) {
-        let newCount = Heap<Element>.Index.Count(__unchecked: _storage.header + 1)
+        let newCount = Heap.Index.Count(__unchecked: _storage.header + 1)
         ensureCapacity(newCount)
-        let index = Heap<Element>.Index(__unchecked: (), position: _storage.header)
+        let index = Heap.Index(__unchecked: (), position: _storage.header)
         _storage.initialize(to: element, at: index)
         _storage.header += 1
     }
 
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
-        let newCount = Heap<Element>.Index.Count(__unchecked: _storage.header + 1)
+        let newCount = Heap.Index.Count(__unchecked: _storage.header + 1)
         ensureCapacity(newCount)
         let index = _storage.header
-        let typedIndex = Heap<Element>.Index(__unchecked: (), position: index)
+        let typedIndex = Heap.Index(__unchecked: (), position: index)
         _storage.initialize(to: element, at: typedIndex)
         _storage.header += 1
         bubbleUp(Node(offset: index))
@@ -198,7 +198,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         let lastIndex = _storage.header - 1
         swapElements(at: 0, lastIndex)
         _storage.header -= 1
-        let lastTypedIndex = Heap<Element>.Index(__unchecked: (), position: lastIndex)
+        let lastTypedIndex = Heap.Index(__unchecked: (), position: lastIndex)
         let removed = _storage.move(at: lastTypedIndex)
         trickleDownMin(Node.root)
         return removed
@@ -215,7 +215,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         if count == 2 {
             _storage.header = 1
-            let index = Heap<Element>.Index(__unchecked: (), position: 1)
+            let index = Heap.Index(__unchecked: (), position: 1)
             return _storage.move(at: index)
         }
 
@@ -225,7 +225,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         let lastIndex = _storage.header - 1
         swapElements(at: maxIndex, lastIndex)
         _storage.header -= 1
-        let lastTypedIndex = Heap<Element>.Index(__unchecked: (), position: lastIndex)
+        let lastTypedIndex = Heap.Index(__unchecked: (), position: lastIndex)
         let removed = _storage.move(at: lastTypedIndex)
 
         if maxIndex < _storage.header {
