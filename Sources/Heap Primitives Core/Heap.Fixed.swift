@@ -10,6 +10,21 @@
 // ===----------------------------------------------------------------------===//
 
 public import Range_Primitives
+public import Property_Primitives
+
+// MARK: - Namespaces
+
+extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
+    /// Namespace for remove operations.
+    public enum Remove {}
+}
+
+// MARK: - Property Typealias
+
+extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
+    /// Property typealias for accessor patterns.
+    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>.Fixed>
+}
 
 // MARK: - Properties
 
@@ -222,12 +237,55 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     ///
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
+    @available(*, deprecated, renamed: "remove.all()")
     public mutating func clear() {
         let count = _storage.count
         if count > .zero {
             _storage.deinitialize(in: 0..<count)
         }
         _storage.header = 0
+    }
+}
+
+// MARK: - Remove Accessor
+
+extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
+    /// Accessor for remove operations.
+    ///
+    /// Use this for removal operations:
+    ///
+    /// ```swift
+    /// var heap: Heap<Int>.Fixed = ...
+    /// heap.remove.all()  // Remove all elements (capacity unchanged)
+    /// ```
+    public var remove: Property<Remove>.View.Typed<Element> {
+        mutating _read {
+            yield unsafe Property<Remove>.View.Typed(&self)
+        }
+        mutating _modify {
+            var view = unsafe Property<Remove>.View.Typed<Element>(&self)
+            yield &view
+        }
+    }
+}
+
+extension Property_Primitives.Property.View.Typed
+where Tag == Heap<Element>.Fixed.Remove,
+      Base == Heap<Element>.Fixed,
+      Element: ~Copyable & Comparison.`Protocol`
+{
+    /// Removes all elements from the heap.
+    ///
+    /// The capacity remains unchanged (fixed-capacity heap).
+    ///
+    /// - Complexity: O(n)
+    @inlinable
+    public func all() {
+        let count = unsafe base.pointee._storage.count
+        if count > .zero {
+            unsafe base.pointee._storage.deinitialize(in: 0..<count)
+        }
+        unsafe base.pointee._storage.header = 0
     }
 }
 
@@ -315,6 +373,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
     /// Removes all elements from the heap (CoW-aware).
     @inlinable
+    @available(*, deprecated, renamed: "remove.all()")
     public mutating func clear() {
         makeUnique()
         let count = _storage.count
@@ -322,6 +381,27 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
             _storage.deinitialize(in: 0..<count)
         }
         _storage.header = 0
+    }
+}
+
+extension Property_Primitives.Property.View.Typed
+where Tag == Heap<Element>.Fixed.Remove,
+      Base == Heap<Element>.Fixed,
+      Element: Copyable & Comparison.`Protocol`
+{
+    /// Removes all elements from the heap (CoW-aware).
+    ///
+    /// The capacity remains unchanged (fixed-capacity heap).
+    ///
+    /// - Complexity: O(n)
+    @inlinable
+    public func all() {
+        unsafe base.pointee.makeUnique()
+        let count = unsafe base.pointee._storage.count
+        if count > .zero {
+            unsafe base.pointee._storage.deinitialize(in: 0..<count)
+        }
+        unsafe base.pointee._storage.header = 0
     }
 }
 

@@ -10,6 +10,67 @@
 // ===----------------------------------------------------------------------===//
 
 public import Range_Primitives
+public import Property_Primitives
+
+// MARK: - Namespaces
+
+extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
+    /// Namespace for remove operations.
+    public enum Remove {}
+}
+
+// MARK: - Property Typealias
+
+extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
+    /// Property typealias for accessor patterns.
+    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>.Small<inlineCapacity>>
+}
+
+// MARK: - Remove Accessor
+
+extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
+    /// Accessor for remove operations.
+    ///
+    /// Use this for removal operations:
+    ///
+    /// ```swift
+    /// var heap: Heap<Int>.Small<8> = ...
+    /// heap.remove.all()  // Remove all elements
+    /// ```
+    public var remove: Property<Remove>.View.Typed<Element>.Valued<inlineCapacity> {
+        mutating _read {
+            yield unsafe Property<Remove>.View.Typed<Element>.Valued(&self)
+        }
+        mutating _modify {
+            var view = unsafe Property<Remove>.View.Typed<Element>.Valued<inlineCapacity>(&self)
+            yield &view
+        }
+    }
+}
+
+extension Property_Primitives.Property.View.Typed.Valued
+where Tag == Heap<Element>.Small<n>.Remove,
+      Base == Heap<Element>.Small<n>,
+      Element: ~Copyable & Comparison.`Protocol`
+{
+    /// Removes all elements from the heap.
+    ///
+    /// Does not shrink back to inline storage if spilled.
+    ///
+    /// - Complexity: O(n)
+    @inlinable
+    public func all() {
+        guard unsafe base.pointee.count > .zero else { return }
+
+        if let heapStorage = unsafe base.pointee.heap {
+            heapStorage.deinitialize(in: 0..<base.pointee.count)
+            heapStorage.header = 0
+        } else {
+            unsafe base.pointee.inline.deinitialize(count: base.pointee.count)
+        }
+        unsafe base.pointee.count = .zero
+    }
+}
 
 // MARK: - Properties
 
@@ -298,6 +359,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     ///
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
+    @available(*, deprecated, renamed: "remove.all()")
     public mutating func clear() {
         guard count > .zero else { return }
 

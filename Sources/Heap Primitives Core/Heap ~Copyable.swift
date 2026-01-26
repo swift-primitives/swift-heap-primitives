@@ -10,6 +10,21 @@
 // ===----------------------------------------------------------------------===//
 
 public import Range_Primitives
+public import Property_Primitives
+
+// MARK: - Namespaces
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Namespace for remove operations.
+    public enum Remove {}
+}
+
+// MARK: - Property Typealias
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Property typealias for accessor patterns.
+    public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>>
+}
 
 // MARK: - Properties
 
@@ -242,6 +257,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     ///
     /// - Parameter keepingCapacity: Whether to keep the current capacity.
     @inlinable
+    @available(*, deprecated, renamed: "remove.all(keepingCapacity:)")
     public mutating func removeAll(keepingCapacity: Bool = false) {
         let currentCount = _storage.count
         if currentCount > .zero {
@@ -252,6 +268,55 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         if !keepingCapacity {
             _storage = Heap<Element>.Storage.create()
             unsafe (_cachedPtr = _storage._elementsPointer)
+        }
+    }
+}
+
+// MARK: - Remove Accessor
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Accessor for remove operations.
+    ///
+    /// Use this for removal operations:
+    ///
+    /// ```swift
+    /// var heap: Heap<Int> = [5, 3, 8, 1]
+    /// heap.remove.all()                      // Remove all, release capacity
+    /// heap.remove.all(keepingCapacity: true) // Remove all, keep capacity
+    /// ```
+    public var remove: Property<Remove>.View.Typed<Element> {
+        mutating _read {
+            yield unsafe Property<Remove>.View.Typed(&self)
+        }
+        mutating _modify {
+            var view = unsafe Property<Remove>.View.Typed<Element>(&self)
+            yield &view
+        }
+    }
+}
+
+extension Property_Primitives.Property.View.Typed
+where Tag == Heap<Element>.Remove,
+      Base == Heap<Element>,
+      Element: ~Copyable & Comparison.`Protocol`
+{
+    /// Removes all elements from the heap.
+    ///
+    /// - Parameter keepingCapacity: Whether to keep the current capacity.
+    ///   If `true`, the heap retains its current capacity.
+    ///   If `false` (default), the capacity is released.
+    /// - Complexity: O(n)
+    @inlinable
+    public func all(keepingCapacity: Bool = false) {
+        let currentCount = unsafe base.pointee._storage.count
+        if currentCount > .zero {
+            unsafe base.pointee._storage.deinitialize(in: 0..<currentCount)
+        }
+        unsafe base.pointee._storage.header = 0
+
+        if !keepingCapacity {
+            unsafe base.pointee._storage = Heap<Element>.Storage.create()
+            unsafe (base.pointee._cachedPtr = base.pointee._storage._elementsPointer)
         }
     }
 }

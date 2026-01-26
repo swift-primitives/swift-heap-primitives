@@ -23,6 +23,9 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Namespace for peek operations.
     public enum Peek {}
+
+    /// Namespace for remove operations.
+    public enum Remove {}
 }
 
 // MARK: - Peek Accessor (Property.Typed)

@@ -15,6 +15,7 @@
 
 public import Heap_Primitives_Core
 public import Property_Primitives
+public import Range_Primitives
 
 // MARK: - MinMax Nested Types
 
@@ -181,7 +182,56 @@ extension Heap.MinMax.Static.Push.Outcome: Sendable where Element: Sendable {}
 
 // MARK: - Property Typealias
 
-extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
-    /// Property typealias for accessor patterns.
+extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
+    /// Property typealias for accessor patterns (~Copyable).
     public typealias Property<Tag> = Property_Primitives.Property<Tag, Heap<Element>.MinMax>
+}
+
+// MARK: - Remove Accessor
+
+extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
+    /// Accessor for remove operations.
+    ///
+    /// Use this for removal operations:
+    ///
+    /// ```swift
+    /// var heap: Heap<Int>.MinMax = [5, 3, 8, 1]
+    /// heap.remove.all()                      // Remove all, release capacity
+    /// heap.remove.all(keepingCapacity: true) // Remove all, keep capacity
+    /// ```
+    public var remove: Property<Remove>.View.Typed<Element> {
+        mutating _read {
+            yield unsafe Property<Remove>.View.Typed(&self)
+        }
+        mutating _modify {
+            var view = unsafe Property<Remove>.View.Typed<Element>(&self)
+            yield &view
+        }
+    }
+}
+
+extension Property_Primitives.Property.View.Typed
+where Tag == Heap<Element>.MinMax.Remove,
+      Base == Heap<Element>.MinMax,
+      Element: ~Copyable & Comparison.`Protocol`
+{
+    /// Removes all elements from the heap.
+    ///
+    /// - Parameter keepingCapacity: Whether to keep the current capacity.
+    ///   If `true`, the heap retains its current capacity.
+    ///   If `false` (default), the capacity is released.
+    /// - Complexity: O(n)
+    @inlinable
+    public func all(keepingCapacity: Bool = false) {
+        let currentCount = unsafe base.pointee._storage.count
+        if currentCount > .zero {
+            unsafe base.pointee._storage.deinitialize(in: 0..<currentCount)
+        }
+        unsafe base.pointee._storage.header = 0
+
+        if !keepingCapacity {
+            unsafe base.pointee._storage = Heap<Element>.Storage.create()
+            unsafe (base.pointee._cachedPtr = base.pointee._storage._elementsPointer)
+        }
+    }
 }

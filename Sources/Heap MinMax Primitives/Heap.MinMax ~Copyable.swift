@@ -439,6 +439,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Removes all elements from the heap.
     @inlinable
+    @available(*, deprecated, renamed: "remove.all(keepingCapacity:)")
     public mutating func removeAll(keepingCapacity: Bool = false) {
         let currentCount = _storage.count
         if currentCount > .zero {
