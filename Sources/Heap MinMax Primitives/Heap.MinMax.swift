@@ -36,7 +36,7 @@ extension Heap.MinMax {
         /// - Parameter capacity: Maximum number of elements.
         /// - Throws: Error if capacity is negative.
         @inlinable
-        public init(capacity: Int) throws(Heap.Fixed.Error) {
+        public init(capacity: Int) throws(__Heap.Fixed.Error) {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
@@ -94,7 +94,7 @@ extension Heap.MinMax {
 
         /// Cached pointer to heap elements. Only valid when heap is non-nil.
         @usableFromInline
-        package var heapPtr: UnsafeMutablePointer<Element>?
+        package var heapPtr: Heap.Pointer?
 
         /// Creates an empty small min-max heap.
         @inlinable

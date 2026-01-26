@@ -305,7 +305,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
         /// Cached pointer to heap elements. Only valid when heap is non-nil.
         @usableFromInline
-        package var heapPtr: UnsafeMutablePointer<Element>?
+        package var heapPtr: Heap.Pointer?
 
         /// Creates an empty small heap.
         ///

@@ -25,7 +25,7 @@ extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
         let _heap: Heap.Storage?
 
         @usableFromInline
-        let _heapPtr: UnsafeMutablePointer<Element>?
+        let _heapPtr: Heap.Pointer?
 
         @usableFromInline
         let _end: Heap.Index.Count
@@ -37,7 +37,7 @@ extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
         init(
             _inline: Heap.Storage.Inline<inlineCapacity>,
             _heap: Heap.Storage?,
-            _heapPtr: UnsafeMutablePointer<Element>?,
+            _heapPtr: Heap.Pointer?,
             count: Heap.Index.Count
         ) {
             self._inline = _inline
