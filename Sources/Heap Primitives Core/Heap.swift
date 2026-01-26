@@ -325,23 +325,7 @@ extension Heap.Push.Outcome: Sendable where Element: Sendable {}
 
 // MARK: - Error Type Aliases
 
-extension Heap {
-    /// Errors that can occur during heap operations.
-    public typealias Error = __Heap.Error
-}
 
-extension Heap.Fixed {
-    /// Errors that can occur during fixed heap operations.
-    public typealias Error = __Heap.Fixed.Error
-}
 
-extension Heap.Static {
-    /// Errors that can occur during static heap operations.
-    public typealias Error = __Heap.Static.Error
-}
 
-extension Heap.Small {
-    /// Errors that can occur during small heap operations.
-    public typealias Error = __Heap.Small.Error
-}
 

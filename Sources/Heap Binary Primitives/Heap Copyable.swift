@@ -12,6 +12,33 @@
 public import Sequence_Primitives
 public import Property_Primitives
 
+
+// MARK: - Sequence.Protocol Conformance
+
+extension Heap: Sequence.`Protocol` where Element: Copyable & Comparison.`Protocol` {
+    // makeIterator() is provided by Swift.Sequence conformance in Heap Copyable.swift
+
+    /// Returns the count as the underestimated count since we know the exact size.
+    ///
+    /// This explicit implementation resolves ambiguity between Swift.Sequence
+    /// and Sequence.Protocol+Swift.Sequence default implementation.
+    @inlinable
+    public var underestimatedCount: Int { _storage.header }
+}
+
+// MARK: - Sequence.Clearable Conformance
+
+extension Heap: Sequence.Clearable where Element: Copyable & Comparison.`Protocol` {
+    /// Removes all elements from the heap.
+    ///
+    /// This enables `.forEach.consuming { }` pattern via `Property.View` extension.
+    @inlinable
+    public mutating func removeAll() {
+        remove.all(keepingCapacity: false)
+    }
+}
+
+
 // MARK: - Sequence Property Accessors
 
 extension Heap where Element: Copyable & Comparison.`Protocol` {
@@ -134,6 +161,52 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
         }
         mutating _modify {
             var view = unsafe Property<Sequence.Prefix>.View(&self)
+            yield &view
+        }
+    }
+}
+
+// MARK: - Sequence.Drain.Protocol Conformance
+
+extension Heap: Sequence.Drain.`Protocol` where Element: Copyable & Comparison.`Protocol` {
+    /// Drains all elements, passing each to the closure with ownership.
+    ///
+    /// After this method returns, the heap is empty but still usable.
+    ///
+    /// - Parameter body: A closure that receives each drained element with ownership.
+    /// - Complexity: O(n) where n is the number of elements.
+    @inlinable
+    public mutating func drain(_ body: (consuming Element) -> Void) {
+        makeUnique()
+        (0..<_storage.count).forEach { index in
+            body(_storage.move(at: index))
+        }
+        _storage.header = 0
+    }
+}
+
+// MARK: - Drain Property Accessor
+
+extension Heap where Element: Copyable & Comparison.`Protocol` {
+    /// Accessor for drain operations.
+    ///
+    /// Draining removes all elements from the heap, passing each to a closure
+    /// with ownership transferred. The heap survives but is empty after draining.
+    ///
+    /// ```swift
+    /// var heap: Heap<Int> = [5, 3, 8, 1]
+    /// heap.drain { element in
+    ///     print(element)  // ownership transferred
+    /// }
+    /// // heap is now empty but still usable
+    /// heap.push(10)  // OK
+    /// ```
+    public var drain: Property<Sequence.Drain>.View {
+        mutating _read {
+            yield unsafe Property<Sequence.Drain>.View(&self)
+        }
+        mutating _modify {
+            var view = unsafe Property<Sequence.Drain>.View(&self)
             yield &view
         }
     }

@@ -421,14 +421,8 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
         capacity: Int,
         order: Heap.Order = .ascending
     ) throws(Heap.Fixed.Error) {
-        guard capacity >= 0 else {
-            throw .invalidCapacity
-        }
-
-        self._storage = Heap.Storage.create(minimumCapacity: capacity)
-        unsafe self._cachedPtr = _storage._elementsPointer
-        self.capacity = capacity
-        self.order = order
+        // Must call designated initializer from core module per cross-module init rules
+        try self.init(capacity: capacity, order: order)
 
         for element in elements {
             if _storage.header >= capacity { break }

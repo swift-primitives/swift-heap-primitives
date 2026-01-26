@@ -216,3 +216,17 @@ extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
         }
     }
 }
+
+// MARK: - Peek (Copyable elements)
+
+extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
+    /// Returns the priority element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the priority element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public var peek: Element? {
+        guard !isEmpty else { return nil }
+        return unsafe inline.read(at: .zero).pointee
+    }
+}

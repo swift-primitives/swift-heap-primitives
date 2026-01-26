@@ -41,56 +41,11 @@ public enum __Heap {
         /// An operation was attempted on an empty heap.
         case empty
     }
+}
 
-    /// Namespace for Heap.Fixed error types.
-    public enum Fixed {
-        /// Errors that can occur during fixed heap operations.
-        ///
-        /// ## Cases
-        ///
-        /// - ``__Heap/Fixed/Error/invalidCapacity``: The requested capacity is invalid (negative).
-        /// - ``__Heap/Fixed/Error/empty``: An operation was attempted on an empty heap.
-        ///
-        /// - Note: Overflow is NOT an error case. Per [API-ERR-005/006], push operations
-        ///   that consume an element and can fail use `Push.Outcome` to preserve the element on overflow.
-        public enum Error: Swift.Error, Sendable, Equatable {
-            /// The requested capacity is invalid (negative).
-            case invalidCapacity
-            /// An operation was attempted on an empty heap.
-            case empty
-        }
-    }
-
-    /// Namespace for Heap.Static error types.
-    public enum Static {
-        /// Errors that can occur during static heap operations.
-        ///
-        /// ## Cases
-        ///
-        /// - ``__Heap/Static/Error/empty``: An operation was attempted on an empty heap.
-        ///
-        /// - Note: Overflow is NOT an error case. Per [API-ERR-005/006], push operations
-        ///   that consume an element and can fail use `Push.Outcome` to preserve the element on overflow.
-        public enum Error: Swift.Error, Sendable, Equatable {
-            /// An operation was attempted on an empty heap.
-            case empty
-        }
-    }
-
-    /// Namespace for Heap.Small error types.
-    public enum Small {
-        /// Errors that can occur during small heap operations.
-        ///
-        /// ## Cases
-        ///
-        /// - ``__Heap/Small/Error/empty``: An operation was attempted on an empty heap.
-        ///
-        /// - Note: Small heaps grow to heap storage on overflow, so overflow is not possible.
-        public enum Error: Swift.Error, Sendable, Equatable {
-            /// An operation was attempted on an empty heap.
-            case empty
-        }
-    }
+extension Heap {
+    /// Errors that can occur during heap operations.
+    public typealias Error = __Heap.Error
 }
 
 // MARK: - Hoisted Error CustomStringConvertible
@@ -103,24 +58,3 @@ extension __Heap.Error: CustomStringConvertible {
         }
     }
 }
-
-extension __Heap.Fixed.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .invalidCapacity:
-            return "invalid capacity (negative)"
-        case .empty:
-            return "operation attempted on empty heap"
-        }
-    }
-}
-
-extension __Heap.Static.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .empty:
-            return "operation attempted on empty heap"
-        }
-    }
-}
-
