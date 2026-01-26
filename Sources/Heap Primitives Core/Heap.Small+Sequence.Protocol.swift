@@ -16,58 +16,83 @@ public import Range_Primitives
 // MARK: - Heap.Small Iterator
 
 extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
-    /// Iterator for Heap.Small elements.
+    /// Pointer-based iterator for Heap.Small elements.
+    ///
+    /// Zero-copy iteration using typed `Index<Element>` for position tracking.
+    /// The iterator holds a pointer to either inline or heap storage.
+    ///
+    /// ## Safety
+    ///
+    /// The iterator is only valid while the source heap exists and is not mutated.
+    @safe
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _inline: Heap.Storage.Inline<inlineCapacity>
+        let base: UnsafePointer<Element>
 
         @usableFromInline
-        let _heap: Heap.Storage?
+        let end: Heap.Index.Count
 
         @usableFromInline
-        let _heapPtr: Heap.Pointer?
+        var position: Heap.Index
 
-        @usableFromInline
-        let _end: Heap.Index.Count
-
-        @usableFromInline
-        var _index: Heap.Index = .zero
-
-        @usableFromInline
-        init(
-            _inline: Heap.Storage.Inline<inlineCapacity>,
-            _heap: Heap.Storage?,
-            _heapPtr: Heap.Pointer?,
-            count: Heap.Index.Count
-        ) {
-            self._inline = _inline
-            self._heap = _heap
-            self._heapPtr = _heapPtr
-            self._end = count
+        @usableFromInline @unsafe
+        init(base: UnsafePointer<Element>, count: Heap.Index.Count) {
+            unsafe self.base = base
+            self.end = count
+            self.position = .zero
         }
 
         @inlinable
         public mutating func next() -> Element? {
-            guard _index < _end else { return nil }
-            defer { _index = (_index + 1)! }
-            if let ptr = _heapPtr {
-                return unsafe ptr[_index.position.rawValue]
-            } else {
-                return unsafe _inline.read(at: _index).pointee
-            }
+            guard position < end else { return nil }
+            let result = unsafe base[position]
+            position = (position + 1)!
+            return result
         }
     }
 }
 
+extension Heap.Small.Iterator: @unchecked Sendable where Element: Sendable {}
+
 // MARK: - Sequence.Protocol Conformance
 
 extension Heap.Small: Sequence.`Protocol` where Element: Copyable & Comparison.`Protocol` {
-    /// Returns an iterator over the heap's elements in heap order.
+    /// Returns a pointer-based iterator over the heap elements.
+    ///
+    /// Zero-copy iteration - no allocation, no element copying.
+    /// Uses typed `Index<Element>` for position tracking.
     ///
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
+    ///
+    /// ## Implementation Note
+    ///
+    /// This function must be `borrowing` (non-mutating) per Sequence protocol.
+    /// For heap storage, we use the cached `heapPtr` pointer directly.
+    /// For inline storage, we use `withUnsafePointer(to:)` on the stored property
+    /// to obtain a pointer without requiring `&self`.
+    ///
+    /// The `inline` accessor cannot be used here because it requires `mutating`
+    /// context (needs `&self` to construct the accessor struct). See:
+    /// `/Users/coen/Developer/swift-institute/Research/Non-Mutating-Accessor-Problem.md`
     @inlinable
     public borrowing func makeIterator() -> Iterator {
-        Iterator(_inline: inline, _heap: heap, _heapPtr: heapPtr, count: count)
+        guard count.rawValue > 0 else {
+            return unsafe Iterator(base: UnsafePointer<Element>(bitPattern: 1)!, count: .zero)
+        }
+
+        if let ptr = heapPtr {
+            return unsafe Iterator(base: UnsafePointer(ptr), count: count)
+        } else {
+            // Inline storage - get pointer to first element via withUnsafePointer
+            // Note: We use withUnsafePointer directly on the stored property because
+            // the `inline` accessor requires mutating context (needs &self).
+            _ = MemoryLayout<Element>.stride
+            return unsafe withUnsafePointer(to: inline) { storagePtr in
+                let basePtr = unsafe UnsafeRawPointer(storagePtr)
+                let elementPtr = unsafe basePtr.assumingMemoryBound(to: Element.self)
+                return unsafe Iterator(base: elementPtr, count: count)
+            }
+        }
     }
 
     /// Returns the count as the underestimated count since we know the exact size.

@@ -16,41 +16,78 @@ public import Range_Primitives
 // MARK: - Heap.Static Iterator
 
 extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
-    /// Iterator for Heap.Static elements.
+    /// Pointer-based iterator for Heap.Static elements.
+    ///
+    /// Zero-copy iteration using typed `Index<Element>` for position tracking.
+    /// The iterator holds a pointer to the inline storage.
+    ///
+    /// ## Safety
+    ///
+    /// The iterator is only valid while the source heap exists and is not mutated.
+    /// Since Heap.Static uses inline storage that moves with the struct, the
+    /// iterator must be used within the same scope where it was created.
+    @safe
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _inline: Heap.Storage.Inline<capacity>
+        let base: UnsafePointer<Element>
 
         @usableFromInline
-        let _end: Heap.Index.Count
+        let end: Heap.Index.Count
 
         @usableFromInline
-        var _index: Heap.Index = .zero
+        var position: Heap.Index
 
-        @usableFromInline
-        init(_inline: Heap.Storage.Inline<capacity>, count: Heap.Index.Count) {
-            self._inline = _inline
-            self._end = count
+        @usableFromInline @unsafe
+        init(base: UnsafePointer<Element>, count: Heap.Index.Count) {
+            unsafe self.base = base
+            self.end = count
+            self.position = .zero
         }
 
         @inlinable
         public mutating func next() -> Element? {
-            guard _index < _end else { return nil }
-            defer { _index = (_index + 1)! }
-            return unsafe _inline.read(at: _index).pointee
+            guard position < end else { return nil }
+            let result = unsafe base[position]
+            position = (position + 1)!
+            return result
         }
     }
 }
 
+extension Heap.Static.Iterator: @unchecked Sendable where Element: Sendable {}
+
 // MARK: - Sequence.Protocol Conformance
 
 extension Heap.Static: Sequence.`Protocol` where Element: Copyable & Comparison.`Protocol` {
-    /// Returns an iterator over the heap's elements in heap order.
+    /// Returns a pointer-based iterator over the heap elements.
+    ///
+    /// Zero-copy iteration - no allocation, no element copying.
+    /// Uses typed `Index<Element>` for position tracking.
     ///
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
+    ///
+    /// ## Implementation Note
+    ///
+    /// This function must be `borrowing` (non-mutating) per Sequence protocol.
+    /// We use `withUnsafePointer(to:)` on the stored property to obtain a pointer
+    /// without requiring `&self`.
+    ///
+    /// The `inline` accessor cannot be used here because it requires `mutating`
+    /// context (needs `&self` to construct the accessor struct). See:
+    /// `/Users/coen/Developer/swift-institute/Research/Non-Mutating-Accessor-Problem.md`
     @inlinable
     public borrowing func makeIterator() -> Iterator {
-        Iterator(_inline: inline, count: count)
+        guard count.rawValue > 0 else {
+            return unsafe Iterator(base: UnsafePointer<Element>(bitPattern: 1)!, count: .zero)
+        }
+
+        // Inline storage - get pointer to first element via withUnsafePointer
+        _ = MemoryLayout<Element>.stride
+        return unsafe withUnsafePointer(to: inline) { storagePtr in
+            let basePtr = unsafe UnsafeRawPointer(storagePtr)
+            let elementPtr = unsafe basePtr.assumingMemoryBound(to: Element.self)
+            return unsafe Iterator(base: elementPtr, count: count)
+        }
     }
 
     /// Returns the count as the underestimated count since we know the exact size.
