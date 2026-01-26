@@ -134,8 +134,10 @@ struct HeapSmallTests {
 
     @Test("Pop throws when empty")
     func popThrowsWhenEmpty() {
-        var heap = Heap<Int>.Small<8>(order: .ascending)
-        #expect(throws: __Heap.Small.Error.empty) {
+        typealias TestHeap = Heap<Int>.Small<8>
+        
+        var heap = TestHeap(order: .ascending)
+        #expect(throws: TestHeap.Error.empty) {
             try heap.pop()
         }
     }

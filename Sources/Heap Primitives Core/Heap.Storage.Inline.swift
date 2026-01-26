@@ -10,6 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Range_Primitives
+public import Pointer_Primitives
+public import Comparison_Primitives
 
 extension Heap.Storage where Element: ~Copyable {
 
@@ -64,22 +66,134 @@ extension Heap.Storage where Element: ~Copyable {
 }
 
 extension Heap.Storage.Inline where Element: ~Copyable {
-    // MARK: - Element Access (Mutable)
+    // MARK: - Scoped Pointer Access (Safe)
 
-    /// Returns mutable pointer to element at index.
+    /// Scoped mutable access to element at index.
     ///
-    /// This is the ONLY place where `.position.rawValue` is used for inline storage.
+    /// The pointer is only valid within the closure scope. This prevents
+    /// pointer escape issues that occur with direct pointer returns.
     ///
-    /// - Parameter index: The index of the element.
-    /// - Returns: A mutable pointer to the element.
+    /// - Parameters:
+    ///   - index: The index of the element.
+    ///   - body: A closure that receives a mutable pointer to the element.
+    /// - Returns: The value returned by the closure.
     /// - Precondition: Index must be in bounds (caller's responsibility).
     @usableFromInline
     @unsafe
-    package mutating func pointer(at index: Heap.Index) -> UnsafeMutablePointer<Element> {
+    package mutating func withPointer<R: ~Copyable>(
+        at index: Heap.Index,
+        _ body: (Pointer<Element>.Mutable) -> R
+    ) -> R {
         let stride = MemoryLayout<Element>.stride
         return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
             let base = UnsafeMutableRawPointer(rawPointer)
-            return unsafe (base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self)
+            let ptr = unsafe Pointer<Element>.Mutable((base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            return body(ptr)
+        }
+    }
+
+    /// Scoped mutable access to two elements (for swap operations).
+    ///
+    /// - Parameters:
+    ///   - i: The first index.
+    ///   - j: The second index.
+    ///   - body: A closure that receives mutable pointers to both elements.
+    /// - Returns: The value returned by the closure.
+    /// - Precondition: Both indices must be in bounds (caller's responsibility).
+    @usableFromInline
+    @unsafe
+    package mutating func withPointers<R: ~Copyable>(
+        at i: Heap.Index, _ j: Heap.Index,
+        _ body: (Pointer<Element>.Mutable, Pointer<Element>.Mutable) -> R
+    ) -> R {
+        let stride = MemoryLayout<Element>.stride
+        return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
+            let base = UnsafeMutableRawPointer(rawPointer)
+            let ptrI = unsafe Pointer<Element>.Mutable((base + i.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            let ptrJ = unsafe Pointer<Element>.Mutable((base + j.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            return body(ptrI, ptrJ)
+        }
+    }
+
+    /// Scoped read-only access to element at index.
+    ///
+    /// - Parameters:
+    ///   - index: The index of the element.
+    ///   - body: A closure that receives a read-only pointer to the element.
+    /// - Returns: The value returned by the closure.
+    /// - Precondition: Index must be in bounds (caller's responsibility).
+    @usableFromInline
+    @unsafe
+    package mutating func withReadPointer<R: ~Copyable>(
+        at index: Heap.Index,
+        _ body: (Pointer<Element>) -> R
+    ) -> R {
+        let stride = MemoryLayout<Element>.stride
+        return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
+            let base = UnsafeRawPointer(rawPointer)
+            let ptr = unsafe Pointer<Element>((base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            return body(ptr)
+        }
+    }
+
+    /// Scoped read-only access to two elements (for comparison operations).
+    ///
+    /// - Parameters:
+    ///   - i: The first index.
+    ///   - j: The second index.
+    ///   - body: A closure that receives read-only pointers to both elements.
+    /// - Returns: The value returned by the closure.
+    /// - Precondition: Both indices must be in bounds (caller's responsibility).
+    @usableFromInline
+    @unsafe
+    package mutating func withReadPointers<R: ~Copyable>(
+        at i: Heap.Index, _ j: Heap.Index,
+        _ body: (Pointer<Element>, Pointer<Element>) -> R
+    ) -> R {
+        let stride = MemoryLayout<Element>.stride
+        return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
+            let base = UnsafeRawPointer(rawPointer)
+            let ptrI = unsafe Pointer<Element>((base + i.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            let ptrJ = unsafe Pointer<Element>((base + j.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            return body(ptrI, ptrJ)
+        }
+    }
+
+    // MARK: - Convenience Operations
+
+    /// Swaps elements at two indices.
+    ///
+    /// Encapsulates the move/initialize dance required for swapping ~Copyable elements.
+    ///
+    /// - Parameters:
+    ///   - i: The first index.
+    ///   - j: The second index.
+    /// - Precondition: Both indices must be in bounds and initialized.
+    @usableFromInline
+    package mutating func swap(at i: Heap.Index, _ j: Heap.Index) {
+        unsafe withPointers(at: i, j) { ptrI, ptrJ in
+            let temp = ptrI.move()
+            ptrI.initialize(to: ptrJ.move())
+            ptrJ.initialize(to: temp)
+        }
+    }
+
+    // MARK: - Element Initialization/Move
+
+    /// Returns mutable pointer for internal use.
+    ///
+    /// Note: This returns an escaping pointer but is safe when used immediately
+    /// in the same mutating function for initialize/move operations, because:
+    /// 1. The mutating context provides exclusive access
+    /// 2. The pointer is used immediately, not stored
+    /// 3. No intervening operations occur that could invalidate it
+    @usableFromInline
+    @unsafe
+    package mutating func _unsafePointer(at index: Heap.Index) -> Pointer<Element>.Mutable {
+        let stride = MemoryLayout<Element>.stride
+        return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
+            let base = UnsafeMutableRawPointer(rawPointer)
+            return unsafe Pointer<Element>.Mutable((base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self))
         }
     }
 
@@ -91,8 +205,8 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Precondition: The slot at index must be uninitialized.
     @usableFromInline
     package mutating func initialize(to element: consuming Element, at index: Heap.Index) {
-        let ptr = unsafe pointer(at: index)
-        unsafe ptr.initialize(to: element)
+        let ptr = unsafe _unsafePointer(at: index)
+        ptr.initialize(to: element)
     }
 
     /// Moves element from the given index.
@@ -103,26 +217,7 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Postcondition: The slot at index is deinitialized.
     @usableFromInline
     package mutating func move(at index: Heap.Index) -> Element {
-        unsafe pointer(at: index).move()
-    }
-
-    // MARK: - Element Access (Read-Only)
-
-    /// Returns read-only pointer to element at index.
-    ///
-    /// This is the ONLY place where `.position.rawValue` is used for read-only inline access.
-    ///
-    /// - Parameter index: The index of the element.
-    /// - Returns: A read-only pointer to the element.
-    /// - Precondition: Index must be in bounds (caller's responsibility).
-    @usableFromInline
-    @unsafe
-    package func read(at index: Heap.Index) -> UnsafePointer<Element> {
-        let stride = MemoryLayout<Element>.stride
-        return unsafe Swift.withUnsafePointer(to: raw) { rawPointer in
-            let base = unsafe UnsafeRawPointer(rawPointer)
-            return unsafe (base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self)
-        }
+        unsafe _unsafePointer(at: index).move()
     }
 
     // MARK: - Bulk Operations
@@ -207,6 +302,25 @@ extension Heap.Storage.Inline where Element: Copyable {
                     unsafe (dst + index).initialize(to: src.pointee)
                 }
             }
+        }
+    }
+}
+
+
+// MARK: - Comparable Element Extensions
+
+extension Heap.Storage.Inline where Element: ~Copyable & Comparison.`Protocol` {
+    /// Compares elements at two indices using less-than.
+    ///
+    /// - Parameters:
+    ///   - i: The first index.
+    ///   - j: The second index.
+    /// - Returns: `true` if the element at index `i` is less than the element at index `j`.
+    /// - Precondition: Both indices must be in bounds and initialized.
+    @usableFromInline
+    package mutating func isLess(at i: Heap.Index, than j: Heap.Index) -> Bool {
+        unsafe withReadPointers(at: i, j) { ptrI, ptrJ in
+            ptrI.pointee < ptrJ.pointee
         }
     }
 }

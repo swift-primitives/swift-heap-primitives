@@ -11,6 +11,7 @@
 
 public import Range_Primitives
 public import Property_Primitives
+public import Pointer_Primitives
 
 // MARK: - Namespaces
 
@@ -72,11 +73,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Swaps elements at two indices.
     @usableFromInline
     package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
-        let ptrI = unsafe inline.pointer(at: i)
-        let ptrJ = unsafe inline.pointer(at: j)
-        let temp = unsafe ptrI.move()
-        unsafe ptrI.initialize(to: ptrJ.move())
-        unsafe ptrJ.initialize(to: temp)
+        inline.swap(at: i, j)
     }
 }
 
@@ -92,7 +89,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
         switch order {
         case .ascending:
             while let parent = nav.parent(of: current) {
-                if unsafe inline.read(at: current).pointee < inline.read(at: parent).pointee {
+                if inline.isLess(at: current, than: parent) {
                     swapElements(at: current, parent)
                     current = parent
                 } else {
@@ -101,7 +98,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
             }
         case .descending:
             while let parent = nav.parent(of: current) {
-                if unsafe inline.read(at: parent).pointee < inline.read(at: current).pointee {
+                if inline.isLess(at: parent, than: current) {
                     swapElements(at: current, parent)
                     current = parent
                 } else {
@@ -126,11 +123,11 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
             while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
-                if unsafe inline.read(at: leftChild).pointee < inline.read(at: smallest).pointee {
+                if inline.isLess(at: leftChild, than: smallest) {
                     smallest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if unsafe inline.read(at: rightChild).pointee < inline.read(at: smallest).pointee {
+                    if inline.isLess(at: rightChild, than: smallest) {
                         smallest = rightChild
                     }
                 }
@@ -145,11 +142,11 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
             while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
-                if unsafe inline.read(at: largest).pointee < inline.read(at: leftChild).pointee {
+                if inline.isLess(at: largest, than: leftChild) {
                     largest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if unsafe inline.read(at: largest).pointee < inline.read(at: rightChild).pointee {
+                    if inline.isLess(at: largest, than: rightChild) {
                         largest = rightChild
                     }
                 }
@@ -222,7 +219,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Throws: ``Static/Error/empty`` if the heap is empty.
     /// - Complexity: O(log n)
     @inlinable
-    public mutating func pop() throws(__Heap.Static.Error) -> Element {
+    public mutating func pop() throws(Heap.Static<capacity>.Error) -> Element {
         guard let element = removePriority() else {
             throw .empty
         }
@@ -276,9 +273,11 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
     /// - Complexity: O(1)
     @inlinable
-    public func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
+    public mutating func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
         guard count > .zero else { return nil }
-        return unsafe body(inline.read(at: .zero).pointee)
+        return unsafe inline.withReadPointer(at: .zero) { ptr in
+            body(ptr.pointee)
+        }
     }
 
     /// Calls the given closure for each element in heap order.
@@ -293,9 +292,11 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Parameter body: A closure that receives a borrowed reference to each element.
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
-    public func forEach(_ body: (borrowing Element) -> Void) {
+    public mutating func forEach(_ body: (borrowing Element) -> Void) {
         (0..<count).forEach { index in
-            body(unsafe inline.read(at: index).pointee)
+            unsafe inline.withReadPointer(at: index) { ptr in
+                body(ptr.pointee)
+            }
         }
     }
 }

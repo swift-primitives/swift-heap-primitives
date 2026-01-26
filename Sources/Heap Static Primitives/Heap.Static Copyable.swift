@@ -12,82 +12,75 @@
 public import Sequence_Primitives
 public import Property_Primitives
 public import Range_Primitives
+public import Pointer_Primitives
 
 // MARK: - Heap.Static Iterator
 
 extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
-    /// Pointer-based iterator for Heap.Static elements.
+    /// Array-based iterator for Heap.Static elements.
     ///
-    /// Zero-copy iteration using typed `Index<Element>` for position tracking.
-    /// The iterator holds a pointer to the inline storage.
+    /// Copies elements to an internal array for safe iteration. This avoids
+    /// the pointer escape issues that occur with inline storage.
     ///
-    /// ## Safety
-    ///
-    /// The iterator is only valid while the source heap exists and is not mutated.
-    /// Since Heap.Static uses inline storage that moves with the struct, the
-    /// iterator must be used within the same scope where it was created.
+    /// - Note: Iteration incurs O(n) copy cost. For performance-critical code,
+    ///   use the mutating `forEach` method instead.
     @safe
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let base: UnsafePointer<Element>
+        var elements: [Element]
 
         @usableFromInline
-        let end: Heap.Index.Count
+        var position: Int
 
         @usableFromInline
-        var position: Heap.Index
-
-        @usableFromInline @unsafe
-        init(base: UnsafePointer<Element>, count: Heap.Index.Count) {
-            unsafe self.base = base
-            self.end = count
-            self.position = .zero
+        init(elements: [Element]) {
+            self.elements = elements
+            self.position = 0
         }
 
         @inlinable
         public mutating func next() -> Element? {
-            guard position < end else { return nil }
-            let result = unsafe base[position]
-            position = (position + 1)!
+            guard position < elements.count else { return nil }
+            let result = elements[position]
+            position += 1
             return result
         }
     }
 }
 
-extension Heap.Static.Iterator: @unchecked Sendable where Element: Sendable {}
+extension Heap.Static.Iterator: Sendable where Element: Sendable {}
 
 // MARK: - Sequence.Protocol Conformance
 
 extension Heap.Static: Sequence.`Protocol` where Element: Copyable & Comparison.`Protocol` {
-    /// Returns a pointer-based iterator over the heap elements.
+    /// Returns an iterator over the heap elements.
     ///
-    /// Zero-copy iteration - no allocation, no element copying.
-    /// Uses typed `Index<Element>` for position tracking.
+    /// Copies elements to an array for safe iteration. This avoids pointer
+    /// escape issues with inline storage.
     ///
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
-    ///
-    /// ## Implementation Note
-    ///
-    /// This function must be `borrowing` (non-mutating) per Sequence protocol.
-    /// We use `withUnsafePointer(to:)` on the stored property to obtain a pointer
-    /// without requiring `&self`.
-    ///
-    /// The `inline` accessor cannot be used here because it requires `mutating`
-    /// context (needs `&self` to construct the accessor struct). See:
-    /// `/Users/coen/Developer/swift-institute/Research/Non-Mutating-Accessor-Problem.md`
+    /// - Note: Incurs O(n) copy cost. For performance-critical code, use
+    ///   the mutating `forEach` method instead.
     @inlinable
     public borrowing func makeIterator() -> Iterator {
         guard count.rawValue > 0 else {
-            return unsafe Iterator(base: UnsafePointer<Element>(bitPattern: 1)!, count: .zero)
+            return Iterator(elements: [])
         }
 
-        // Inline storage - get pointer to first element via withUnsafePointer
-        _ = MemoryLayout<Element>.stride
-        return unsafe withUnsafePointer(to: inline) { storagePtr in
-            let basePtr = unsafe UnsafeRawPointer(storagePtr)
-            let elementPtr = unsafe basePtr.assumingMemoryBound(to: Element.self)
-            return unsafe Iterator(base: elementPtr, count: count)
+        // Copy elements to array using direct inline storage access.
+        // Within borrowing context, the pointer from withUnsafePointer is valid
+        // for copying all elements before returning.
+        var elements: [Element] = []
+        elements.reserveCapacity(count.rawValue)
+        let stride = MemoryLayout<Element>.stride
+        unsafe Swift.withUnsafePointer(to: inline.raw) { rawPointer in
+            let base = unsafe UnsafeRawPointer(rawPointer)
+            (0..<count.rawValue).forEach { position in
+                let ptr = unsafe (base + position * stride).assumingMemoryBound(to: Element.self)
+                unsafe elements.append(ptr.pointee)
+            }
         }
+        return Iterator(elements: elements)
     }
 
     /// Returns the count as the underestimated count since we know the exact size.
@@ -226,7 +219,9 @@ extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(1)
     @inlinable
     public var peek: Element? {
-        guard !isEmpty else { return nil }
-        return unsafe inline.read(at: .zero).pointee
+        mutating get {
+            guard !isEmpty else { return nil }
+            return unsafe inline.withReadPointer(at: .zero) { $0.pointee }
+        }
     }
 }
