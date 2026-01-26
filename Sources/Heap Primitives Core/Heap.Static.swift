@@ -186,15 +186,18 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Pushes an element onto the heap.
     ///
-    /// Returns an ``Outcome`` indicating whether the element was inserted
+    /// Returns an ``Heap/Push/Outcome`` indicating whether the element was inserted
     /// or returned due to overflow.
     ///
     /// - Parameter element: The element to push.
     /// - Returns: `.inserted` if successful, `.overflow(element)` if the heap is full.
     /// - Complexity: O(log n)
+    ///
+    /// - Note: Uses `Heap.Push.Outcome` per [COPY-FIX-001]; nested outcome types
+    ///   in value-generic structs lose `~Copyable` constraint propagation.
     @inlinable
     @discardableResult
-    public mutating func push(_ element: consuming Element) -> Push.Outcome {
+    public mutating func push(_ element: consuming Element) -> Heap.Push.Outcome {
         guard count.rawValue < capacity else {
             return .overflow(element)
         }

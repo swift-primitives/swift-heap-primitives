@@ -266,19 +266,6 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         deinit {
             inline.deinitialize(count: count)
         }
-
-        // MARK: - Push Outcome
-
-        /// Outcome of a push operation on a static heap.
-        public enum Push: ~Copyable {
-            /// Outcome of pushing an element.
-            public enum Outcome: ~Copyable {
-                /// The element was successfully inserted.
-                case inserted
-                /// The heap was full; the element is returned to the caller.
-                case overflow(Element)
-            }
-        }
     }
 
     // MARK: - Small (nested in body for value generic parameter per COPY-FIX-002)
@@ -419,8 +406,6 @@ extension Heap.Small: @unchecked Sendable where Element: Sendable {}
 
 extension Heap.Push.Outcome: Copyable where Element: Copyable {}
 extension Heap.Push.Outcome: Sendable where Element: Sendable {}
-extension Heap.Static.Push.Outcome: Copyable where Element: Copyable {}
-extension Heap.Static.Push.Outcome: Sendable where Element: Sendable {}
 
 // MARK: - Error Type Aliases
 
