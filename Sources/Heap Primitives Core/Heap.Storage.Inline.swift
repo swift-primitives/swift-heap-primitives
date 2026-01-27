@@ -84,10 +84,10 @@ extension Heap.Storage.Inline where Element: ~Copyable {
         at index: Heap.Index,
         _ body: (Pointer<Element>.Mutable) -> R
     ) -> R {
-        let stride = MemoryLayout<Element>.stride
+        let stride = Affine.Discrete.Ratio<Element, UInt8>(MemoryLayout<Element>.stride)
         return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
             let base = UnsafeMutableRawPointer(rawPointer)
-            let ptr = unsafe Pointer<Element>.Mutable((base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            let ptr = unsafe Pointer<Element>.Mutable((base + (Heap.Index.Offset(index) * stride).vector.rawValue).assumingMemoryBound(to: Element.self))
             return body(ptr)
         }
     }
@@ -106,11 +106,11 @@ extension Heap.Storage.Inline where Element: ~Copyable {
         at i: Heap.Index, _ j: Heap.Index,
         _ body: (Pointer<Element>.Mutable, Pointer<Element>.Mutable) -> R
     ) -> R {
-        let stride = MemoryLayout<Element>.stride
+        let stride = Affine.Discrete.Ratio<Element, UInt8>(MemoryLayout<Element>.stride)
         return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
             let base = UnsafeMutableRawPointer(rawPointer)
-            let ptrI = unsafe Pointer<Element>.Mutable((base + i.position.rawValue * stride).assumingMemoryBound(to: Element.self))
-            let ptrJ = unsafe Pointer<Element>.Mutable((base + j.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            let ptrI = unsafe Pointer<Element>.Mutable((base + (Heap.Index.Offset(i) * stride).vector.rawValue).assumingMemoryBound(to: Element.self))
+            let ptrJ = unsafe Pointer<Element>.Mutable((base + (Heap.Index.Offset(j) * stride).vector.rawValue).assumingMemoryBound(to: Element.self))
             return body(ptrI, ptrJ)
         }
     }
@@ -128,10 +128,10 @@ extension Heap.Storage.Inline where Element: ~Copyable {
         at index: Heap.Index,
         _ body: (Pointer<Element>) -> R
     ) -> R {
-        let stride = MemoryLayout<Element>.stride
+        let stride = Affine.Discrete.Ratio<Element, UInt8>(MemoryLayout<Element>.stride)
         return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
             let base = UnsafeRawPointer(rawPointer)
-            let ptr = unsafe Pointer<Element>((base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            let ptr = unsafe Pointer<Element>((base + (Heap.Index.Offset(index) * stride).vector.rawValue).assumingMemoryBound(to: Element.self))
             return body(ptr)
         }
     }
@@ -150,11 +150,11 @@ extension Heap.Storage.Inline where Element: ~Copyable {
         at i: Heap.Index, _ j: Heap.Index,
         _ body: (Pointer<Element>, Pointer<Element>) -> R
     ) -> R {
-        let stride = MemoryLayout<Element>.stride
+        let stride = Affine.Discrete.Ratio<Element, UInt8>(MemoryLayout<Element>.stride)
         return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
             let base = UnsafeRawPointer(rawPointer)
-            let ptrI = unsafe Pointer<Element>((base + i.position.rawValue * stride).assumingMemoryBound(to: Element.self))
-            let ptrJ = unsafe Pointer<Element>((base + j.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            let ptrI = unsafe Pointer<Element>((base + (Heap.Index.Offset(i) * stride).vector.rawValue).assumingMemoryBound(to: Element.self))
+            let ptrJ = unsafe Pointer<Element>((base + (Heap.Index.Offset(j) * stride).vector.rawValue).assumingMemoryBound(to: Element.self))
             return body(ptrI, ptrJ)
         }
     }
@@ -190,10 +190,10 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     @usableFromInline
     @unsafe
     package mutating func _unsafePointer(at index: Heap.Index) -> Pointer<Element>.Mutable {
-        let stride = MemoryLayout<Element>.stride
+        let stride = Affine.Discrete.Ratio<Element, UInt8>(MemoryLayout<Element>.stride)
         return unsafe Swift.withUnsafeMutablePointer(to: &raw) { rawPointer in
             let base = UnsafeMutableRawPointer(rawPointer)
-            return unsafe Pointer<Element>.Mutable((base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self))
+            return unsafe Pointer<Element>.Mutable((base + (Heap.Index.Offset(index) * stride).vector.rawValue).assumingMemoryBound(to: Element.self))
         }
     }
 
@@ -230,11 +230,11 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     /// - Note: Non-mutating to allow use from deinit contexts.
     @usableFromInline
     package func deinitialize(in range: Range.Lazy<Heap.Index>) {
-        let stride = MemoryLayout<Element>.stride
+        let stride = Affine.Discrete.Ratio<Element, UInt8>(MemoryLayout<Element>.stride)
         unsafe Swift.withUnsafePointer(to: raw) { rawPointer in
             let base = unsafe UnsafeMutableRawPointer(mutating: UnsafeRawPointer(rawPointer))
             range.forEach { index in
-                unsafe (base + index.position.rawValue * stride)
+                unsafe (base + (Heap.Index.Offset(index) * stride).vector.rawValue)
                     .assumingMemoryBound(to: Element.self)
                     .deinitialize(count: 1)
             }
@@ -266,12 +266,12 @@ extension Heap.Storage.Inline where Element: ~Copyable {
     @usableFromInline
     package mutating func move(to heapStorage: Heap.Storage, count: Heap.Index.Count) {
         guard count > .zero else { return }
-        let stride = MemoryLayout<Element>.stride
+        let stride = Affine.Discrete.Ratio<Element, UInt8>(MemoryLayout<Element>.stride)
         unsafe Swift.withUnsafePointer(to: raw) { rawPointer in
             unsafe heapStorage.withUnsafeMutablePointerToElements { dst in
                 let base = unsafe UnsafeMutableRawPointer(mutating: UnsafeRawPointer(rawPointer))
                 (0..<count).forEach { index in
-                    let src = unsafe (base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self)
+                    let src = unsafe (base + (Heap.Index.Offset(index) * stride).vector.rawValue).assumingMemoryBound(to: Element.self)
                     unsafe (dst + index).initialize(to: src.move())
                 }
             }
