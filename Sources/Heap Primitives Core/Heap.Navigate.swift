@@ -56,7 +56,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         @inlinable
         public func parent(of index: Heap.Index) -> Heap.Index? {
             guard index.position > 0 else { return nil }
-            return try? Heap.Index((index.position.rawValue - 1) / 2)
+            return try? Heap.Index((index.position - 1) / 2)
         }
 
         /// Returns the index of the specified child of the element at the given index.
@@ -69,8 +69,8 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         public func child(_ child: Child, of index: Heap.Index) -> Heap.Index? {
             let childPosition: Int
             switch child {
-            case .left: childPosition = 2 * index.position.rawValue + 1
-            case .right: childPosition = 2 * index.position.rawValue + 2
+            case .left: childPosition = 2 * index.position + 1
+            case .right: childPosition = 2 * index.position + 2
             }
             guard childPosition < _count.rawValue else { return nil }
             return try? Heap.Index(childPosition)

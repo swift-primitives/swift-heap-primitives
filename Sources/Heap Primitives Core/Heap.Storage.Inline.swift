@@ -298,7 +298,7 @@ extension Heap.Storage.Inline where Element: Copyable {
             unsafe heapStorage.withUnsafeMutablePointerToElements { dst in
                 let base = unsafe UnsafeRawPointer(rawPointer)
                 (0..<count).forEach { index in
-                    let src = unsafe (base + index.position.rawValue * stride).assumingMemoryBound(to: Element.self)
+                    let src = unsafe (base + index.position * stride).assumingMemoryBound(to: Element.self)
                     unsafe (dst + index).initialize(to: src.pointee)
                 }
             }

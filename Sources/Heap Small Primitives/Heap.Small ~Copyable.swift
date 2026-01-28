@@ -102,7 +102,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         _ body: (Pointer<Element>.Mutable) -> R
     ) -> R {
         if let ptr = heapPtr {
-            let elementPtr = ptr.advanced(by: Heap.Index.Offset(index.position.rawValue))
+            let elementPtr = ptr.advanced(by: Heap.Index.Offset(index.position))
             return body(elementPtr)
         } else {
             return unsafe inline.withPointer(at: index, body)
@@ -117,7 +117,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         _ body: (Pointer<Element>) -> R
     ) -> R {
         if let ptr = heapPtr {
-            let elementPtr = ptr.advanced(by: Heap.Index.Offset(index.position.rawValue)).immutable
+            let elementPtr = ptr.advanced(by: Heap.Index.Offset(index.position)).immutable
             return body(elementPtr)
         } else {
             return unsafe inline.withReadPointer(at: index, body)
@@ -143,7 +143,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func insert(_ element: consuming Element) {
         let index = Heap.Index(__unchecked: (), position: count.rawValue)
         if let ptr = heapPtr {
-            ptr.advanced(by: Heap.Index.Offset(index.position.rawValue)).initialize(to: element)
+            ptr.advanced(by: Heap.Index.Offset(index.position)).initialize(to: element)
         } else {
             inline.initialize(to: element, at: index)
         }
@@ -179,7 +179,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         }
         let removed: Element
         if let ptr = heapPtr {
-            removed = ptr.advanced(by: Heap.Index.Offset(lastIndex.position.rawValue)).move()
+            removed = ptr.advanced(by: Heap.Index.Offset(lastIndex.position)).move()
         } else {
             removed = inline.move(at: lastIndex)
         }
@@ -192,8 +192,8 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
         if let ptr = heapPtr {
             // Heap: stable allocation, direct swap OK
-            let ptrI = ptr.advanced(by: Heap.Index.Offset(i.position.rawValue))
-            let ptrJ = ptr.advanced(by: Heap.Index.Offset(j.position.rawValue))
+            let ptrI = ptr.advanced(by: Heap.Index.Offset(i.position))
+            let ptrJ = ptr.advanced(by: Heap.Index.Offset(j.position))
             let temp = ptrI.move()
             ptrI.initialize(to: ptrJ.move())
             ptrJ.initialize(to: temp)
