@@ -115,7 +115,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Swaps elements at two indices using the cached pointer.
     @usableFromInline
     package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
-        _cachedPtr.swapAt(i, j)
+        _cachedPtr.swap(i, j)
     }
 }
 
