@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 import Testing
+import Index_Primitives_Test_Support
 @testable import Heap_Primitives
 
 @Suite("Heap.Small (Single-Ended)")

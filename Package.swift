@@ -114,7 +114,10 @@ let package = Package(
         ),
         .testTarget(
             name: "Heap Primitives Tests",
-            dependencies: ["Heap Primitives"]
+            dependencies: [
+                "Heap Primitives",
+                .product(name: "Index Primitives Test Support", package: "swift-index-primitives"),
+            ]
         )
     ],
     swiftLanguageModes: [.v6]

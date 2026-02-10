@@ -306,10 +306,9 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Parameter newCount: The maximum number of elements to retain.
     /// - Complexity: O(k) where k is the number of removed elements.
     @inlinable
-    public mutating func truncate(to newCount: Int) {
-        let targetCount = Heap.Index.Count(clamping: newCount)
-        guard targetCount < count else { return }
-        while _buffer.count > targetCount {
+    public mutating func truncate(to newCount: Heap.Index.Count) {
+        guard newCount < count else { return }
+        while _buffer.count > newCount {
             _ = _buffer.removeLast()
         }
     }

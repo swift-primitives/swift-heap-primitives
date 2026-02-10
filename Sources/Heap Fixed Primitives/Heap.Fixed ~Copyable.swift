@@ -426,10 +426,9 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Parameter newCount: The maximum number of elements to retain.
     /// - Complexity: O(k) where k is the number of removed elements.
     @inlinable
-    public mutating func truncate(to newCount: Int) {
-        let targetCount = Heap.Index.Count(clamping: newCount)
-        guard targetCount < count else { return }
-        while _buffer.count > targetCount {
+    public mutating func truncate(to newCount: Heap.Index.Count) {
+        guard newCount < count else { return }
+        while _buffer.count > newCount {
             _ = _buffer.removeLast()
         }
     }
@@ -438,11 +437,10 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Removes elements beyond the specified count (CoW-aware).
     @inlinable
-    public mutating func truncate(to newCount: Int) {
+    public mutating func truncate(to newCount: Heap.Index.Count) {
         makeUnique()
-        let targetCount = Heap.Index.Count(clamping: newCount)
-        guard targetCount < count else { return }
-        while _buffer.count > targetCount {
+        guard newCount < count else { return }
+        while _buffer.count > newCount {
             _ = _buffer.removeLast()
         }
     }
