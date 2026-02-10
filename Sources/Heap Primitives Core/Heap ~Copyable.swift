@@ -168,14 +168,14 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Converts storage to valid heap in O(n).
     @usableFromInline
     package mutating func heapify() {
-        let n = Int(bitPattern: count.rawValue)
-        guard n > 1 else { return }
-
-        var i = n / 2 - 1
-        while i >= 0 {
-            let index = Heap.Index(__unchecked: (), Ordinal(UInt(i)))
-            trickleDown(index)
-            i -= 1
+        guard count > .one else { return }
+        // Int escape for division: principled — Cardinal has no division ([IMPL-001])
+        let startIdx = Int(bitPattern: count) / 2 - 1
+        var idx = Heap.Index(__unchecked: (), Ordinal(UInt(startIdx)))
+        while true {
+            trickleDown(idx)
+            guard idx > .zero else { break }
+            idx = try! idx.predecessor.exact()
         }
     }
 }

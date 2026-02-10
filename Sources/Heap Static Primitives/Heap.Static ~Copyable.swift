@@ -160,14 +160,14 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Converts storage to valid heap in O(n).
     @usableFromInline
     package mutating func heapify() {
-        let n = Int(bitPattern: count.rawValue)
-        guard n > 1 else { return }
-
-        var i = n / 2 - 1
-        while i >= 0 {
-            let index = Heap.Index(__unchecked: (), Ordinal(UInt(i)))
-            trickleDown(index)
-            i -= 1
+        guard count > .one else { return }
+        // Int escape for division: principled — Cardinal has no division ([IMPL-001])
+        let startIdx = Int(bitPattern: count) / 2 - 1
+        var idx = Heap.Index(__unchecked: (), Ordinal(UInt(startIdx)))
+        while true {
+            trickleDown(idx)
+            guard idx > .zero else { break }
+            idx = try! idx.predecessor.exact()
         }
     }
 }
@@ -307,11 +307,9 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(k) where k is the number of removed elements.
     @inlinable
     public mutating func truncate(to newCount: Int) {
-        guard newCount < Int(bitPattern: count.rawValue) else { return }
-        let targetCount = Swift.max(0, newCount)
-
-        // Remove elements from back until we reach the target count
-        while Int(bitPattern: _buffer.count.rawValue) > targetCount {
+        let targetCount = Heap.Index.Count(clamping: newCount)
+        guard targetCount < count else { return }
+        while _buffer.count > targetCount {
             _ = _buffer.removeLast()
         }
     }
