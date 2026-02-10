@@ -174,7 +174,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         }
 
         let lastNode = Node(offset: Int(bitPattern: _buffer.count) - 1)
-        _buffer.swapAt(Node.root.index, lastNode.index)
+        _buffer.swap(at: Node.root.index, with: lastNode.index)
         let removed = _buffer.removeLast()
         trickleDownMin(.root)
         return removed
@@ -198,7 +198,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         let lastOffset = Int(bitPattern: _buffer.count) - 1
         let lastNode = Node(offset: lastOffset)
-        _buffer.swapAt(maxNode.index, lastNode.index)
+        _buffer.swap(at: maxNode.index, with: lastNode.index)
         let removed = _buffer.removeLast()
 
         if maxNode.offset < Int(bitPattern: _buffer.count) {
@@ -224,7 +224,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         if (node.isMinLevel && parentIsLess)
             || (!node.isMinLevel && nodeIsLess) {
-            _buffer.swapAt(node.index, parent.index)
+            _buffer.swap(at: node.index, with: parent.index)
             node = parent
         }
 
@@ -232,14 +232,14 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             while let grandparent = node.grandParent() {
                 let gpIsLess = _buffer[grandparent.index] < _buffer[node.index]
                 guard !gpIsLess else { break }
-                _buffer.swapAt(node.index, grandparent.index)
+                _buffer.swap(at: node.index, with: grandparent.index)
                 node = grandparent
             }
         } else {
             while let grandparent = node.grandParent() {
                 let nodeIsLessGp = _buffer[node.index] < _buffer[grandparent.index]
                 guard !nodeIsLessGp else { break }
-                _buffer.swapAt(node.index, grandparent.index)
+                _buffer.swap(at: node.index, with: grandparent.index)
                 node = grandparent
             }
         }
@@ -282,12 +282,12 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
             if smallest.offset == node.offset { break }
 
-            _buffer.swapAt(node.index, smallest.index)
+            _buffer.swap(at: node.index, with: smallest.index)
 
             if smallest.offset >= gc0.offset {
                 let parent = smallest.parent()
                 if _buffer[parent.index] < _buffer[smallest.index] {
-                    _buffer.swapAt(smallest.index, parent.index)
+                    _buffer.swap(at: smallest.index, with: parent.index)
                 }
                 node = smallest
             } else {
@@ -333,12 +333,12 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
             if largest.offset == node.offset { break }
 
-            _buffer.swapAt(node.index, largest.index)
+            _buffer.swap(at: node.index, with: largest.index)
 
             if largest.offset >= gc0.offset {
                 let parent = largest.parent()
                 if _buffer[largest.index] < _buffer[parent.index] {
-                    _buffer.swapAt(largest.index, parent.index)
+                    _buffer.swap(at: largest.index, with: parent.index)
                 }
                 node = largest
             } else {

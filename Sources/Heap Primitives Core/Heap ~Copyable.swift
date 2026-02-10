@@ -66,7 +66,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 
         // Swap root with last, remove last, trickle down
         let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
-        _buffer.swapAt(.zero, lastIndex)
+        _buffer.swap(at: .zero, with: lastIndex)
         let removed = _buffer.removeLast()
         trickleDown(.zero)
         return removed
@@ -89,7 +89,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         case .ascending:
             while let parent = nav.parent(of: current) {
                 if _buffer[current] < _buffer[parent] {
-                    _buffer.swapAt(current, parent)
+                    _buffer.swap(at: current, with: parent)
                     current = parent
                 } else {
                     break
@@ -98,7 +98,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         case .descending:
             while let parent = nav.parent(of: current) {
                 if _buffer[parent] < _buffer[current] {
-                    _buffer.swapAt(current, parent)
+                    _buffer.swap(at: current, with: parent)
                     current = parent
                 } else {
                     break
@@ -136,7 +136,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 
                 if smallest == current { break }
 
-                _buffer.swapAt(current, smallest)
+                _buffer.swap(at: current, with: smallest)
                 current = smallest
             }
 
@@ -155,7 +155,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 
                 if largest == current { break }
 
-                _buffer.swapAt(current, largest)
+                _buffer.swap(at: current, with: largest)
                 current = largest
             }
         }
