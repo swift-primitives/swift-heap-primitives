@@ -10,7 +10,6 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitives_Core
-public import Range_Primitives
 
 // MARK: - Sequence.Protocol Conformance
 
@@ -22,7 +21,7 @@ extension Heap.MinMax: Sequence.`Protocol` where Element: Copyable & Comparison.
     /// This explicit implementation resolves ambiguity between Swift.Sequence
     /// and Sequence.Protocol+Swift.Sequence default implementation.
     @inlinable
-    public var underestimatedCount: Int { _storage.header }
+    public var underestimatedCount: Int { Int(bitPattern: _buffer.count.rawValue) }
 }
 
 // MARK: - Sequence.Clearable Conformance
@@ -48,11 +47,10 @@ extension Heap.MinMax: Sequence.Drain.`Protocol` where Element: Copyable & Compa
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
-        makeUnique()
-        (0..<_storage.count).forEach { index in
-            body(_storage.move(at: index))
+        _buffer.ensureUnique()
+        while !_buffer.isEmpty {
+            body(_buffer.removeLast())
         }
-        _storage.header = 0
     }
 }
 
@@ -158,10 +156,10 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
         self.init()
 
         for element in elements {
-            appendWithoutHeapify(element)
+            _buffer.append(element)
         }
 
-        if _storage.header > 1 {
+        if _buffer.count > .one {
             heapify()
         }
     }
@@ -172,14 +170,7 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func makeUnique() {
-        if !isKnownUniquelyReferenced(&_storage) {
-            let newStorage = Heap.Storage.create(minimumCapacity: _storage.capacity)
-            let currentCount = _storage.count
-            _storage.copy(to: newStorage, count: currentCount)
-            newStorage.header = currentCount.rawValue
-            _storage = newStorage
-            (_cachedPtr = _storage._elementsPointer)
-        }
+        _buffer.ensureUnique()
     }
 }
 
@@ -189,7 +180,7 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// Inserts an element into the heap (CoW-aware).
     @inlinable
     public mutating func push(_ element: Element) {
-        makeUnique()
+        _buffer.ensureUnique()
         insert(element)
     }
 }
@@ -201,11 +192,14 @@ extension Heap.MinMax: Equatable where Element: Equatable & Copyable {
     @inlinable
     public static func == (lhs: Self, rhs: Self) -> Bool {
         guard lhs.count == rhs.count else { return false }
+        var idx: Heap<Element>.Index = .zero
+        let end = lhs._buffer.count.map(Ordinal.init)
         var result = true
-        (0..<lhs._storage.count).forEach { index in
-            if lhs._storage.read(at: index) != rhs._storage.read(at: index) {
+        while idx < end {
+            if lhs._buffer[idx] != rhs._buffer[idx] {
                 result = false
             }
+            idx += .one
         }
         return result
     }
@@ -217,8 +211,11 @@ extension Heap.MinMax: Hashable where Element: Hashable & Copyable {
     @inlinable
     public func hash(into hasher: inout Hasher) {
         hasher.combine(count)
-        (0..<_storage.count).forEach { index in
-            hasher.combine(_storage.read(at: index))
+        var idx: Heap<Element>.Index = .zero
+        let end = _buffer.count.map(Ordinal.init)
+        while idx < end {
+            hasher.combine(_buffer[idx])
+            idx += .one
         }
     }
 }
@@ -248,7 +245,7 @@ extension Heap.MinMax: Swift.Sequence where Element: Copyable {
 
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _storage: Heap.Storage
+        let _buffer: Buffer<Element>.Linear
 
         @usableFromInline
         let _end: Heap.Index.Count
@@ -257,23 +254,23 @@ extension Heap.MinMax: Swift.Sequence where Element: Copyable {
         var _index: Heap.Index = .zero
 
         @usableFromInline
-        init(_storage: Heap.Storage) {
-            self._storage = _storage
-            self._end = _storage.count
+        init(_buffer: Buffer<Element>.Linear) {
+            self._buffer = _buffer
+            self._end = _buffer.count
         }
 
         @inlinable
         public mutating func next() -> Element? {
             guard _index < _end else { return nil }
-            let element = _storage.read(at: _index)
-            _index = (_index + 1)!
+            let element = _buffer[_index]
+            _index += .one
             return element
         }
     }
 
     @inlinable
     public func makeIterator() -> Iterator {
-        Iterator(_storage: _storage)
+        Iterator(_buffer: _buffer)
     }
 }
 
@@ -304,8 +301,8 @@ where Tag == Heap<Element>.MinMax.Peek,
     /// - Complexity: O(1)
     @inlinable
     public var min: Element? {
-        guard base._storage.header > 0 else { return nil }
-        return base._storage.read(at: .zero)
+        guard base._buffer.count > .zero else { return nil }
+        return base._buffer[.zero]
     }
 
     /// The maximum element, or `nil` if the heap is empty.
@@ -313,20 +310,19 @@ where Tag == Heap<Element>.MinMax.Peek,
     /// - Complexity: O(1)
     @inlinable
     public var max: Element? {
-        guard base._storage.header > 0 else { return nil }
-        let count = base._storage.count
-        if count == 1 {
-            return base._storage.read(at: .zero)
+        guard base._buffer.count > .zero else { return nil }
+        let count = base._buffer.count
+        if count == .one {
+            return base._buffer[.zero]
         }
-        if count == 2 {
-            let index = Heap<Element>.Index(__unchecked: (), position: 1)
-            return base._storage.read(at: index)
+        let idx1 = Heap<Element>.Index(__unchecked: (), Ordinal(1))
+        if count == .one + .one {
+            return base._buffer[idx1]
         }
 
-        let idx1 = Heap<Element>.Index(__unchecked: (), position: 1)
-        let idx2 = Heap<Element>.Index(__unchecked: (), position: 2)
-        let e1 = base._storage.read(at: idx1)
-        let e2 = base._storage.read(at: idx2)
+        let idx2 = Heap<Element>.Index(__unchecked: (), Ordinal(2))
+        let e1 = base._buffer[idx1]
+        let e2 = base._buffer[idx2]
         return e1 < e2 ? e2 : e1
     }
 }
@@ -368,7 +364,7 @@ where Tag == Heap<Element>.MinMax.Min,
     @inlinable
     public var peek: Element? {
         guard !(unsafe base.pointee.isEmpty) else { return nil }
-        return unsafe base.pointee._storage.read(at: .zero)
+        return unsafe base.pointee._buffer[.zero]
     }
 
     /// Removes and returns the minimum element.
@@ -378,7 +374,7 @@ where Tag == Heap<Element>.MinMax.Min,
     /// - Complexity: O(log n)
     @inlinable
     public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-        unsafe base.pointee.makeUnique()
+        unsafe base.pointee._buffer.ensureUnique()
         guard let element = unsafe base.pointee.removeMin() else {
             throw .empty
         }
@@ -391,7 +387,7 @@ where Tag == Heap<Element>.MinMax.Min,
     /// - Complexity: O(log n)
     @inlinable
     public var take: Element? {
-        unsafe base.pointee.makeUnique()
+        unsafe base.pointee._buffer.ensureUnique()
         return unsafe base.pointee.removeMin()
     }
 }
@@ -433,19 +429,18 @@ where Tag == Heap<Element>.MinMax.Max,
     @inlinable
     public var peek: Element? {
         guard !(unsafe base.pointee.isEmpty) else { return nil }
-        let count = unsafe base.pointee.count
-        if count == 1 {
-            return unsafe base.pointee._storage.read(at: .zero)
+        let count = unsafe base.pointee._buffer.count
+        if count == .one {
+            return unsafe base.pointee._buffer[.zero]
         }
-        if count == 2 {
-            let index = Heap<Element>.Index(__unchecked: (), position: 1)
-            return unsafe base.pointee._storage.read(at: index)
+        let idx1 = Heap<Element>.Index(__unchecked: (), Ordinal(1))
+        if count == .one + .one {
+            return unsafe base.pointee._buffer[idx1]
         }
 
-        let idx1 = Heap<Element>.Index(__unchecked: (), position: 1)
-        let idx2 = Heap<Element>.Index(__unchecked: (), position: 2)
-        let e1 = unsafe base.pointee._storage.read(at: idx1)
-        let e2 = unsafe base.pointee._storage.read(at: idx2)
+        let idx2 = Heap<Element>.Index(__unchecked: (), Ordinal(2))
+        let e1 = unsafe base.pointee._buffer[idx1]
+        let e2 = unsafe base.pointee._buffer[idx2]
         return e1 < e2 ? e2 : e1
     }
 
@@ -456,7 +451,7 @@ where Tag == Heap<Element>.MinMax.Max,
     /// - Complexity: O(log n)
     @inlinable
     public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-        unsafe base.pointee.makeUnique()
+        unsafe base.pointee._buffer.ensureUnique()
         guard let element = unsafe base.pointee.removeMax() else {
             throw .empty
         }
@@ -469,7 +464,7 @@ where Tag == Heap<Element>.MinMax.Max,
     /// - Complexity: O(log n)
     @inlinable
     public var take: Element? {
-        unsafe base.pointee.makeUnique()
+        unsafe base.pointee._buffer.ensureUnique()
         return unsafe base.pointee.removeMax()
     }
 }

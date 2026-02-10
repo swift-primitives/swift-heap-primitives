@@ -11,7 +11,7 @@
 
 public import Sequence_Primitives
 public import Property_Primitives
-public import Range_Primitives
+public import Buffer_Linear_Primitives
 
 // MARK: - Heap.Fixed Iterator
 
@@ -19,21 +19,26 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Iterator for Heap.Fixed elements.
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _storage: Heap.Storage
+        let _buffer: Buffer<Element>.Linear.Bounded
+
+        @usableFromInline
+        let _end: Heap.Index.Count
 
         @usableFromInline
         var _index: Heap.Index = .zero
 
         @usableFromInline
-        init(_storage: Heap.Storage) {
-            self._storage = _storage
+        init(_buffer: Buffer<Element>.Linear.Bounded) {
+            self._buffer = _buffer
+            self._end = _buffer.count
         }
 
         @inlinable
         public mutating func next() -> Element? {
-            guard _index < _storage.count else { return nil }
-            defer { _index = (_index + 1)! }
-            return _storage.read(at: _index)
+            guard _index < _end else { return nil }
+            let element = _buffer[_index]
+            _index += .one
+            return element
         }
     }
 }
@@ -46,7 +51,7 @@ extension Heap.Fixed: Sequence.`Protocol` where Element: Copyable & Comparison.`
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
     @inlinable
     public borrowing func makeIterator() -> Iterator {
-        Iterator(_storage: _storage)
+        Iterator(_buffer: _buffer)
     }
 
     /// Returns the count as the underestimated count since we know the exact size.
@@ -54,7 +59,7 @@ extension Heap.Fixed: Sequence.`Protocol` where Element: Copyable & Comparison.`
     /// This explicit implementation resolves ambiguity between Swift.Sequence
     /// and Sequence.Protocol+Swift.Sequence default implementation.
     @inlinable
-    public var underestimatedCount: Int { _storage.header }
+    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
 }
 
 // MARK: - Sequence.Clearable Conformance
@@ -83,10 +88,9 @@ extension Heap.Fixed: Sequence.Drain.`Protocol` where Element: Copyable & Compar
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
         makeUnique()
-        (0..<_storage.count).forEach { index in
-            body(_storage.move(at: index))
+        while !_buffer.isEmpty {
+            body(_buffer.removeLast())
         }
-        _storage.header = 0
     }
 }
 
@@ -192,5 +196,5 @@ public import Heap_Primitives_Core
 extension Heap.Fixed: Swift.Sequence where Element: Copyable {
     /// Returns the count as the underestimated count since we know the exact size.
 //    @inlinable
-//    public var underestimatedCount: Int { _storage.header }
+//    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
 }

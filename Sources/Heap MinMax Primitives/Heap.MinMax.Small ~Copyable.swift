@@ -1,30 +1,13 @@
+// ===----------------------------------------------------------------------===//
 //
-//  File.swift
-//  swift-heap-primitives
+// This source file is part of the swift-primitives open source project
 //
-//  Created by Coen ten Thije Boonkkamp on 26/01/2026.
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-primitives project authors
+// Licensed under Apache License v2.0
 //
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
 
-
-
-extension Heap.MinMax.Small {
-    
-    /// Whether the heap is currently using heap storage.
-    @inlinable
-    public var isSpilled: Bool { heap != nil }
-
-    /// Spills inline storage to heap.
-    @usableFromInline
-    package mutating func spillToHeap(minimumCapacity: Int) {
-        precondition(heap == nil, "Already spilled")
-
-        let newCapacity = Swift.max(minimumCapacity, inlineCapacity * 2, 8)
-        let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
-        newStorage.header = count.rawValue
-
-        inline.move(to: newStorage, count: count)
-
-        heap = newStorage
-        (heapPtr = newStorage._elementsPointer)
-    }
-}
+// Stub for future Heap.MinMax.Small ~Copyable operations.
+// Small-buffer spill is now handled by Buffer.Linear.Small.

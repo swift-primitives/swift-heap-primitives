@@ -57,7 +57,7 @@ struct HeapSingleEndedTests {
 
         #expect(heap.peek == 1)
         #expect(heap.peek == 1)
-        #expect(heap.count == 3)
+        #expect(Int(bitPattern: heap.count) == 3)
     }
 
     @Test("Empty heap")
@@ -73,7 +73,7 @@ struct HeapSingleEndedTests {
         var heap = Heap<Int>(order: .ascending)
         heap.push(42)
         #expect(heap.isEmpty == false)
-        #expect(heap.count == 1)
+        #expect(Int(bitPattern: heap.count) == 1)
         #expect(heap.peek == 42)
         #expect(try heap.pop() == 42)
         #expect(heap.isEmpty == true)
@@ -83,7 +83,7 @@ struct HeapSingleEndedTests {
     func initFromSequence() throws {
         var heap = Heap<Int>([5, 3, 7, 1], order: .ascending)
 
-        #expect(heap.count == 4)
+        #expect(Int(bitPattern: heap.count) == 4)
         #expect(try heap.pop() == 1)
         #expect(try heap.pop() == 3)
         #expect(try heap.pop() == 5)
@@ -151,7 +151,7 @@ struct HeapMinMaxTests {
         #expect(heap.peek.min == 1)
         #expect(heap.peek.max == 3)
         #expect(heap.peek.max == 3)
-        #expect(heap.count == 3)
+        #expect(Int(bitPattern: heap.count) == 3)
     }
 
     @Test("Empty heap")
@@ -168,7 +168,7 @@ struct HeapMinMaxTests {
     func singleElement() throws {
         var heap: Heap<Int>.MinMax = [42]
         #expect(heap.isEmpty == false)
-        #expect(heap.count == 1)
+        #expect(Int(bitPattern: heap.count) == 1)
         #expect(heap.peek.min == 42)
         #expect(heap.peek.max == 42)
         #expect(try heap.min.pop() == 42)

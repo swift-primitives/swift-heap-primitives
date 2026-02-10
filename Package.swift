@@ -48,22 +48,20 @@ let package = Package(
     dependencies: [
         .package(path: "../swift-comparison-primitives"),
         .package(path: "../swift-index-primitives"),
-        .package(path: "../swift-pointer-primitives"),
-        .package(path: "../swift-range-primitives"),
+        .package(path: "../swift-buffer-primitives"),
         .package(path: "../swift-collection-primitives"),
         .package(path: "../swift-input-primitives"),
         .package(path: "../swift-property-primitives"),
         .package(path: "../swift-sequence-primitives"),
     ],
     targets: [
-        // Core: Heap struct (binary min-max heap) + Fixed + Static + Small + Storage + Node + Error
+        // Core: Heap struct (binary heap) + Fixed + Static + Small + Navigate + Error
         .target(
             name: "Heap Primitives Core",
             dependencies: [
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Pointer Primitives", package: "swift-pointer-primitives"),
-                .product(name: "Range Primitives", package: "swift-range-primitives"),
+                .product(name: "Buffer Linear Primitives", package: "swift-buffer-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
                 .product(name: "Collection Primitives", package: "swift-collection-primitives"),
                 .product(name: "Input Primitives", package: "swift-input-primitives"),

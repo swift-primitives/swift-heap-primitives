@@ -11,8 +11,8 @@
 
 public import Sequence_Primitives
 public import Property_Primitives
-public import Range_Primitives
-public import Pointer_Primitives
+public import Buffer_Linear_Primitives
+
 
 // MARK: - Heap.Small Iterator
 
@@ -63,37 +63,26 @@ extension Heap.Small: Sequence.`Protocol` where Element: Copyable & Comparison.`
     ///   the mutating `forEach` method instead.
     @inlinable
     public borrowing func makeIterator() -> Iterator {
-        guard count.rawValue > 0 else {
+        guard count > .zero else {
             return Iterator(elements: [])
         }
 
-        // Copy elements to array for safe iteration
+        // Copy elements to array using subscript for safe iteration
         var elements: [Element] = []
-        elements.reserveCapacity(count.rawValue)
+        elements.reserveCapacity(Int(bitPattern: count.rawValue))
 
-        if let ptr = heapPtr {
-            // Heap storage: stable pointer, direct access is safe
-            (0..<count.rawValue).forEach { position in
-                let index = Heap.Index(__unchecked: (), position: position)
-                elements.append(ptr[index])
-            }
-        } else {
-            // Inline storage: copy using direct access within borrowing scope
-            let stride = MemoryLayout<Element>.stride
-            unsafe Swift.withUnsafePointer(to: inline.raw) { rawPointer in
-                let base = unsafe UnsafeRawPointer(rawPointer)
-                (0..<count.rawValue).forEach { position in
-                    let ptr = unsafe (base + position * stride).assumingMemoryBound(to: Element.self)
-                    unsafe elements.append(ptr.pointee)
-                }
-            }
+        var idx: Heap.Index = .zero
+        let end = count.map(Ordinal.init)
+        while idx < end {
+            elements.append(_buffer[idx])
+            idx += .one
         }
         return Iterator(elements: elements)
     }
 
     /// Returns the count as the underestimated count since we know the exact size.
     @inlinable
-    public var underestimatedCount: Int { count.rawValue }
+    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
 }
 
 // MARK: - Sequence.Clearable Conformance
@@ -101,7 +90,7 @@ extension Heap.Small: Sequence.`Protocol` where Element: Copyable & Comparison.`
 extension Heap.Small: Sequence.Clearable where Element: Copyable & Comparison.`Protocol` {
     /// Removes all elements from the heap.
     ///
-    /// Does not shrink back to inline storage if spilled.
+    /// Resets to inline mode if spilled.
     /// This enables `.forEach.consuming { }` pattern via `Property.View` extension.
     @inlinable
     public mutating func removeAll() {
@@ -115,20 +104,30 @@ extension Heap.Small: Sequence.Drain.`Protocol` where Element: Copyable & Compar
     /// Drains all elements, passing each to the closure with ownership.
     ///
     /// After this method returns, the heap is empty but still usable.
-    /// Does not shrink back to inline storage if spilled.
+    /// Resets to inline mode if spilled.
     ///
     /// - Parameter body: A closure that receives each drained element with ownership.
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
-        (0..<count).forEach { index in
-            unsafe withPointer(at: index) { ptr in
-                body(ptr.move())
-            }
+        while !isEmpty {
+            body(_buffer.removeLast())
         }
-        count = .zero
-        if let heapStorage = heap {
-            heapStorage.header = 0
+    }
+}
+
+// MARK: - Peek (Copyable elements)
+
+extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
+    /// Returns the priority element without removing it, or nil if empty.
+    ///
+    /// - Returns: A copy of the priority element, or `nil` if the heap is empty.
+    /// - Complexity: O(1)
+    @inlinable
+    public var peek: Element? {
+        mutating get {
+            guard !isEmpty else { return nil }
+            return _buffer[.zero]
         }
     }
 }

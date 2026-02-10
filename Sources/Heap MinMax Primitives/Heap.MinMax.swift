@@ -15,7 +15,6 @@
 
 public import Heap_Primitives_Core
 public import Property_Primitives
-public import Range_Primitives
 
 // MARK: - MinMax Nested Types
 
@@ -99,15 +98,9 @@ where Tag == Heap<Element>.MinMax.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        let currentCount = unsafe base.pointee._storage.count
-        if currentCount > .zero {
-            unsafe base.pointee._storage.deinitialize(in: 0..<currentCount)
-        }
-        unsafe base.pointee._storage.header = 0
-
+        unsafe base.pointee._buffer.removeAll()
         if !keepingCapacity {
-            unsafe base.pointee._storage = Heap.Storage.create()
-            unsafe (base.pointee._cachedPtr = base.pointee._storage._elementsPointer)
+            unsafe (base.pointee._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
         }
     }
 }

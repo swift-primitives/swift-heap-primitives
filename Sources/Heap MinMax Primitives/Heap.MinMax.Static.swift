@@ -1,9 +1,13 @@
+// ===----------------------------------------------------------------------===//
 //
-//  File.swift
-//  swift-heap-primitives
+// This source file is part of the swift-primitives open source project
 //
-//  Created by Coen ten Thije Boonkkamp on 26/01/2026.
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-primitives project authors
+// Licensed under Apache License v2.0
 //
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
 
 import Heap_Primitives_Core
 
@@ -16,26 +20,13 @@ extension Heap.MinMax {
             case empty
         }
 
-        /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap.Storage.Inline<capacity>
-
-        /// Current element count.
-        public var count: Heap.Index.Count
-
-        /// Workaround for Swift compiler bug.
-        @usableFromInline
-        package var _deinitWorkaround: AnyObject? = nil
+        package var _buffer: Buffer<Element>.Linear.Inline<capacity>
 
         /// Creates an empty inline min-max heap.
         @inlinable
         public init() {
-            self.inline = Heap.Storage.Inline<capacity>()
-            self.count = .zero
-        }
-
-        deinit {
-            inline.deinitialize(count: count)
+            self._buffer = Buffer<Element>.Linear.Inline<capacity>()
         }
     }
 }

@@ -11,8 +11,7 @@
 
 public import Sequence_Primitives
 public import Property_Primitives
-public import Range_Primitives
-public import Pointer_Primitives
+
 
 // MARK: - Heap.Static Iterator
 
@@ -63,29 +62,25 @@ extension Heap.Static: Sequence.`Protocol` where Element: Copyable & Comparison.
     ///   the mutating `forEach` method instead.
     @inlinable
     public borrowing func makeIterator() -> Iterator {
-        guard count.rawValue > 0 else {
+        guard count > .zero else {
             return Iterator(elements: [])
         }
 
-        // Copy elements to array using direct inline storage access.
-        // Within borrowing context, the pointer from withUnsafePointer is valid
-        // for copying all elements before returning.
+        // Copy elements to array using subscript access.
         var elements: [Element] = []
-        elements.reserveCapacity(count.rawValue)
-        let stride = MemoryLayout<Element>.stride
-        unsafe Swift.withUnsafePointer(to: inline.raw) { rawPointer in
-            let base = unsafe UnsafeRawPointer(rawPointer)
-            (0..<count.rawValue).forEach { position in
-                let ptr = unsafe (base + position * stride).assumingMemoryBound(to: Element.self)
-                unsafe elements.append(ptr.pointee)
-            }
+        elements.reserveCapacity(Int(bitPattern: count.rawValue))
+        var idx: Heap.Index = .zero
+        let end = count.map(Ordinal.init)
+        while idx < end {
+            elements.append(_buffer[idx])
+            idx += .one
         }
         return Iterator(elements: elements)
     }
 
     /// Returns the count as the underestimated count since we know the exact size.
     @inlinable
-    public var underestimatedCount: Int { count.rawValue }
+    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
 }
 
 // MARK: - Sequence.Clearable Conformance
@@ -111,10 +106,13 @@ extension Heap.Static: Sequence.Drain.`Protocol` where Element: Copyable & Compa
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
-        (0..<count).forEach { index in
-            body(inline.move(at: index))
+        var idx: Heap.Index = .zero
+        let end = count.map(Ordinal.init)
+        while idx < end {
+            body(_buffer[idx])
+            idx += .one
         }
-        count = .zero
+        _buffer.removeAll()
     }
 }
 
@@ -221,7 +219,7 @@ extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
     public var peek: Element? {
         mutating get {
             guard !isEmpty else { return nil }
-            return unsafe inline.withReadPointer(at: .zero) { $0.pointee }
+            return _buffer[.zero]
         }
     }
 }

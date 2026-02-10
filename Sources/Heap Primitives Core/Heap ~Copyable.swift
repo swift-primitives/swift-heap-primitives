@@ -9,9 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Range_Primitives
+public import Buffer_Linear_Primitives
 public import Property_Primitives
-public import Pointer_Primitives
 
 // MARK: - Namespaces
 
@@ -32,41 +31,11 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// The number of elements in the heap.
     @inlinable
-    public var count: Heap.Index.Count { _storage.count }
+    public var count: Heap.Index.Count { _buffer.count }
 
     /// Whether the heap is empty.
     @inlinable
-    public var isEmpty: Bool { _storage.header == 0 }
-}
-
-// MARK: - Capacity Management
-
-extension Heap where Element: ~Copyable & Comparison.`Protocol` {
-    /// Ensures the storage has capacity for at least the specified number of elements.
-    @usableFromInline
-    package mutating func ensureCapacity(_ minimumCapacity: Index.Count) {
-        guard _storage.capacity < minimumCapacity.rawValue else { return }
-
-        // Growth factor 2.0, minimum capacity 4
-        let newCapacity = Swift.max(minimumCapacity.rawValue, _storage.capacity * 2, 4)
-        let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
-        let currentCount = _storage.count
-
-        _storage.move(to: newStorage, count: currentCount)
-        newStorage.header = currentCount.rawValue
-        _storage.header = 0  // Prevent double-free
-
-        _storage = newStorage
-        (_cachedPtr = _storage._elementsPointer)  // CRITICAL: Update cached pointer
-    }
-
-    /// Reserves enough space to store the specified number of elements.
-    ///
-    /// - Parameter minimumCapacity: The minimum number of elements.
-    @inlinable
-    public mutating func reserve(_ minimumCapacity: Int) {
-        ensureCapacity(Index.Count(__unchecked: minimumCapacity))
-    }
+    public var isEmpty: Bool { _buffer.isEmpty }
 }
 
 // MARK: - Core Operations (Internal)
@@ -75,22 +44,15 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Appends element without maintaining heap property (for bulk init).
     @usableFromInline
     package mutating func appendWithoutHeapify(_ element: consuming Element) {
-        let newCount = Index.Count(__unchecked: _storage.header + 1)
-        ensureCapacity(newCount)
-        let index = Heap.Index(__unchecked: (), position: _storage.header)
-        _storage.initialize(to: element, at: index)
-        _storage.header += 1
+        _buffer.append(element)
     }
 
     /// Inserts an element and restores heap property.
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
-        let newCount = Index.Count(__unchecked: _storage.header + 1)
-        ensureCapacity(newCount)
-        let index = Heap.Index(__unchecked: (), position: _storage.header)
-        _storage.initialize(to: element, at: index)
-        _storage.header += 1
-        bubbleUp(index)
+        let insertionIndex = _buffer.count.map(Ordinal.init)
+        _buffer.append(element)
+        bubbleUp(insertionIndex)
     }
 
     /// Removes and returns the priority element (min for ascending, max for descending).
@@ -98,24 +60,16 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func removePriority() -> Element? {
         guard !isEmpty else { return nil }
 
-        if count == 1 {
-            _storage.header = 0
-            return _storage.move(at: .zero)
+        if count == .one {
+            return _buffer.removeLast()
         }
 
         // Swap root with last, remove last, trickle down
-        let lastIndex = Heap.Index(__unchecked: (), position: _storage.header - 1)
-        swapElements(at: .zero, lastIndex)
-        _storage.header -= 1
-        let removed = _storage.move(at: lastIndex)
+        let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
+        _buffer.swapAt(.zero, lastIndex)
+        let removed = _buffer.removeLast()
         trickleDown(.zero)
         return removed
-    }
-
-    /// Swaps elements at two indices using the cached pointer.
-    @usableFromInline
-    package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
-        _cachedPtr.swap(i, j)
     }
 }
 
@@ -129,27 +83,22 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func bubbleUp(_ index: Heap.Index) {
         var current = index
-        let ptr = _cachedPtr
         let nav = navigate
 
         switch order {
         case .ascending:
-            // Min-heap: bubble up while element < parent
             while let parent = nav.parent(of: current) {
-                // If current < parent, swap
-                if ptr[current] < ptr[parent] {
-                    swapElements(at: current, parent)
+                if _buffer[current] < _buffer[parent] {
+                    _buffer.swapAt(current, parent)
                     current = parent
                 } else {
                     break
                 }
             }
         case .descending:
-            // Max-heap: bubble up while element > parent
             while let parent = nav.parent(of: current) {
-                // If current > parent (parent < current), swap
-                if ptr[parent] < ptr[current] {
-                    swapElements(at: current, parent)
+                if _buffer[parent] < _buffer[current] {
+                    _buffer.swapAt(current, parent)
                     current = parent
                 } else {
                     break
@@ -169,50 +118,44 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func trickleDown(_ startIndex: Heap.Index) {
         var current = startIndex
-        let ptr = _cachedPtr
         let nav = navigate
 
         switch order {
         case .ascending:
-            // Min-heap: trickle down, swapping with smaller child
             while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
-                // Find smallest among current and children
-                if ptr[leftChild] < ptr[smallest] {
+                if _buffer[leftChild] < _buffer[smallest] {
                     smallest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if ptr[rightChild] < ptr[smallest] {
+                    if _buffer[rightChild] < _buffer[smallest] {
                         smallest = rightChild
                     }
                 }
 
                 if smallest == current { break }
 
-                swapElements(at: current, smallest)
+                _buffer.swapAt(current, smallest)
                 current = smallest
             }
 
         case .descending:
-            // Max-heap: trickle down, swapping with larger child
             while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
-                // Find largest among current and children
-                // Using < operator: if largest < leftChild, then leftChild is larger
-                if ptr[largest] < ptr[leftChild] {
+                if _buffer[largest] < _buffer[leftChild] {
                     largest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if ptr[largest] < ptr[rightChild] {
+                    if _buffer[largest] < _buffer[rightChild] {
                         largest = rightChild
                     }
                 }
 
                 if largest == current { break }
 
-                swapElements(at: current, largest)
+                _buffer.swapAt(current, largest)
                 current = largest
             }
         }
@@ -225,16 +168,14 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Converts storage to valid heap in O(n).
     @usableFromInline
     package mutating func heapify() {
-        let countValue = _storage.header
-        guard countValue > 1 else { return }
+        let n = Int(bitPattern: count.rawValue)
+        guard n > 1 else { return }
 
-        // Start from the last non-leaf node and trickle down
-        // Last non-leaf is at position (count / 2 - 1)
-        var position = countValue / 2 - 1
-        while position >= 0 {
-            let index = Heap.Index(__unchecked: (), position: position)
+        var i = n / 2 - 1
+        while i >= 0 {
+            let index = Heap.Index(__unchecked: (), Ordinal(UInt(i)))
             trickleDown(index)
-            position -= 1
+            i -= 1
         }
     }
 }
@@ -288,15 +229,9 @@ where Tag == Heap<Element>.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        let currentCount = unsafe base.pointee._storage.count
-        if currentCount > .zero {
-            unsafe base.pointee._storage.deinitialize(in: 0..<currentCount)
-        }
-        unsafe base.pointee._storage.header = 0
-
+        unsafe base.pointee._buffer.removeAll()
         if !keepingCapacity {
-            unsafe base.pointee._storage = Heap.Storage.create()
-            unsafe (base.pointee._cachedPtr = base.pointee._storage._elementsPointer)
+            unsafe (base.pointee._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
         }
     }
 }
@@ -310,9 +245,9 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// - Returns: The value returned by the closure, or `nil` if the heap is empty.
     /// - Complexity: O(1)
     @inlinable
-    public func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
-        guard count > 0 else { return nil }
-        return body( _cachedPtr[0])
+    public mutating func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
+        guard count > .zero else { return nil }
+        return body(_buffer[.zero])
     }
 
     /// Calls the given closure for each element in heap order.
@@ -327,11 +262,12 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// - Parameter body: A closure that receives a borrowed reference to each element.
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
-    public func forEach(_ body: (borrowing Element) -> Void) {
-        let ptr = _cachedPtr
-        (0..<_storage.count).forEach { index in
-            body( ptr[index])
+    public mutating func forEach(_ body: (borrowing Element) -> Void) {
+        var idx: Heap.Index = .zero
+        let end = count.map(Ordinal.init)
+        while idx < end {
+            body(_buffer[idx])
+            idx += .one
         }
     }
 }
-

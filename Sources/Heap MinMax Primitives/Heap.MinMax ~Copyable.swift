@@ -10,8 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitives_Core
-public import Range_Primitives
-public import Pointer_Primitives
+
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for minimum element operations.
@@ -32,38 +31,11 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// The number of elements in the heap.
     @inlinable
-    public var count: Heap.Index.Count { _storage.count }
+    public var count: Heap.Index.Count { _buffer.count }
 
     /// Whether the heap is empty.
     @inlinable
-    public var isEmpty: Bool { _storage.header == 0 }
-}
-
-// MARK: - Capacity Management
-
-extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
-    /// Ensures the storage has capacity for at least the specified number of elements.
-    @usableFromInline
-    package mutating func ensureCapacity(_ minimumCapacity: Heap.Index.Count) {
-        guard _storage.capacity < minimumCapacity.rawValue else { return }
-
-        let newCapacity = Swift.max(minimumCapacity.rawValue, _storage.capacity * 2, 4)
-        let newStorage = Heap.Storage.create(minimumCapacity: newCapacity)
-        let currentCount = _storage.count
-
-        _storage.move(to: newStorage, count: currentCount)
-        newStorage.header = currentCount.rawValue
-        _storage.header = 0
-
-        _storage = newStorage
-        (_cachedPtr = _storage._elementsPointer)
-    }
-
-    /// Reserves enough space to store the specified number of elements.
-    @inlinable
-    public mutating func reserve(_ minimumCapacity: Int) {
-        ensureCapacity(Heap.Index.Count(__unchecked: minimumCapacity))
-    }
+    public var isEmpty: Bool { _buffer.isEmpty }
 }
 
 // MARK: - Node (Level-Aware Navigation for MinMax Heap)
@@ -111,10 +83,10 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             offset == 0
         }
 
-        /// Typed index for pointer access.
+        /// Typed index for buffer access.
         @inlinable
         package var index: Heap.Index {
-            Heap.Index(__unchecked: (), position: offset)
+            Heap.Index(Ordinal(UInt(offset)))
         }
 
         @inlinable
@@ -183,38 +155,28 @@ extension Int {
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func appendWithoutHeapify(_ element: consuming Element) {
-        let newCount = Heap.Index.Count(__unchecked: _storage.header + 1)
-        ensureCapacity(newCount)
-        let index = Heap.Index(__unchecked: (), position: _storage.header)
-        _storage.initialize(to: element, at: index)
-        _storage.header += 1
+        _buffer.append(element)
     }
 
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
-        let newCount = Heap.Index.Count(__unchecked: _storage.header + 1)
-        ensureCapacity(newCount)
-        let index = _storage.header
-        let typedIndex = Heap.Index(__unchecked: (), position: index)
-        _storage.initialize(to: element, at: typedIndex)
-        _storage.header += 1
-        bubbleUp(Node(offset: index))
+        let insertionOffset = Int(bitPattern: _buffer.count)
+        _buffer.append(element)
+        bubbleUp(Node(offset: insertionOffset))
     }
 
     @usableFromInline
     package mutating func removeMin() -> Element? {
         guard !isEmpty else { return nil }
 
-        if count == 1 {
-            _storage.header = 0
-            return _storage.move(at: .zero)
+        if _buffer.count == .one {
+            return _buffer.removeLast()
         }
 
-        let lastNode = Node(offset: _storage.header - 1)
-        swapElements(at: Node.root.index, lastNode.index)
-        _storage.header -= 1
-        let removed = _storage.move(at: lastNode.index)
-        trickleDownMin(Node.root)
+        let lastNode = Node(offset: Int(bitPattern: _buffer.count) - 1)
+        _buffer.swapAt(Node.root.index, lastNode.index)
+        let removed = _buffer.removeLast()
+        trickleDownMin(.root)
         return removed
     }
 
@@ -222,38 +184,28 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     package mutating func removeMax() -> Element? {
         guard !isEmpty else { return nil }
 
-        if count == 1 {
-            _storage.header = 0
-            return _storage.move(at: .zero)
+        if _buffer.count == .one {
+            return _buffer.removeLast()
         }
 
-        if count == 2 {
-            _storage.header = 1
-            let index = Heap.Index(__unchecked: (), position: 1)
-            return _storage.move(at: index)
+        if _buffer.count == .one + .one {
+            return _buffer.removeLast()
         }
 
-        let maxNode = _cachedPtr[Node.leftMax.index] < _cachedPtr[Node.rightMax.index]
+        let maxNode = _buffer[Node.leftMax.index] < _buffer[Node.rightMax.index]
             ? Node.rightMax
             : Node.leftMax
 
-        let lastOffset = _storage.header - 1
+        let lastOffset = Int(bitPattern: _buffer.count) - 1
         let lastNode = Node(offset: lastOffset)
-        swapElements(at: maxNode.index, lastNode.index)
-        _storage.header -= 1
-        let removed = _storage.move(at: lastNode.index)
+        _buffer.swapAt(maxNode.index, lastNode.index)
+        let removed = _buffer.removeLast()
 
-        if maxNode.offset < _storage.header {
+        if maxNode.offset < Int(bitPattern: _buffer.count) {
             trickleDownMax(maxNode)
         }
 
         return removed
-    }
-
-    /// Swaps elements at two indices using the cached pointer.
-    @usableFromInline
-    package mutating func swapElements(at i: Heap.Index, _ j: Heap.Index) {
-        _cachedPtr.swap(i, j)
     }
 }
 
@@ -267,27 +219,27 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         let parent = node.parent()
         var node = node
 
-        let nodeIsLess = _cachedPtr[node.index] < _cachedPtr[parent.index]
-        let parentIsLess = _cachedPtr[parent.index] < _cachedPtr[node.index]
+        let nodeIsLess = _buffer[node.index] < _buffer[parent.index]
+        let parentIsLess = _buffer[parent.index] < _buffer[node.index]
 
         if (node.isMinLevel && parentIsLess)
             || (!node.isMinLevel && nodeIsLess) {
-            swapElements(at: node.index, parent.index)
+            _buffer.swapAt(node.index, parent.index)
             node = parent
         }
 
         if node.isMinLevel {
             while let grandparent = node.grandParent() {
-                let gpIsLess = _cachedPtr[grandparent.index] < _cachedPtr[node.index]
+                let gpIsLess = _buffer[grandparent.index] < _buffer[node.index]
                 guard !gpIsLess else { break }
-                swapElements(at: node.index, grandparent.index)
+                _buffer.swapAt(node.index, grandparent.index)
                 node = grandparent
             }
         } else {
             while let grandparent = node.grandParent() {
-                let nodeIsLessGp = _cachedPtr[node.index] < _cachedPtr[grandparent.index]
+                let nodeIsLessGp = _buffer[node.index] < _buffer[grandparent.index]
                 guard !nodeIsLessGp else { break }
-                swapElements(at: node.index, grandparent.index)
+                _buffer.swapAt(node.index, grandparent.index)
                 node = grandparent
             }
         }
@@ -300,7 +252,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func trickleDownMin(_ startNode: Node) {
         var node = startNode
-        let count = _storage.header
+        let count = Int(bitPattern: _buffer.count)
 
         while true {
             let leftChild = node.leftChild()
@@ -309,11 +261,11 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             var smallest = node
             let rightChild = node.rightChild()
 
-            if _cachedPtr[leftChild.index] < _cachedPtr[smallest.index] {
+            if _buffer[leftChild.index] < _buffer[smallest.index] {
                 smallest = leftChild
             }
             if rightChild.offset < count {
-                if _cachedPtr[rightChild.index] < _cachedPtr[smallest.index] {
+                if _buffer[rightChild.index] < _buffer[smallest.index] {
                     smallest = rightChild
                 }
             }
@@ -323,19 +275,19 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
                 let gc = Node(offset: gcOffset, level: gc0.level)
-                if _cachedPtr[gc.index] < _cachedPtr[smallest.index] {
+                if _buffer[gc.index] < _buffer[smallest.index] {
                     smallest = gc
                 }
             }
 
             if smallest.offset == node.offset { break }
 
-            swapElements(at: node.index, smallest.index)
+            _buffer.swapAt(node.index, smallest.index)
 
             if smallest.offset >= gc0.offset {
                 let parent = smallest.parent()
-                if _cachedPtr[parent.index] < _cachedPtr[smallest.index] {
-                    swapElements(at: smallest.index, parent.index)
+                if _buffer[parent.index] < _buffer[smallest.index] {
+                    _buffer.swapAt(smallest.index, parent.index)
                 }
                 node = smallest
             } else {
@@ -351,7 +303,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func trickleDownMax(_ startNode: Node) {
         var node = startNode
-        let count = _storage.header
+        let count = Int(bitPattern: _buffer.count)
 
         while true {
             let leftChild = node.leftChild()
@@ -360,11 +312,11 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             var largest = node
             let rightChild = node.rightChild()
 
-            if _cachedPtr[largest.index] < _cachedPtr[leftChild.index] {
+            if _buffer[largest.index] < _buffer[leftChild.index] {
                 largest = leftChild
             }
             if rightChild.offset < count {
-                if _cachedPtr[largest.index] < _cachedPtr[rightChild.index] {
+                if _buffer[largest.index] < _buffer[rightChild.index] {
                     largest = rightChild
                 }
             }
@@ -374,19 +326,19 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
                 let gcOffset = gc0.offset + i
                 guard gcOffset < count else { break }
                 let gc = Node(offset: gcOffset, level: gc0.level)
-                if _cachedPtr[largest.index] < _cachedPtr[gc.index] {
+                if _buffer[largest.index] < _buffer[gc.index] {
                     largest = gc
                 }
             }
 
             if largest.offset == node.offset { break }
 
-            swapElements(at: node.index, largest.index)
+            _buffer.swapAt(node.index, largest.index)
 
             if largest.offset >= gc0.offset {
                 let parent = largest.parent()
-                if _cachedPtr[largest.index] < _cachedPtr[parent.index] {
-                    swapElements(at: largest.index, parent.index)
+                if _buffer[largest.index] < _buffer[parent.index] {
+                    _buffer.swapAt(largest.index, parent.index)
                 }
                 node = largest
             } else {
@@ -401,7 +353,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func heapify() {
-        let count = _storage.header
+        let count = Int(bitPattern: _buffer.count)
         guard count > 1 else { return }
 
         let limit = count / 2
@@ -444,21 +396,21 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Provides borrowing access to the minimum element.
     @inlinable
     public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
-        guard count > 0 else { return nil }
-        return body(_cachedPtr[Node.root.index])
+        guard !isEmpty else { return nil }
+        return body(_buffer[Node.root.index])
     }
 
     /// Provides borrowing access to the maximum element.
     @inlinable
     public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
-        guard count > 0 else { return nil }
-        if count == 1 { return body(_cachedPtr[Node.root.index]) }
-        if count == 2 { return body(_cachedPtr[Node.leftMax.index]) }
+        guard !isEmpty else { return nil }
+        if _buffer.count == .one { return body(_buffer[Node.root.index]) }
+        if _buffer.count == .one + .one { return body(_buffer[Node.leftMax.index]) }
 
-        let maxNode = _cachedPtr[Node.leftMax.index] < _cachedPtr[Node.rightMax.index]
+        let maxNode = _buffer[Node.leftMax.index] < _buffer[Node.rightMax.index]
             ? Node.rightMax
             : Node.leftMax
-        return body(_cachedPtr[maxNode.index])
+        return body(_buffer[maxNode.index])
     }
 
     /// Calls the given closure for each element in heap order.
@@ -468,8 +420,11 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     ///   This method directly supports `~Copyable` elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        (0..<count).forEach { index in
-            body(_cachedPtr[index])
+        var idx: Heap.Index = .zero
+        let end = _buffer.count.map(Ordinal.init)
+        while idx < end {
+            body(_buffer[idx])
+            idx += .one
         }
     }
 }

@@ -18,7 +18,7 @@ struct HeapSmallTests {
     func initCreatesEmpty() {
         let heap = Heap<Int>.Small<4>(order: .ascending)
         #expect(heap.isEmpty == true)
-        #expect(heap.count == 0)
+        #expect(Int(bitPattern: heap.count) == 0)
         #expect(heap.isSpilled == false)
     }
 
@@ -30,7 +30,7 @@ struct HeapSmallTests {
         heap.push(3)
         heap.push(4)
 
-        #expect(heap.count == 4)
+        #expect(Int(bitPattern: heap.count) == 4)
         #expect(heap.isSpilled == false)
     }
 
@@ -45,7 +45,7 @@ struct HeapSmallTests {
 
         heap.push(5)  // Triggers spill
         #expect(heap.isSpilled == true)
-        #expect(heap.count == 5)
+        #expect(Int(bitPattern: heap.count) == 5)
     }
 
     @Test("Min-heap ordering with inline storage")
@@ -157,7 +157,7 @@ struct HeapSmallTests {
 
         heap.remove.all()
         #expect(heap.isEmpty == true)
-        #expect(heap.count == 0)
+        #expect(Int(bitPattern: heap.count) == 0)
     }
 
     @Test("Clear after spill")
@@ -171,7 +171,7 @@ struct HeapSmallTests {
 
         heap.remove.all()
         #expect(heap.isEmpty == true)
-        #expect(heap.isSpilled == true)  // Still spilled, storage not reclaimed
+        #expect(heap.isSpilled == false)  // removeAll() resets to inline mode
     }
 
     @Test("Heap grows after spill")
@@ -187,7 +187,7 @@ struct HeapSmallTests {
             heap.push(i)
         }
 
-        #expect(heap.count == 20)
+        #expect(Int(bitPattern: heap.count) == 20)
         #expect(heap.isSpilled == true)
         #expect(heap.peek == 1)  // Min at top
     }
@@ -243,7 +243,7 @@ struct HeapSmallTests {
         heap.push(5)
 
         heap.truncate(to: 3)
-        #expect(heap.count == 3)
+        #expect(Int(bitPattern: heap.count) == 3)
     }
 
     @Test("Truncate after spill")
@@ -257,13 +257,13 @@ struct HeapSmallTests {
         #expect(heap.isSpilled == true)
 
         heap.truncate(to: 3)
-        #expect(heap.count == 3)
+        #expect(Int(bitPattern: heap.count) == 3)
     }
 
     @Test("Capacity reflects storage type")
     func capacityReflectsStorageType() {
         var heap = Heap<Int>.Small<4>(order: .ascending)
-        #expect(heap.capacity == 4)  // Inline capacity
+        #expect(Int(bitPattern: heap.capacity) == 4)  // Inline capacity
 
         heap.push(1)
         heap.push(2)
@@ -272,7 +272,7 @@ struct HeapSmallTests {
         heap.push(5)  // Spills
 
         #expect(heap.isSpilled == true)
-        #expect(heap.capacity >= 5)  // Heap capacity
+        #expect(Int(bitPattern: heap.capacity) >= 5)  // Heap capacity
     }
 }
 
@@ -305,7 +305,7 @@ struct HeapSmallNonCopyableTests {
         heap.push(UniqueResource(id: 5))
         heap.push(UniqueResource(id: 15))
 
-        #expect(heap.count == 3)
+        #expect(Int(bitPattern: heap.count) == 3)
         #expect(heap.isSpilled == false)
 
         let minId = heap.withPriority { $0.id }
@@ -321,7 +321,7 @@ struct HeapSmallNonCopyableTests {
         heap.push(UniqueResource(id: 15))
         heap.push(UniqueResource(id: 1))
 
-        #expect(heap.count == 4)
+        #expect(Int(bitPattern: heap.count) == 4)
         #expect(heap.isSpilled == true)
 
         let minId = heap.withPriority { $0.id }

@@ -1,7 +1,12 @@
+// ===----------------------------------------------------------------------===//
 //
-//  File.swift
-//  swift-heap-primitives
+// This source file is part of the swift-primitives open source project
 //
-//  Created by Coen ten Thije Boonkkamp on 26/01/2026.
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-primitives project authors
+// Licensed under Apache License v2.0
 //
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
 
+// Stub for future Heap.MinMax.Small Copyable operations.

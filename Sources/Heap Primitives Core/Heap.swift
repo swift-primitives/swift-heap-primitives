@@ -9,8 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Pointer_Primitives
-import Range_Primitives
+import Buffer_Linear_Primitives
 
 // MARK: - Heap (Canonical Single-Ended Binary Heap)
 
@@ -62,8 +61,6 @@ import Range_Primitives
 @safe
 public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
-    public typealias Pointer = Pointer_Primitives.Pointer<Element>
-
     // MARK: - Order Enum
 
     /// Ordering direction for heap operations.
@@ -88,12 +85,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     public let order: Order
 
     @usableFromInline
-    package var _storage: Heap.Storage
-
-    /// Cached pointer to element storage. Stored in struct to enable efficient access.
-    /// CRITICAL: Must be updated whenever _storage is replaced (reallocation, CoW copy).
-    @usableFromInline
-    package var _cachedPtr: Pointer.Mutable
+    package var _buffer: Buffer<Element>.Linear
 
     // MARK: - Init
 
@@ -103,30 +95,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     @inlinable
     public init(order: Order = .ascending) {
         self.order = order
-        self._storage = Heap<Element>.Storage.create()
-        self._cachedPtr = _storage._elementsPointer
-    }
-
-    // Note: No deinit needed - Storage handles cleanup
-
-    // MARK: - Storage Class
-
-    /// Internal storage class for Heap variants.
-    ///
-    /// Uses `ManagedBuffer` for efficient single-allocation storage.
-    /// Declared inside `Heap` so that the `Element` generic
-    /// inherits the `~Copyable` suppression from the outer type.
-    @usableFromInline
-    package final class Storage: ManagedBuffer<Int, Element> {
-        deinit {
-            let count = self.count
-            guard count > .zero else { return }
-            _ = unsafe withUnsafeMutablePointerToElements { elements in
-                (0..<count).forEach { index in
-                    unsafe (elements + index).deinitialize(count: 1)
-                }
-            }
-        }
+        self._buffer = Buffer<Element>.Linear(minimumCapacity: .zero)
     }
 
     // MARK: - Fixed Capacity Heap
@@ -141,15 +110,10 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         }
 
         @usableFromInline
-        package var _storage: Heap.Storage
-
-        public let capacity: Int
+        package var _buffer: Buffer<Element>.Linear.Bounded
 
         /// The ordering direction for this heap.
         public let order: Order
-
-        @usableFromInline
-        package var _cachedPtr: Pointer.Mutable
 
         /// Creates an empty fixed-capacity heap.
         ///
@@ -165,10 +129,10 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
-            self._storage = Heap<Element>.Storage.create(minimumCapacity: capacity)
-            self.capacity = capacity
+            self._buffer = Buffer<Element>.Linear.Bounded(
+                minimumCapacity: Heap.Index.Count(__unchecked: (), Cardinal(UInt(capacity)))
+            )
             self.order = order
-            self._cachedPtr = _storage._elementsPointer
         }
     }
 
@@ -199,32 +163,19 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             case empty
         }
 
-        /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap.Storage.Inline<capacity>
-
-        /// Current element count.
-        public var count: Heap.Index.Count
+        package var _buffer: Buffer<Element>.Linear.Inline<capacity>
 
         /// The ordering direction for this heap.
         public let order: Order
-
-        /// Workaround for Swift compiler bug.
-        @usableFromInline
-        package var _deinitWorkaround: AnyObject? = nil
 
         /// Creates an empty inline heap.
         ///
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
         @inlinable
         public init(order: Order = .ascending) {
-            self.inline = Heap.Storage.Inline<capacity>()
-            self.count = .zero
+            self._buffer = Buffer<Element>.Linear.Inline<capacity>()
             self.order = order
-        }
-
-        deinit {
-            inline.deinitialize(count: count)
         }
     }
 
@@ -242,44 +193,19 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             case empty
         }
 
-        /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap.Storage.Inline<inlineCapacity>
-
-        /// Current element count (valid elements in either inline or heap storage).
-        public var count: Heap.Index.Count
+        package var _buffer: Buffer<Element>.Linear.Small<inlineCapacity>
 
         /// The ordering direction for this heap.
         public let order: Order
-
-        /// Heap storage when spilled. Nil when using inline storage.
-        @usableFromInline
-        package var heap: Storage?
-
-        /// Cached pointer to heap elements. Only valid when heap is non-nil.
-        @usableFromInline
-        package var heapPtr: Heap.Pointer.Mutable?
 
         /// Creates an empty small heap.
         ///
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
         @inlinable
         public init(order: Order = .ascending) {
-            self.inline = Heap.Storage.Inline<inlineCapacity>()
-            self.count = .zero
+            self._buffer = Buffer<Element>.Linear.Small<inlineCapacity>()
             self.order = order
-            self.heap = nil
-            self.heapPtr = nil
-        }
-
-        deinit {
-            guard count > .zero else { return }
-
-            if let heapState = heap {
-                heapState.header = count.rawValue
-            } else {
-                inline.deinitialize(count: count)
-            }
         }
     }
 
@@ -294,17 +220,12 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     @safe
     public struct MinMax: ~Copyable {
         @usableFromInline
-        package var _storage: Heap.Storage
-
-        /// Cached pointer to element storage.
-        @usableFromInline
-        package var _cachedPtr: Pointer.Mutable
+        package var _buffer: Buffer<Element>.Linear
 
         /// Creates an empty min-max heap.
         @inlinable
         public init() {
-            self._storage = Heap.Storage.create()
-            self._cachedPtr = _storage._elementsPointer
+            self._buffer = Buffer<Element>.Linear(minimumCapacity: .zero)
         }
     }
 
@@ -351,10 +272,3 @@ extension Heap.Small: @unchecked Sendable where Element: Sendable {}
 
 extension Heap.Push.Outcome: Copyable where Element: Copyable {}
 extension Heap.Push.Outcome: Sendable where Element: Sendable {}
-
-// MARK: - Error Type Aliases
-
-
-
-
-

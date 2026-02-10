@@ -1,23 +1,21 @@
+// ===----------------------------------------------------------------------===//
 //
-//  File.swift
-//  swift-heap-primitives
+// This source file is part of the swift-primitives open source project
 //
-//  Created by Coen ten Thije Boonkkamp on 26/01/2026.
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-primitives project authors
+// Licensed under Apache License v2.0
 //
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
 
-public import Pointer_Primitives
 
 extension Heap.MinMax {
     /// Fixed-capacity min-max heap.
     @safe
     public struct Fixed: ~Copyable {
         @usableFromInline
-        var _storage: Heap.Storage
-
-        public let capacity: Int
-
-        @usableFromInline
-        package var _cachedPtr: Heap.Pointer.Mutable
+        package var _buffer: Buffer<Element>.Linear.Bounded
 
         /// Creates an empty fixed-capacity min-max heap.
         ///
@@ -28,9 +26,9 @@ extension Heap.MinMax {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
-            self._storage = Heap.Storage.create(minimumCapacity: capacity)
-            self.capacity = capacity
-            self._cachedPtr = _storage._elementsPointer
+            self._buffer = Buffer<Element>.Linear.Bounded(
+                minimumCapacity: Heap.Index.Count(__unchecked: (), Cardinal(UInt(capacity)))
+            )
         }
     }
 }

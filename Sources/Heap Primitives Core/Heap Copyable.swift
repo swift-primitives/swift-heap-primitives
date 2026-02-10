@@ -10,8 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Property_Primitives
-public import Range_Primitives
-public import Pointer_Primitives
+public import Buffer_Linear_Primitives
+
 
 // MARK: - Sequence Init (Copyable only)
 
@@ -25,32 +25,14 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public init(_ elements: some Swift.Sequence<Element>, order: Order = .ascending) {
         self.order = order
-        self._storage = Heap.Storage.create()
-        self._cachedPtr = _storage._elementsPointer
+        self._buffer = Buffer<Element>.Linear(minimumCapacity: .zero)
 
         for element in elements {
             appendWithoutHeapify(element)
         }
 
-        if _storage.header > 1 {
+        if count > .one {
             heapify()
-        }
-    }
-}
-
-// MARK: - Copy-on-Write (Copyable only)
-
-extension Heap where Element: Copyable & Comparison.`Protocol` {
-    /// Ensures the storage is uniquely referenced before mutation.
-    @usableFromInline
-    package mutating func makeUnique() {
-        if !isKnownUniquelyReferenced(&_storage) {
-            let newStorage = Heap.Storage.create(minimumCapacity: _storage.capacity)
-            let currentCount = _storage.count
-            _storage.copy(to: newStorage, count: currentCount)
-            newStorage.header = currentCount.rawValue
-            _storage = newStorage
-            _cachedPtr = _storage._elementsPointer  // CRITICAL: Update cached pointer
         }
     }
 }
@@ -67,7 +49,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func push(_ element: Element) {
-        makeUnique()
+        _buffer.ensureUnique()
         insert(element)
     }
 }
@@ -85,14 +67,14 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var peek: Element? {
         guard !isEmpty else { return nil }
-        return _storage.read(at: .zero)
+        return _buffer[.zero]
     }
 
     /// Replaces the priority element and returns the old value.
     @usableFromInline
     package mutating func replacePriority(with replacement: Element) -> Element {
-        let removed = _storage.read(at: .zero)
-        _storage.write(replacement, at: .zero)
+        let removed = _buffer[.zero]
+        _buffer[.zero] = replacement
         trickleDown(.zero)
         return removed
     }
@@ -105,9 +87,12 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var unordered: [Element] {
         var result: [Element] = []
-        result.reserveCapacity(_storage.header)
-        (0..<_storage.count).forEach { index in
-            result.append(_storage.read(at: index))
+        result.reserveCapacity(Int(bitPattern: count.rawValue))
+        var idx: Heap.Index = .zero
+        let end = count.map(Ordinal.init)
+        while idx < end {
+            result.append(_buffer[idx])
+            idx += .one
         }
         return result
     }
@@ -123,7 +108,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public func element(at index: Heap.Index) -> Element? {
         guard navigate.isValid(index) else { return nil }
-        return _storage.read(at: index)
+        return _buffer[index]
     }
 }
 
@@ -140,7 +125,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(log n)
     @inlinable
     public mutating func pop() throws(Heap.Error) -> Element {
-        makeUnique()
+        _buffer.ensureUnique()
         guard let element = removePriority() else {
             throw .empty
         }
@@ -166,7 +151,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var take: Element? {
         mutating get {
-            makeUnique()
+            _buffer.ensureUnique()
             return removePriority()
         }
     }
@@ -180,10 +165,13 @@ extension Heap: Equatable where Element: Equatable & Copyable {
         guard lhs.count == rhs.count else { return false }
         guard lhs.order == rhs.order else { return false }
         var result = true
-        (0..<lhs._storage.count).forEach { index in
-            if lhs._storage.read(at: index) != rhs._storage.read(at: index) {
+        var idx: Heap.Index = .zero
+        let end = lhs.count.map(Ordinal.init)
+        while idx < end {
+            if lhs._buffer[idx] != rhs._buffer[idx] {
                 result = false
             }
+            idx += .one
         }
         return result
     }
@@ -196,8 +184,11 @@ extension Heap: Hashable where Element: Hashable & Copyable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(count)
         hasher.combine(order)
-        (0..<_storage.count).forEach { index in
-            hasher.combine(_storage.read(at: index))
+        var idx: Heap.Index = .zero
+        let end = count.map(Ordinal.init)
+        while idx < end {
+            hasher.combine(_buffer[idx])
+            idx += .one
         }
     }
 }
@@ -227,7 +218,7 @@ extension Heap: Swift.Sequence where Element: Copyable {
 
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        let _storage: Heap.Storage
+        var _buffer: Buffer<Element>.Linear
 
         @usableFromInline
         let _end: Heap.Index.Count
@@ -236,22 +227,22 @@ extension Heap: Swift.Sequence where Element: Copyable {
         var _index: Heap.Index = .zero
 
         @usableFromInline
-        init(_storage: Heap.Storage) {
-            self._storage = _storage
-            self._end = _storage.count
+        init(_buffer: Buffer<Element>.Linear) {
+            self._buffer = _buffer
+            self._end = _buffer.count
         }
 
         @inlinable
         public mutating func next() -> Element? {
             guard _index < _end else { return nil }
-            let element = _storage.read(at: _index)
-            _index = (_index + 1)!
+            let element = _buffer[_index]
+            _index += .one
             return element
         }
     }
 
     @inlinable
     public func makeIterator() -> Iterator {
-        Iterator(_storage: _storage)
+        Iterator(_buffer: _buffer)
     }
 }

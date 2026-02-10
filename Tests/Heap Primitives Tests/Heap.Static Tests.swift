@@ -20,7 +20,7 @@ struct HeapStaticTests {
     func initCreatesEmpty() {
         let heap = Heap<Int>.Static<8>(order: .ascending)
         #expect(heap.isEmpty == true)
-        #expect(heap.count == 0)
+        #expect(Int(bitPattern: heap.count) == 0)
         #expect(heap.isFull == false)
     }
 
@@ -34,7 +34,7 @@ struct HeapStaticTests {
         case .overflow:
             Issue.record("Expected .inserted but got .overflow")
         }
-        #expect(heap.count == 1)
+        #expect(Int(bitPattern: heap.count) == 1)
     }
 
     @Test("Push returns overflow when full")
@@ -51,7 +51,7 @@ struct HeapStaticTests {
         case .overflow(let element):
             #expect(element == 3)  // Element preserved
         }
-        #expect(heap.count == 2)
+        #expect(Int(bitPattern: heap.count) == 2)
     }
 
     @Test("Min-heap ordering (ascending)")
@@ -129,7 +129,7 @@ struct HeapStaticTests {
 
         heap.remove.all()
         #expect(heap.isEmpty == true)
-        #expect(heap.count == 0)
+        #expect(Int(bitPattern: heap.count) == 0)
     }
 
     @Test("Single element")
@@ -138,7 +138,7 @@ struct HeapStaticTests {
         _ = heap.push(42)
 
         #expect(heap.peek == 42)
-        #expect(heap.count == 1)
+        #expect(Int(bitPattern: heap.count) == 1)
     }
 
     @Test("Fill to capacity")
@@ -150,7 +150,7 @@ struct HeapStaticTests {
         _ = heap.push(1)
 
         #expect(heap.isFull == true)
-        #expect(heap.count == 4)
+        #expect(Int(bitPattern: heap.count) == 4)
         #expect(heap.peek == 1)  // Min at top
     }
 
@@ -189,7 +189,7 @@ struct HeapStaticTests {
         _ = heap.push(5)
 
         heap.truncate(to: 3)
-        #expect(heap.count == 3)
+        #expect(Int(bitPattern: heap.count) == 3)
     }
 
     @Test("Large capacity heap")
@@ -232,7 +232,7 @@ struct HeapStaticNonCopyableTests {
         _ = heap.push(UniqueResource(id: 5))
         _ = heap.push(UniqueResource(id: 15))
 
-        #expect(heap.count == 3)
+        #expect(Int(bitPattern: heap.count) == 3)
 
         let minId = heap.withPriority { $0.id }
         #expect(minId == 5)

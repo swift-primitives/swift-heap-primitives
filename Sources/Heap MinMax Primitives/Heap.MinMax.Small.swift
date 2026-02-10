@@ -1,11 +1,14 @@
+// ===----------------------------------------------------------------------===//
 //
-//  File.swift
-//  swift-heap-primitives
+// This source file is part of the swift-primitives open source project
 //
-//  Created by Coen ten Thije Boonkkamp on 26/01/2026.
+// Copyright (c) 2024-2026 Coen ten Thije Boonkkamp and the swift-primitives project authors
+// Licensed under Apache License v2.0
 //
+// See LICENSE for license information
+//
+// ===----------------------------------------------------------------------===//
 
-public import Pointer_Primitives
 
 extension Heap.MinMax {
     /// Min-max heap with small-buffer optimization.
@@ -17,38 +20,13 @@ extension Heap.MinMax {
             case empty
         }
 
-        /// Inline storage for elements.
         @usableFromInline
-        package var inline: Heap.Storage.Inline<inlineCapacity>
-
-        /// Current element count (valid elements in either inline or heap storage).
-        public var count: Heap.Index.Count
-
-        /// Heap storage when spilled. Nil when using inline storage.
-        @usableFromInline
-        package var heap: Heap.Storage?
-
-        /// Cached pointer to heap elements. Only valid when heap is non-nil.
-        @usableFromInline
-        package var heapPtr: Pointer<Element>.Mutable?
+        package var _buffer: Buffer<Element>.Linear.Small<inlineCapacity>
 
         /// Creates an empty small min-max heap.
         @inlinable
         public init() {
-            self.inline = Heap.Storage.Inline<inlineCapacity>()
-            self.count = .zero
-            self.heap = nil
-            self.heapPtr = nil
-        }
-
-        deinit {
-            guard count > .zero else { return }
-
-            if let heapState = heap {
-                heapState.header = count.rawValue
-            } else {
-                inline.deinitialize(count: count)
-            }
+            self._buffer = Buffer<Element>.Linear.Small<inlineCapacity>()
         }
     }
 }
