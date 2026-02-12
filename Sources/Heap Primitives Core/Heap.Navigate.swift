@@ -55,8 +55,8 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         /// - Returns: Index of the parent, or `nil` if the index is the root.
         @inlinable
         public func parent(of index: Heap.Index) -> Heap.Index? {
+            guard index > .zero else { return nil }
             let pos = index.position.rawValue
-            guard pos > 0 else { return nil }
             return Heap.Index(__unchecked: (), Ordinal((pos &- 1) / 2))
         }
 
@@ -74,8 +74,31 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             case .left: childPos = 2 &* pos &+ 1
             case .right: childPos = 2 &* pos &+ 2
             }
-            guard childPos < _count.rawValue.rawValue else { return nil }
-            return Heap.Index(__unchecked: (), Ordinal(childPos))
+            let result = Heap.Index(__unchecked: (), Ordinal(childPos))
+            guard result < _count else { return nil }
+            return result
+        }
+
+        /// First non-leaf index for Floyd's bottom-up heapify, or `nil` if count <= 1.
+        ///
+        /// Raw arithmetic is principled: Cardinal has no division ([IMPL-001]).
+        @inlinable
+        package var lastNonLeaf: Heap.Index? {
+            let raw = _count.rawValue.rawValue
+            guard raw > 1 else { return nil }
+            return Heap.Index(__unchecked: (), Ordinal((raw / 2) &- 1))
+        }
+
+        /// Index of the left child of root (position 1).
+        @inlinable
+        package static var leftChildOfRoot: Heap.Index {
+            Heap.Index(__unchecked: (), Ordinal(1))
+        }
+
+        /// Index of the right child of root (position 2).
+        @inlinable
+        package static var rightChildOfRoot: Heap.Index {
+            Heap.Index(__unchecked: (), Ordinal(2))
         }
 
         /// Returns whether the given index represents a valid position.

@@ -59,7 +59,7 @@ extension Heap.Fixed: Sequence.`Protocol` where Element: Copyable & Comparison.`
     /// This explicit implementation resolves ambiguity between Swift.Sequence
     /// and Sequence.Protocol+Swift.Sequence default implementation.
     @inlinable
-    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
+    public var underestimatedCount: Int { Int(bitPattern: count) }
 }
 
 // MARK: - Sequence.Clearable Conformance
@@ -196,5 +196,5 @@ public import Heap_Primitives_Core
 extension Heap.Fixed: Swift.Sequence where Element: Copyable {
     /// Returns the count as the underestimated count since we know the exact size.
 //    @inlinable
-//    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
+//    public var underestimatedCount: Int { Int(bitPattern: count) }
 }

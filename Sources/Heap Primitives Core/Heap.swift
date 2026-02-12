@@ -129,6 +129,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
+            // Boundary: Int → typed count. Cardinal(UInt(...)) is the canonical Int→Cardinal path.
             self._buffer = Buffer<Element>.Linear.Bounded(
                 minimumCapacity: Heap.Index.Count(__unchecked: (), Cardinal(UInt(capacity)))
             )

@@ -21,7 +21,7 @@ extension Heap.MinMax: Sequence.`Protocol` where Element: Copyable & Comparison.
     /// This explicit implementation resolves ambiguity between Swift.Sequence
     /// and Sequence.Protocol+Swift.Sequence default implementation.
     @inlinable
-    public var underestimatedCount: Int { Int(bitPattern: _buffer.count.rawValue) }
+    public var underestimatedCount: Int { Int(bitPattern: _buffer.count) }
 }
 
 // MARK: - Sequence.Clearable Conformance
@@ -194,14 +194,11 @@ extension Heap.MinMax: Equatable where Element: Equatable & Copyable {
         guard lhs.count == rhs.count else { return false }
         var idx: Heap<Element>.Index = .zero
         let end = lhs._buffer.count.map(Ordinal.init)
-        var result = true
         while idx < end {
-            if lhs._buffer[idx] != rhs._buffer[idx] {
-                result = false
-            }
+            if lhs._buffer[idx] != rhs._buffer[idx] { return false }
             idx += .one
         }
-        return result
+        return true
     }
 }
 
@@ -315,14 +312,14 @@ where Tag == Heap<Element>.MinMax.Peek,
         if count == .one {
             return base._buffer[.zero]
         }
-        let idx1 = Heap<Element>.Index(__unchecked: (), Ordinal(1))
+        let leftMax = Heap<Element>.Navigate.leftChildOfRoot
         if count == .one + .one {
-            return base._buffer[idx1]
+            return base._buffer[leftMax]
         }
 
-        let idx2 = Heap<Element>.Index(__unchecked: (), Ordinal(2))
-        let e1 = base._buffer[idx1]
-        let e2 = base._buffer[idx2]
+        let rightMax = Heap<Element>.Navigate.rightChildOfRoot
+        let e1 = base._buffer[leftMax]
+        let e2 = base._buffer[rightMax]
         return e1 < e2 ? e2 : e1
     }
 }
@@ -433,14 +430,14 @@ where Tag == Heap<Element>.MinMax.Max,
         if count == .one {
             return unsafe base.pointee._buffer[.zero]
         }
-        let idx1 = Heap<Element>.Index(__unchecked: (), Ordinal(1))
+        let leftMax = Heap<Element>.Navigate.leftChildOfRoot
         if count == .one + .one {
-            return unsafe base.pointee._buffer[idx1]
+            return unsafe base.pointee._buffer[leftMax]
         }
 
-        let idx2 = Heap<Element>.Index(__unchecked: (), Ordinal(2))
-        let e1 = unsafe base.pointee._buffer[idx1]
-        let e2 = unsafe base.pointee._buffer[idx2]
+        let rightMax = Heap<Element>.Navigate.rightChildOfRoot
+        let e1 = unsafe base.pointee._buffer[leftMax]
+        let e2 = unsafe base.pointee._buffer[rightMax]
         return e1 < e2 ? e2 : e1
     }
 

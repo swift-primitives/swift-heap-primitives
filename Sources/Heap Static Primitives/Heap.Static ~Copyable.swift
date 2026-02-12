@@ -75,6 +75,10 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 
 // MARK: - Bubble Up (Single-Ended Heap)
 
+// NOTE: Identical to Heap.bubbleUp/trickleDown — duplicated because
+// Buffer.Linear variants are distinct types with no shared protocol.
+// If buffer-primitives adds a shared protocol, consolidate.
+
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Restores heap property by moving element up.
     @usableFromInline
@@ -162,10 +166,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Converts storage to valid heap in O(n).
     @usableFromInline
     package mutating func heapify() {
-        guard count > .one else { return }
-        // Int escape for division: principled — Cardinal has no division ([IMPL-001])
-        let startIdx = Int(bitPattern: count) / 2 - 1
-        var idx = Heap.Index(__unchecked: (), Ordinal(UInt(startIdx)))
+        guard var idx = navigate.lastNonLeaf else { return }
         while true {
             trickleDown(idx)
             guard idx > .zero else { break }
@@ -286,12 +287,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func forEach(_ body: (borrowing Element) -> Void) {
-        var idx: Heap.Index = .zero
-        let end = count.map(Ordinal.init)
-        while idx < end {
-            body(_buffer[idx])
-            idx += .one
-        }
+        _buffer.forEach(body)
     }
 }
 

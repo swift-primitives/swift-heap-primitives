@@ -85,9 +85,8 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     ///
     /// - Complexity: O(n) to copy elements.
     @inlinable
-    public var unordered: [Element] {
-        var result: [Element] = []
-        result.reserveCapacity(Int(bitPattern: count.rawValue))
+    public var unordered: Buffer<Element>.Linear {
+        var result = Buffer<Element>.Linear(minimumCapacity: count)
         var idx: Heap.Index = .zero
         let end = count.map(Ordinal.init)
         while idx < end {
@@ -164,16 +163,13 @@ extension Heap: Equatable where Element: Equatable & Copyable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         guard lhs.count == rhs.count else { return false }
         guard lhs.order == rhs.order else { return false }
-        var result = true
         var idx: Heap.Index = .zero
         let end = lhs.count.map(Ordinal.init)
         while idx < end {
-            if lhs._buffer[idx] != rhs._buffer[idx] {
-                result = false
-            }
+            if lhs._buffer[idx] != rhs._buffer[idx] { return false }
             idx += .one
         }
-        return result
+        return true
     }
 }
 

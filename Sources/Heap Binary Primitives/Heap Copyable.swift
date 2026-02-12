@@ -25,7 +25,7 @@ extension Heap: Sequence.`Protocol` where Element: Copyable & Comparison.`Protoc
     /// This explicit implementation resolves ambiguity between Swift.Sequence
     /// and Sequence.Protocol+Swift.Sequence default implementation.
     @inlinable
-    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
+    public var underestimatedCount: Int { Int(bitPattern: count) }
 }
 
 // MARK: - Sequence.Clearable Conformance

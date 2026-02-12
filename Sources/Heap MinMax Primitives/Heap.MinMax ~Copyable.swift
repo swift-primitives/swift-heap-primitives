@@ -23,14 +23,16 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         public typealias View = Heap<Element>.MinMax.Property<Max>.View.Typed<Element>
     }
 
-    /// Namespace for peek operations.
-    public enum Peek {
-        public typealias Typed = Heap<Element>.MinMax.Property<Peek>.Typed<Element>
-    }
-
     /// Namespace for remove operations.
     public enum Remove {
         public typealias View = Heap<Element>.MinMax.Property<Remove>.View.Typed<Element>
+    }
+}
+
+extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
+    /// Namespace for peek operations (Copyable — returns elements by copy).
+    public enum Peek {
+        public typealias Typed = Heap<Element>.MinMax.Property<Peek>.Typed<Element>
     }
 }
 
@@ -46,107 +48,18 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     public var isEmpty: Bool { _buffer.isEmpty }
 }
 
-// MARK: - Node (Level-Aware Navigation for MinMax Heap)
+// MARK: - MinMax Level Classification
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
-    /// Internal node representation for min-max heap navigation.
+    /// Determines whether the given index is on a min level in the min-max heap.
     ///
-    /// Uses raw Int offset for level computation (binary logarithm requires Int arithmetic).
-    @usableFromInline
-    package struct Node {
-        @usableFromInline
-        package var offset: Int
-
-        @usableFromInline
-        package var level: Int
-
-        @inlinable
-        package init(offset: Int, level: Int) {
-            self.offset = offset
-            self.level = level
-        }
-
-        @inlinable
-        package init(offset: Int) {
-            self.init(offset: offset, level: Self.level(forOffset: offset))
-        }
-
-        @inlinable
-        package static func level(forOffset offset: Int) -> Int {
-            (offset &+ 1)._binaryLogarithm()
-        }
-
-        @inlinable
-        package static func isMinLevel(_ level: Int) -> Bool {
-            level & 0b1 == 0
-        }
-
-        @inlinable
-        package var isMinLevel: Bool {
-            Self.isMinLevel(level)
-        }
-
-        @inlinable
-        package var isRoot: Bool {
-            offset == 0
-        }
-
-        /// Typed index for buffer access.
-        @inlinable
-        package var index: Heap.Index {
-            Heap.Index(Ordinal(UInt(offset)))
-        }
-
-        @inlinable
-        package static var root: Self {
-            Self(offset: 0, level: 0)
-        }
-
-        @inlinable
-        package static var leftMax: Self {
-            Self(offset: 1, level: 1)
-        }
-
-        @inlinable
-        package static var rightMax: Self {
-            Self(offset: 2, level: 1)
-        }
-
-        @inlinable
-        package static func firstNode(onLevel level: Int) -> Self {
-            Self(offset: (1 &<< level) &- 1, level: level)
-        }
-
-        @inlinable
-        package static func lastNode(onLevel level: Int) -> Self {
-            Self(offset: (1 &<< (level &+ 1)) &- 2, level: level)
-        }
-
-        @inlinable
-        package func parent() -> Self {
-            Self(offset: (offset &- 1) / 2, level: level &- 1)
-        }
-
-        @inlinable
-        package func grandParent() -> Self? {
-            guard offset > 2 else { return nil }
-            return Self(offset: (offset &- 3) / 4, level: level &- 2)
-        }
-
-        @inlinable
-        package func leftChild() -> Self {
-            Self(offset: offset &* 2 &+ 1, level: level &+ 1)
-        }
-
-        @inlinable
-        package func rightChild() -> Self {
-            Self(offset: offset &* 2 &+ 2, level: level &+ 1)
-        }
-
-        @inlinable
-        package func firstGrandchild() -> Self {
-            Self(offset: offset &* 4 &+ 3, level: level &+ 2)
-        }
+    /// Level 0 (root) is min, level 1 is max, level 2 is min, etc.
+    /// Raw `Int` arithmetic is principled: binary logarithm requires it ([IMPL-001]).
+    /// Confined to this static method per [PATTERN-017].
+    @inlinable
+    package static func isMinLevel(for index: Heap.Index) -> Bool {
+        let raw = Int(bitPattern: index)
+        return (raw &+ 1)._binaryLogarithm() & 0b1 == 0
     }
 }
 
@@ -168,9 +81,9 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
-        let insertionOffset = Int(bitPattern: _buffer.count)
+        let insertionIndex = _buffer.count.map(Ordinal.init)
         _buffer.append(element)
-        bubbleUp(Node(offset: insertionOffset))
+        bubbleUp(insertionIndex)
     }
 
     @usableFromInline
@@ -181,10 +94,10 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             return _buffer.removeLast()
         }
 
-        let lastNode = Node(offset: Int(bitPattern: _buffer.count) - 1)
-        _buffer.swap(at: Node.root.index, with: lastNode.index)
+        let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
+        _buffer.swap(at: .zero, with: lastIndex)
         let removed = _buffer.removeLast()
-        trickleDownMin(.root)
+        trickleDownMin(.zero)
         return removed
     }
 
@@ -200,17 +113,18 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
             return _buffer.removeLast()
         }
 
-        let maxNode = _buffer[Node.leftMax.index] < _buffer[Node.rightMax.index]
-            ? Node.rightMax
-            : Node.leftMax
+        let leftMax = Heap.Navigate.leftChildOfRoot
+        let rightMax = Heap.Navigate.rightChildOfRoot
+        let maxIndex = _buffer[leftMax] < _buffer[rightMax]
+            ? rightMax
+            : leftMax
 
-        let lastOffset = Int(bitPattern: _buffer.count) - 1
-        let lastNode = Node(offset: lastOffset)
-        _buffer.swap(at: maxNode.index, with: lastNode.index)
+        let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
+        _buffer.swap(at: maxIndex, with: lastIndex)
         let removed = _buffer.removeLast()
 
-        if maxNode.offset < Int(bitPattern: _buffer.count) {
-            trickleDownMax(maxNode)
+        if maxIndex < _buffer.count {
+            trickleDownMax(maxIndex)
         }
 
         return removed
@@ -221,34 +135,38 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
-    package mutating func bubbleUp(_ node: Node) {
-        guard !node.isRoot else { return }
+    package mutating func bubbleUp(_ startIndex: Heap.Index) {
+        guard startIndex > .zero else { return }
 
-        let parent = node.parent()
-        var node = node
+        let nav = Heap.Navigate(_count: _buffer.count)
+        guard let parentIndex = nav.parent(of: startIndex) else { return }
 
-        let nodeIsLess = _buffer[node.index] < _buffer[parent.index]
-        let parentIsLess = _buffer[parent.index] < _buffer[node.index]
+        var current = startIndex
+        var currentIsMin = Self.isMinLevel(for: startIndex)
 
-        if (node.isMinLevel && parentIsLess)
-            || (!node.isMinLevel && nodeIsLess) {
-            _buffer.swap(at: node.index, with: parent.index)
-            node = parent
+        let nodeIsLess = _buffer[current] < _buffer[parentIndex]
+        let parentIsLess = _buffer[parentIndex] < _buffer[current]
+
+        if (currentIsMin && parentIsLess)
+            || (!currentIsMin && nodeIsLess) {
+            _buffer.swap(at: current, with: parentIndex)
+            current = parentIndex
+            currentIsMin = !currentIsMin
         }
 
-        if node.isMinLevel {
-            while let grandparent = node.grandParent() {
-                let gpIsLess = _buffer[grandparent.index] < _buffer[node.index]
-                guard !gpIsLess else { break }
-                _buffer.swap(at: node.index, with: grandparent.index)
-                node = grandparent
+        if currentIsMin {
+            while let p = nav.parent(of: current),
+                  let gpIndex = nav.parent(of: p) {
+                guard !(_buffer[gpIndex] < _buffer[current]) else { break }
+                _buffer.swap(at: current, with: gpIndex)
+                current = gpIndex
             }
         } else {
-            while let grandparent = node.grandParent() {
-                let nodeIsLessGp = _buffer[node.index] < _buffer[grandparent.index]
-                guard !nodeIsLessGp else { break }
-                _buffer.swap(at: node.index, with: grandparent.index)
-                node = grandparent
+            while let p = nav.parent(of: current),
+                  let gpIndex = nav.parent(of: p) {
+                guard !(_buffer[current] < _buffer[gpIndex]) else { break }
+                _buffer.swap(at: current, with: gpIndex)
+                current = gpIndex
             }
         }
     }
@@ -258,46 +176,52 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
-    package mutating func trickleDownMin(_ startNode: Node) {
-        var node = startNode
-        let count = Int(bitPattern: _buffer.count)
+    package mutating func trickleDownMin(_ startIndex: Heap.Index) {
+        var current = startIndex
+        let nav = Heap.Navigate(_count: _buffer.count)
 
         while true {
-            let leftChild = node.leftChild()
-            if leftChild.offset >= count { break }
+            guard let leftIndex = nav.child(.left, of: current) else { break }
 
-            var smallest = node
-            let rightChild = node.rightChild()
+            var smallest = current
 
-            if _buffer[leftChild.index] < _buffer[smallest.index] {
-                smallest = leftChild
+            if _buffer[leftIndex] < _buffer[smallest] {
+                smallest = leftIndex
             }
-            if rightChild.offset < count {
-                if _buffer[rightChild.index] < _buffer[smallest.index] {
-                    smallest = rightChild
+            if let rightIndex = nav.child(.right, of: current) {
+                if _buffer[rightIndex] < _buffer[smallest] {
+                    smallest = rightIndex
                 }
             }
 
-            let gc0 = node.firstGrandchild()
-            for i in 0..<4 {
-                let gcOffset = gc0.offset + i
-                guard gcOffset < count else { break }
-                let gc = Node(offset: gcOffset, level: gc0.level)
-                if _buffer[gc.index] < _buffer[smallest.index] {
-                    smallest = gc
+            // Grandchildren: 4 consecutive positions starting from left child's left child.
+            let firstGCIndex: Heap.Index?
+            if let gcStart = nav.child(.left, of: leftIndex) {
+                firstGCIndex = gcStart
+                var gcIndex = gcStart
+                for _ in 0..<4 {
+                    guard nav.isValid(gcIndex) else { break }
+                    if _buffer[gcIndex] < _buffer[smallest] {
+                        smallest = gcIndex
+                    }
+                    gcIndex += .one
                 }
+            } else {
+                firstGCIndex = nil
             }
 
-            if smallest.offset == node.offset { break }
+            if smallest == current { break }
 
-            _buffer.swap(at: node.index, with: smallest.index)
+            _buffer.swap(at: current, with: smallest)
 
-            if smallest.offset >= gc0.offset {
-                let parent = smallest.parent()
-                if _buffer[parent.index] < _buffer[smallest.index] {
-                    _buffer.swap(at: smallest.index, with: parent.index)
+            if let firstGCIndex, smallest >= firstGCIndex {
+                // Grandchild case: restore parent invariant, then continue.
+                if let parentOfSmallest = nav.parent(of: smallest) {
+                    if _buffer[parentOfSmallest] < _buffer[smallest] {
+                        _buffer.swap(at: smallest, with: parentOfSmallest)
+                    }
                 }
-                node = smallest
+                current = smallest
             } else {
                 break
             }
@@ -309,46 +233,52 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
-    package mutating func trickleDownMax(_ startNode: Node) {
-        var node = startNode
-        let count = Int(bitPattern: _buffer.count)
+    package mutating func trickleDownMax(_ startIndex: Heap.Index) {
+        var current = startIndex
+        let nav = Heap.Navigate(_count: _buffer.count)
 
         while true {
-            let leftChild = node.leftChild()
-            if leftChild.offset >= count { break }
+            guard let leftIndex = nav.child(.left, of: current) else { break }
 
-            var largest = node
-            let rightChild = node.rightChild()
+            var largest = current
 
-            if _buffer[largest.index] < _buffer[leftChild.index] {
-                largest = leftChild
+            if _buffer[largest] < _buffer[leftIndex] {
+                largest = leftIndex
             }
-            if rightChild.offset < count {
-                if _buffer[largest.index] < _buffer[rightChild.index] {
-                    largest = rightChild
+            if let rightIndex = nav.child(.right, of: current) {
+                if _buffer[largest] < _buffer[rightIndex] {
+                    largest = rightIndex
                 }
             }
 
-            let gc0 = node.firstGrandchild()
-            for i in 0..<4 {
-                let gcOffset = gc0.offset + i
-                guard gcOffset < count else { break }
-                let gc = Node(offset: gcOffset, level: gc0.level)
-                if _buffer[largest.index] < _buffer[gc.index] {
-                    largest = gc
+            // Grandchildren: 4 consecutive positions starting from left child's left child.
+            let firstGCIndex: Heap.Index?
+            if let gcStart = nav.child(.left, of: leftIndex) {
+                firstGCIndex = gcStart
+                var gcIndex = gcStart
+                for _ in 0..<4 {
+                    guard nav.isValid(gcIndex) else { break }
+                    if _buffer[largest] < _buffer[gcIndex] {
+                        largest = gcIndex
+                    }
+                    gcIndex += .one
                 }
+            } else {
+                firstGCIndex = nil
             }
 
-            if largest.offset == node.offset { break }
+            if largest == current { break }
 
-            _buffer.swap(at: node.index, with: largest.index)
+            _buffer.swap(at: current, with: largest)
 
-            if largest.offset >= gc0.offset {
-                let parent = largest.parent()
-                if _buffer[largest.index] < _buffer[parent.index] {
-                    _buffer.swap(at: largest.index, with: parent.index)
+            if let firstGCIndex, largest >= firstGCIndex {
+                // Grandchild case: restore parent invariant, then continue.
+                if let parentOfLargest = nav.parent(of: largest) {
+                    if _buffer[largest] < _buffer[parentOfLargest] {
+                        _buffer.swap(at: largest, with: parentOfLargest)
+                    }
                 }
-                node = largest
+                current = largest
             } else {
                 break
             }
@@ -356,32 +286,35 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-// MARK: - Heapify (Floyd's Algorithm for MinMax)
+// MARK: - Heapify (Level-Order for MinMax)
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
+    /// Converts storage to valid min-max heap in O(n).
+    ///
+    /// Uses level-order Floyd's algorithm. Raw `Int` arithmetic for level-based
+    /// position ranges is principled: power-of-2 tree math requires it ([IMPL-001]).
     @usableFromInline
     package mutating func heapify() {
-        let count = Int(bitPattern: _buffer.count)
-        guard count > 1 else { return }
+        let rawCount = Int(bitPattern: _buffer.count)
+        guard rawCount > 1 else { return }
 
-        let limit = count / 2
+        let limit = rawCount / 2
+        var level = limit._binaryLogarithm()
 
-        var level = Node.level(forOffset: limit - 1)
         while level >= 0 {
-            let firstOnLevel = Node.firstNode(onLevel: level)
-            let lastOnLevel = Node.lastNode(onLevel: level)
+            let isMin = level & 0b1 == 0
+            let firstPos = UInt((1 &<< level) &- 1)
+            let lastPos = UInt(Swift.min((1 &<< (level &+ 1)) &- 2, limit - 1))
 
-            let startOffset = firstOnLevel.offset
-            let endOffset = Swift.min(lastOnLevel.offset, limit - 1)
-
-            if Node.isMinLevel(level) {
-                for offset in startOffset...endOffset {
-                    trickleDownMin(Node(offset: offset, level: level))
+            var pos = firstPos
+            while pos <= lastPos {
+                let index = Heap.Index(__unchecked: (), Ordinal(pos))
+                if isMin {
+                    trickleDownMin(index)
+                } else {
+                    trickleDownMax(index)
                 }
-            } else {
-                for offset in startOffset...endOffset {
-                    trickleDownMax(Node(offset: offset, level: level))
-                }
+                pos &+= 1
             }
             level -= 1
         }
@@ -405,20 +338,24 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public func withMin<R>(_ body: (borrowing Element) -> R) -> R? {
         guard !isEmpty else { return nil }
-        return body(_buffer[Node.root.index])
+        return body(_buffer[.zero])
     }
 
     /// Provides borrowing access to the maximum element.
     @inlinable
     public func withMax<R>(_ body: (borrowing Element) -> R) -> R? {
         guard !isEmpty else { return nil }
-        if _buffer.count == .one { return body(_buffer[Node.root.index]) }
-        if _buffer.count == .one + .one { return body(_buffer[Node.leftMax.index]) }
+        if _buffer.count == .one { return body(_buffer[.zero]) }
+        if _buffer.count == .one + .one {
+            return body(_buffer[Heap.Navigate.leftChildOfRoot])
+        }
 
-        let maxNode = _buffer[Node.leftMax.index] < _buffer[Node.rightMax.index]
-            ? Node.rightMax
-            : Node.leftMax
-        return body(_buffer[maxNode.index])
+        let leftMax = Heap.Navigate.leftChildOfRoot
+        let rightMax = Heap.Navigate.rightChildOfRoot
+        let maxIndex = _buffer[leftMax] < _buffer[rightMax]
+            ? rightMax
+            : leftMax
+        return body(_buffer[maxIndex])
     }
 
     /// Calls the given closure for each element in heap order.
@@ -428,11 +365,6 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     ///   This method directly supports `~Copyable` elements.
     @inlinable
     public func forEach(_ body: (borrowing Element) -> Void) {
-        var idx: Heap.Index = .zero
-        let end = _buffer.count.map(Ordinal.init)
-        while idx < end {
-            body(_buffer[idx])
-            idx += .one
-        }
+        _buffer.forEach(body)
     }
 }

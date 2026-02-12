@@ -17,33 +17,32 @@ public import Buffer_Linear_Primitives
 // MARK: - Heap.Small Iterator
 
 extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
-    /// Array-based iterator for Heap.Small elements.
+    /// Iterator for Heap.Small elements.
     ///
-    /// Copies elements to an internal array for safe iteration. This avoids
-    /// the pointer escape issues that occur with inline storage.
-    ///
-    /// - Note: For heap storage, iteration could be zero-copy, but we use
-    ///   a consistent approach for simplicity.
-    @safe
+    /// Copies elements to a `Buffer.Linear` snapshot for safe iteration,
+    /// avoiding pointer escape issues with inline storage.
     public struct Iterator: IteratorProtocol {
         @usableFromInline
-        var elements: [Element]
+        let _buffer: Buffer<Element>.Linear
 
         @usableFromInline
-        var position: Int
+        let _end: Heap.Index.Count
 
         @usableFromInline
-        init(elements: [Element]) {
-            self.elements = elements
-            self.position = 0
+        var _index: Heap.Index = .zero
+
+        @usableFromInline
+        init(_buffer: Buffer<Element>.Linear) {
+            self._buffer = _buffer
+            self._end = _buffer.count
         }
 
         @inlinable
         public mutating func next() -> Element? {
-            guard position < elements.count else { return nil }
-            let result = elements[position]
-            position += 1
-            return result
+            guard _index < _end else { return nil }
+            let element = _buffer[_index]
+            _index += .one
+            return element
         }
     }
 }
@@ -55,34 +54,27 @@ extension Heap.Small.Iterator: Sendable where Element: Sendable {}
 extension Heap.Small: Sequence.`Protocol` where Element: Copyable & Comparison.`Protocol` {
     /// Returns an iterator over the heap elements.
     ///
-    /// Copies elements to an array for safe iteration. This avoids pointer
-    /// escape issues with inline storage.
+    /// Copies elements to a `Buffer.Linear` snapshot for safe iteration,
+    /// avoiding pointer escape issues with inline storage.
     ///
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
     /// - Note: Incurs O(n) copy cost. For performance-critical code, use
     ///   the mutating `forEach` method instead.
     @inlinable
     public borrowing func makeIterator() -> Iterator {
-        guard count > .zero else {
-            return Iterator(elements: [])
-        }
-
-        // Copy elements to array using subscript for safe iteration
-        var elements: [Element] = []
-        elements.reserveCapacity(Int(bitPattern: count.rawValue))
-
+        var snapshot = Buffer<Element>.Linear(minimumCapacity: count)
         var idx: Heap.Index = .zero
         let end = count.map(Ordinal.init)
         while idx < end {
-            elements.append(_buffer[idx])
+            snapshot.append(_buffer[idx])
             idx += .one
         }
-        return Iterator(elements: elements)
+        return Iterator(_buffer: snapshot)
     }
 
     /// Returns the count as the underestimated count since we know the exact size.
     @inlinable
-    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
+    public var underestimatedCount: Int { Int(bitPattern: count) }
 }
 
 // MARK: - Sequence.Clearable Conformance
