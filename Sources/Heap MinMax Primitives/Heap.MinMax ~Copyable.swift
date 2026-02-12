@@ -14,16 +14,24 @@ public import Heap_Primitives_Core
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for minimum element operations.
-    public enum Min {}
+    public enum Min {
+        public typealias View = Heap<Element>.MinMax.Property<Min>.View.Typed<Element>
+    }
 
     /// Namespace for maximum element operations.
-    public enum Max {}
+    public enum Max {
+        public typealias View = Heap<Element>.MinMax.Property<Max>.View.Typed<Element>
+    }
 
     /// Namespace for peek operations.
-    public enum Peek {}
+    public enum Peek {
+        public typealias Typed = Heap<Element>.MinMax.Property<Peek>.Typed<Element>
+    }
 
     /// Namespace for remove operations.
-    public enum Remove {}
+    public enum Remove {
+        public typealias View = Heap<Element>.MinMax.Property<Remove>.View.Typed<Element>
+    }
 }
 
 // MARK: - Properties

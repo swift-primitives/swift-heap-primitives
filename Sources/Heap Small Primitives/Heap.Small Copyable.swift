@@ -132,94 +132,83 @@ extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
     }
 }
 
+// MARK: - Sequence Tag Enums
+
+extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
+    public enum Drain {
+        public typealias View = Property<Sequence.Drain>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+    public enum ForEach {
+        public typealias View = Property<Sequence.ForEach>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+    public enum Satisfies {
+        public typealias View = Property<Sequence.Satisfies>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+    public enum First {
+        public typealias View = Property<Sequence.First>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+    public enum Reduce {
+        public typealias View = Property<Sequence.Reduce>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+    public enum Contains {
+        public typealias View = Property<Sequence.Contains>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+    public enum Drop {
+        public typealias View = Property<Sequence.Drop>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+    public enum Prefix {
+        public typealias View = Property<Sequence.Prefix>.View.Typed<Element>.Valued<inlineCapacity>
+    }
+}
+
 // MARK: - Property Accessors
 
 extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
     /// Accessor for drain operations.
-    public var drain: Property<Sequence.Drain>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.Drain>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.Drain>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var drain: Drain.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: Drain.View = unsafe .init(&self); yield &view }
     }
 
     /// Accessor for forEach operations.
-    public var forEach: Property<Sequence.ForEach>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.ForEach>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.ForEach>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var forEach: ForEach.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: ForEach.View = unsafe .init(&self); yield &view }
     }
 
     /// Accessor for predicate satisfaction checks.
-    public var satisfies: Property<Sequence.Satisfies>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.Satisfies>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.Satisfies>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var satisfies: Satisfies.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: Satisfies.View = unsafe .init(&self); yield &view }
     }
 
     /// Accessor for finding the first matching element.
-    public var first: Property<Sequence.First>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.First>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.First>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var first: First.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: First.View = unsafe .init(&self); yield &view }
     }
 
     /// Accessor for reduce operations.
-    public var reduce: Property<Sequence.Reduce>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.Reduce>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.Reduce>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var reduce: Reduce.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: Reduce.View = unsafe .init(&self); yield &view }
     }
 
     /// Accessor for containment checks.
-    public var contains: Property<Sequence.Contains>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.Contains>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.Contains>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var contains: Contains.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: Contains.View = unsafe .init(&self); yield &view }
     }
 
     /// Accessor for drop operations.
-    public var drop: Property<Sequence.Drop>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.Drop>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.Drop>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var drop: Drop.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: Drop.View = unsafe .init(&self); yield &view }
     }
 
     /// Accessor for prefix operations.
-    public var prefix: Property<Sequence.Prefix>.View.Typed<Element>.Valued<inlineCapacity> {
-        mutating _read {
-            yield unsafe Property<Sequence.Prefix>.View.Typed<Element>.Valued(&self)
-        }
-        mutating _modify {
-            var view = unsafe Property<Sequence.Prefix>.View.Typed<Element>.Valued<inlineCapacity>(&self)
-            yield &view
-        }
+    public var prefix: Prefix.View {
+        mutating _read { yield unsafe .init(&self) }
+        mutating _modify { var view: Prefix.View = unsafe .init(&self); yield &view }
     }
 }

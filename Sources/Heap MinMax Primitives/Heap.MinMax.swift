@@ -74,12 +74,12 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// heap.remove.all()                      // Remove all, release capacity
     /// heap.remove.all(keepingCapacity: true) // Remove all, keep capacity
     /// ```
-    public var remove: Property<Remove>.View.Typed<Element> {
+    public var remove: Remove.View {
         mutating _read {
-            yield unsafe Property<Remove>.View.Typed(&self)
+            yield unsafe .init(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Remove>.View.Typed<Element>(&self)
+            var view: Remove.View = unsafe .init(&self)
             yield &view
         }
     }

@@ -286,8 +286,8 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// let largest = heap.peek.max   // 8
     /// ```
     @inlinable
-    public var peek: Property<Peek>.Typed<Element> {
-        Property_Primitives.Property.Typed(self)
+    public var peek: Peek.Typed {
+        .init(self)
     }
 }
 
@@ -341,12 +341,12 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// let removed = try heap.min.pop()  // 1 (removes and returns)
     /// let taken = heap.min.take         // next min or nil
     /// ```
-    public var min: Property<Min>.View.Typed<Element> {
+    public var min: Min.View {
         mutating _read {
-            yield unsafe Property<Min>.View.Typed(&self)
+            yield unsafe .init(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Min>.View.Typed<Element>(&self)
+            var view: Min.View = unsafe .init(&self)
             yield &view
         }
     }
@@ -406,12 +406,12 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// let removed = try heap.max.pop()  // 8 (removes and returns)
     /// let taken = heap.max.take         // next max or nil
     /// ```
-    public var max: Property<Max>.View.Typed<Element> {
+    public var max: Max.View {
         mutating _read {
-            yield unsafe Property<Max>.View.Typed(&self)
+            yield unsafe .init(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Max>.View.Typed<Element>(&self)
+            var view: Max.View = unsafe .init(&self)
             yield &view
         }
     }

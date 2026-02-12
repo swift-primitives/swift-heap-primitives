@@ -11,6 +11,8 @@
 
 public import Sequence_Primitives
 public import Property_Primitives
+public import Buffer_Linear_Primitives
+public import Heap_Primitives_Core
 
 
 // MARK: - Sequence.Protocol Conformance
@@ -23,7 +25,7 @@ extension Heap: Sequence.`Protocol` where Element: Copyable & Comparison.`Protoc
     /// This explicit implementation resolves ambiguity between Swift.Sequence
     /// and Sequence.Protocol+Swift.Sequence default implementation.
     @inlinable
-    public var underestimatedCount: Int { _storage.header }
+    public var underestimatedCount: Int { Int(bitPattern: count.rawValue) }
 }
 
 // MARK: - Sequence.Clearable Conformance
@@ -177,11 +179,10 @@ extension Heap: Sequence.Drain.`Protocol` where Element: Copyable & Comparison.`
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
-        makeUnique()
-        (0..<_storage.count).forEach { index in
-            body(_storage.move(at: index))
+        _buffer.ensureUnique()
+        while !_buffer.isEmpty {
+            body(_buffer.removeLast())
         }
-        _storage.header = 0
     }
 }
 

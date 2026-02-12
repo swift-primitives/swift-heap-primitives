@@ -17,7 +17,9 @@ public import Property_Primitives
 
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for remove operations.
-    public enum Remove {}
+    public enum Remove {
+        public typealias View = Heap<Element>.Small<inlineCapacity>.Property<Remove>.View.Typed<Element>.Valued<inlineCapacity>
+    }
 }
 
 // MARK: - Property Typealias
@@ -38,12 +40,12 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// var heap: Heap<Int>.Small<8> = ...
     /// heap.remove.all()  // Remove all elements
     /// ```
-    public var remove: Property<Remove>.View.Typed<Element>.Valued<inlineCapacity> {
+    public var remove: Remove.View {
         mutating _read {
-            yield unsafe Property<Remove>.View.Typed<Element>.Valued(&self)
+            yield unsafe .init(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Remove>.View.Typed<Element>.Valued<inlineCapacity>(&self)
+            var view: Remove.View = unsafe .init(&self)
             yield &view
         }
     }

@@ -16,7 +16,9 @@ public import Property_Primitives
 
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for remove operations.
-    public enum Remove {}
+    public enum Remove {
+        public typealias View = Heap<Element>.Static<capacity>.Property<Remove>.View.Typed<Element>.Valued<capacity>
+    }
 }
 
 // MARK: - Property Typealias
@@ -232,12 +234,12 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// var heap: Heap<Int>.Static<16> = ...
     /// heap.remove.all()  // Remove all elements
     /// ```
-    public var remove: Property<Remove>.View.Typed<Element>.Valued<capacity> {
+    public var remove: Remove.View {
         mutating _read {
-            yield unsafe Property<Remove>.View.Typed<Element>.Valued(&self)
+            yield unsafe .init(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Remove>.View.Typed<Element>.Valued<capacity>(&self)
+            var view: Remove.View = unsafe .init(&self)
             yield &view
         }
     }

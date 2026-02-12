@@ -21,6 +21,10 @@ let package = Package(
             targets: ["Heap Primitives Core"]
         ),
         .library(
+            name: "Heap Binary Primitives",
+            targets: ["Heap Binary Primitives"]
+        ),
+        .library(
             name: "Heap Fixed Primitives",
             targets: ["Heap Fixed Primitives"]
         ),
@@ -71,6 +75,10 @@ let package = Package(
         // Per-variant modules: Swift.Sequence conformances (Element: Copyable)
         // Separate modules to avoid constraint poisoning on Core types
         .target(
+            name: "Heap Binary Primitives",
+            dependencies: ["Heap Primitives Core"]
+        ),
+        .target(
             name: "Heap Fixed Primitives",
             dependencies: ["Heap Primitives Core"]
         ),
@@ -104,6 +112,7 @@ let package = Package(
             name: "Heap Primitives",
             dependencies: [
                 "Heap Primitives Core",
+                "Heap Binary Primitives",
                 "Heap Fixed Primitives",
                 "Heap Static Primitives",
                 "Heap Small Primitives",
