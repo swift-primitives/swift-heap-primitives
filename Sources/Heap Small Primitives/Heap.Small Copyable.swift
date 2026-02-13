@@ -21,7 +21,7 @@ extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
     ///
     /// Copies elements to a `Buffer.Linear` snapshot for safe iteration,
     /// avoiding pointer escape issues with inline storage.
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
         let _buffer: Buffer<Element>.Linear
 

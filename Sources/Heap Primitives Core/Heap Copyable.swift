@@ -212,7 +212,7 @@ extension Heap: CustomStringConvertible {
 
 extension Heap: Swift.Sequence where Element: Copyable {
 
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
         var _buffer: Buffer<Element>.Linear
 

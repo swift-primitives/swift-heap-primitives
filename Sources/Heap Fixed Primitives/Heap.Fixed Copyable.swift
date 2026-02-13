@@ -17,7 +17,7 @@ public import Buffer_Linear_Primitives
 
 extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Iterator for Heap.Fixed elements.
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
         let _buffer: Buffer<Element>.Linear.Bounded
 

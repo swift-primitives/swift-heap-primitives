@@ -164,7 +164,7 @@ extension Heap.MinMax: CustomStringConvertible {
 
 extension Heap.MinMax: Swift.Sequence where Element: Copyable {
 
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
         let _buffer: Buffer<Element>.Linear
 
