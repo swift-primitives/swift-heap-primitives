@@ -66,6 +66,8 @@ let package = Package(
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
                 .product(name: "Buffer Linear Primitives", package: "swift-buffer-primitives"),
+                .product(name: "Buffer Linear Inline Primitives", package: "swift-buffer-primitives"),
+                .product(name: "Buffer Linear Small Primitives", package: "swift-buffer-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
                 .product(name: "Collection Primitives", package: "swift-collection-primitives"),
                 .product(name: "Input Primitives", package: "swift-input-primitives"),

@@ -63,7 +63,7 @@ where Tag == Heap<Element>.Small<n>.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        unsafe base.pointee._buffer.removeAll()
+        unsafe base.pointee._buffer.remove.all()
     }
 }
 
@@ -104,13 +104,13 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         guard !isEmpty else { return nil }
 
         if count == .one {
-            return _buffer.removeLast()
+            return _buffer.remove.last()
         }
 
         // Swap root with last, remove last, trickle down
         let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
         _buffer.swap(at: .zero, with: lastIndex)
-        let removed = _buffer.removeLast()
+        let removed = _buffer.remove.last()
         trickleDown(.zero)
         return removed
     }
@@ -308,7 +308,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     public mutating func truncate(to newCount: Heap.Index.Count) {
         guard newCount < count else { return }
         while count > newCount {
-            _ = _buffer.removeLast()
+            _ = _buffer.remove.last()
         }
     }
 }
@@ -332,10 +332,12 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// - Warning: Modifying elements may break the heap invariant.
     @inlinable
     public var mutableSpan: MutableSpan<Element> {
-        mutating _read {
-            yield _buffer.mutableSpan
+        @_lifetime(&self)
+        mutating get {
+            _buffer.mutableSpan
         }
-        mutating _modify {
+        @_lifetime(&self)
+        _modify {
             yield &_buffer.mutableSpan
         }
     }

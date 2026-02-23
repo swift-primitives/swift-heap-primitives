@@ -89,7 +89,7 @@ extension Heap.Fixed: Sequence.Drain.`Protocol` where Element: Copyable & Compar
     public mutating func drain(_ body: (consuming Element) -> Void) {
         makeUnique()
         while !_buffer.isEmpty {
-            body(_buffer.removeLast())
+            body(_buffer.remove.last())
         }
     }
 }

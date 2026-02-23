@@ -53,7 +53,7 @@ extension Heap: Sequence.Drain.`Protocol` where Element: Copyable & Comparison.`
     public mutating func drain(_ body: (consuming Element) -> Void) {
         _buffer.ensureUnique()
         while !_buffer.isEmpty {
-            body(_buffer.removeLast())
+            body(_buffer.remove.last())
         }
     }
 }

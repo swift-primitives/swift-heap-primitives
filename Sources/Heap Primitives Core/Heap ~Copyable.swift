@@ -63,13 +63,13 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         guard !isEmpty else { return nil }
 
         if count == .one {
-            return _buffer.removeLast()
+            return _buffer.remove.last()
         }
 
         // Swap root with last, remove last, trickle down
         let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
         _buffer.swap(at: .zero, with: lastIndex)
-        let removed = _buffer.removeLast()
+        let removed = _buffer.remove.last()
         trickleDown(.zero)
         return removed
     }
@@ -228,7 +228,7 @@ where Tag == Heap<Element>.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        unsafe base.pointee._buffer.removeAll()
+        unsafe base.pointee._buffer.remove.all()
         if !keepingCapacity {
             unsafe (base.pointee._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
         }

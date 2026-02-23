@@ -98,7 +98,7 @@ where Tag == Heap<Element>.MinMax.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        unsafe base.pointee._buffer.removeAll()
+        unsafe base.pointee._buffer.remove.all()
         if !keepingCapacity {
             unsafe (base.pointee._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
         }

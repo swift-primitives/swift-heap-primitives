@@ -62,12 +62,12 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
         guard !isEmpty else { return nil }
 
         if count == .one {
-            return _buffer.removeLast()
+            return _buffer.remove.last()
         }
 
         let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
         _buffer.swap(at: .zero, with: lastIndex)
-        let removed = _buffer.removeLast()
+        let removed = _buffer.remove.last()
         trickleDown(.zero)
         return removed
     }
@@ -256,7 +256,7 @@ where Tag == Heap<Element>.Static<n>.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        unsafe base.pointee._buffer.removeAll()
+        unsafe base.pointee._buffer.remove.all()
     }
 }
 
@@ -307,7 +307,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     public mutating func truncate(to newCount: Heap.Index.Count) {
         guard newCount < count else { return }
         while _buffer.count > newCount {
-            _ = _buffer.removeLast()
+            _ = _buffer.remove.last()
         }
     }
 }

@@ -106,7 +106,7 @@ extension Heap.Static: Sequence.Drain.`Protocol` where Element: Copyable & Compa
             body(_buffer[idx])
             idx += .one
         }
-        _buffer.removeAll()
+        _buffer.remove.all()
     }
 }
 

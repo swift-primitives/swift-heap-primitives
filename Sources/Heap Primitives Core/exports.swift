@@ -8,3 +8,5 @@
 @_exported public import Input_Primitives
 @_exported public import Sequence_Primitives
 @_exported public import Buffer_Linear_Primitives
+@_exported public import Buffer_Linear_Inline_Primitives
+@_exported public import Buffer_Linear_Small_Primitives

@@ -91,12 +91,12 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         guard !isEmpty else { return nil }
 
         if _buffer.count == .one {
-            return _buffer.removeLast()
+            return _buffer.remove.last()
         }
 
         let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
         _buffer.swap(at: .zero, with: lastIndex)
-        let removed = _buffer.removeLast()
+        let removed = _buffer.remove.last()
         trickleDownMin(.zero)
         return removed
     }
@@ -106,11 +106,11 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         guard !isEmpty else { return nil }
 
         if _buffer.count == .one {
-            return _buffer.removeLast()
+            return _buffer.remove.last()
         }
 
         if _buffer.count == .one + .one {
-            return _buffer.removeLast()
+            return _buffer.remove.last()
         }
 
         let leftMax = Heap.Navigate.leftChildOfRoot
@@ -121,7 +121,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
         _buffer.swap(at: maxIndex, with: lastIndex)
-        let removed = _buffer.removeLast()
+        let removed = _buffer.remove.last()
 
         if maxIndex < _buffer.count {
             trickleDownMax(maxIndex)

@@ -103,7 +103,7 @@ extension Heap.Small: Sequence.Drain.`Protocol` where Element: Copyable & Compar
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
         while !isEmpty {
-            body(_buffer.removeLast())
+            body(_buffer.remove.last())
         }
     }
 }
