@@ -275,6 +275,36 @@ struct HeapSmallTests {
         #expect(heap.isSpilled == true)
         #expect(Int(bitPattern: heap.capacity) >= 5)  // Heap capacity
     }
+
+    @Test("drain(while:) drains some elements in priority order")
+    func drainWhileSome() {
+        var heap = Heap<Int>.Small<8>(order: .ascending)
+        for e in [5, 3, 8, 1, 4] { heap.push(e) }
+        var drained: [Int] = []
+        heap.drain(while: { $0 < 5 }) { drained.append($0) }
+        #expect(drained == [1, 3, 4])
+        #expect(Int(bitPattern: heap.count) == 2)
+    }
+
+    @Test("drain(while:) drains zero elements")
+    func drainWhileNone() {
+        var heap = Heap<Int>.Small<8>(order: .ascending)
+        for e in [5, 3, 8] { heap.push(e) }
+        var drained: [Int] = []
+        heap.drain(while: { $0 > 100 }) { drained.append($0) }
+        #expect(drained.isEmpty)
+        #expect(Int(bitPattern: heap.count) == 3)
+    }
+
+    @Test("drain(while:) drains all elements")
+    func drainWhileAll() {
+        var heap = Heap<Int>.Small<8>(order: .ascending)
+        for e in [5, 3, 8, 1] { heap.push(e) }
+        var drained: [Int] = []
+        heap.drain(while: { _ in true }) { drained.append($0) }
+        #expect(drained == [1, 3, 5, 8])
+        #expect(heap.isEmpty == true)
+    }
 }
 
 // MARK: - ~Copyable Element Tests

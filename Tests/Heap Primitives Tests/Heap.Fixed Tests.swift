@@ -238,6 +238,36 @@ struct HeapFixedTests {
         let heap = try Heap<Int>.Fixed(capacity: 0, order: .ascending)
         #expect(heap.isEmpty == true)
     }
+
+    @Test("drain(while:) drains some elements in priority order")
+    func drainWhileSome() throws {
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
+        for e in [5, 3, 8, 1, 4] { _ = heap.push(e) }
+        var drained: [Int] = []
+        heap.drain(while: { $0 < 5 }) { drained.append($0) }
+        #expect(drained == [1, 3, 4])
+        #expect(Int(bitPattern: heap.count) == 2)
+    }
+
+    @Test("drain(while:) drains zero elements")
+    func drainWhileNone() throws {
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
+        for e in [5, 3, 8] { _ = heap.push(e) }
+        var drained: [Int] = []
+        heap.drain(while: { $0 > 100 }) { drained.append($0) }
+        #expect(drained.isEmpty)
+        #expect(Int(bitPattern: heap.count) == 3)
+    }
+
+    @Test("drain(while:) drains all elements")
+    func drainWhileAll() throws {
+        var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
+        for e in [5, 3, 8, 1] { _ = heap.push(e) }
+        var drained: [Int] = []
+        heap.drain(while: { _ in true }) { drained.append($0) }
+        #expect(drained == [1, 3, 5, 8])
+        #expect(heap.isEmpty)
+    }
 }
 
 // MARK: - ~Copyable Element Tests

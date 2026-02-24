@@ -102,6 +102,40 @@ struct HeapSingleEndedTests {
         #expect(heap.take == 5)
         #expect(heap.take == nil)
     }
+    @Test("drain(while:) drains some elements in priority order")
+    func drainWhileSome() {
+        var heap = Heap<Int>([5, 3, 8, 1, 4], order: .ascending)
+        var drained: [Int] = []
+        heap.drain(while: { $0 < 5 }) { drained.append($0) }
+        #expect(drained == [1, 3, 4])
+        #expect(Int(bitPattern: heap.count) == 2)
+    }
+
+    @Test("drain(while:) drains zero elements when predicate is immediately false")
+    func drainWhileNone() {
+        var heap = Heap<Int>([5, 3, 8], order: .ascending)
+        var drained: [Int] = []
+        heap.drain(while: { $0 > 100 }) { drained.append($0) }
+        #expect(drained.isEmpty)
+        #expect(Int(bitPattern: heap.count) == 3)
+    }
+
+    @Test("drain(while:) drains all elements when predicate is always true")
+    func drainWhileAll() {
+        var heap = Heap<Int>([5, 3, 8, 1], order: .ascending)
+        var drained: [Int] = []
+        heap.drain(while: { _ in true }) { drained.append($0) }
+        #expect(drained == [1, 3, 5, 8])
+        #expect(heap.isEmpty)
+    }
+
+    @Test("drain(while:) on empty heap")
+    func drainWhileEmpty() {
+        var heap = Heap<Int>(order: .ascending)
+        var drained: [Int] = []
+        heap.drain(while: { _ in true }) { drained.append($0) }
+        #expect(drained.isEmpty)
+    }
 }
 
 // MARK: - MinMax Heap Tests
@@ -195,5 +229,41 @@ struct HeapMinMaxTests {
         #expect(try heap.max.pop() == 4)
         #expect(try heap.min.pop() == 3)
         #expect(heap.isEmpty == true)
+    }
+
+    @Test("drain(while:from: .min) drains smallest elements")
+    func drainWhileMin() {
+        var heap: Heap<Int>.MinMax = [5, 3, 8, 1, 4]
+        var drained: [Int] = []
+        heap.drain(while: { $0 < 5 }, from: .min) { drained.append($0) }
+        #expect(drained == [1, 3, 4])
+        #expect(Int(bitPattern: heap.count) == 2)
+    }
+
+    @Test("drain(while:from: .max) drains largest elements")
+    func drainWhileMax() {
+        var heap: Heap<Int>.MinMax = [5, 3, 8, 1, 4]
+        var drained: [Int] = []
+        heap.drain(while: { $0 > 4 }, from: .max) { drained.append($0) }
+        #expect(drained == [8, 5])
+        #expect(Int(bitPattern: heap.count) == 3)
+    }
+
+    @Test("drain(while:from:) drains zero elements when predicate is immediately false")
+    func drainWhileNone() {
+        var heap: Heap<Int>.MinMax = [5, 3, 8]
+        var drained: [Int] = []
+        heap.drain(while: { $0 > 100 }, from: .min) { drained.append($0) }
+        #expect(drained.isEmpty)
+        #expect(Int(bitPattern: heap.count) == 3)
+    }
+
+    @Test("drain(while:from:) drains all elements")
+    func drainWhileAll() {
+        var heap: Heap<Int>.MinMax = [5, 3, 8, 1]
+        var drained: [Int] = []
+        heap.drain(while: { _ in true }, from: .min) { drained.append($0) }
+        #expect(drained == [1, 3, 5, 8])
+        #expect(heap.isEmpty)
     }
 }

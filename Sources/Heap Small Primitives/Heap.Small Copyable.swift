@@ -108,6 +108,31 @@ extension Heap.Small: Sequence.Drain.`Protocol` where Element: Copyable & Compar
     }
 }
 
+// MARK: - Conditional Drain
+
+extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
+    /// Drains elements in priority order while the predicate returns true.
+    ///
+    /// Repeatedly peeks at the priority element; if the predicate returns true,
+    /// takes (consumes) the element and passes it to body; if false, stops.
+    /// The heap survives with remaining elements intact.
+    ///
+    /// - Parameters:
+    ///   - predicate: A closure that receives a borrowed reference to the next element.
+    ///     Return `true` to drain it, `false` to stop.
+    ///   - body: A closure that receives each drained element with ownership.
+    /// - Complexity: O(k log n) where k is the number of elements drained.
+    @inlinable
+    public mutating func drain(
+        while predicate: (borrowing Element) -> Bool,
+        _ body: (consuming Element) -> Void
+    ) {
+        while let element = peek, predicate(element) {
+            body(take!)
+        }
+    }
+}
+
 // MARK: - Peek (Copyable elements)
 
 extension Heap.Small where Element: Copyable & Comparison.`Protocol` {

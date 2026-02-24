@@ -71,6 +71,41 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
 }
 
 
+// MARK: - Conditional Drain
+
+extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
+    /// Drains elements from the specified end in priority order while the predicate returns true.
+    ///
+    /// When draining from `.min`, repeatedly peeks at and takes the minimum element.
+    /// When draining from `.max`, repeatedly peeks at and takes the maximum element.
+    /// The heap survives with remaining elements intact.
+    ///
+    /// - Parameters:
+    ///   - predicate: A closure that receives a borrowed reference to the next element.
+    ///     Return `true` to drain it, `false` to stop.
+    ///   - position: Which end to drain from (`.min` or `.max`).
+    ///   - body: A closure that receives each drained element with ownership.
+    /// - Complexity: O(k log n) where k is the number of elements drained.
+    @inlinable
+    public mutating func drain(
+        while predicate: (borrowing Element) -> Bool,
+        from position: Position,
+        _ body: (consuming Element) -> Void
+    ) {
+        _buffer.ensureUnique()
+        switch position {
+        case .min:
+            while let element = self.min.peek, predicate(element) {
+                body(self.min.take!)
+            }
+        case .max:
+            while let element = self.max.peek, predicate(element) {
+                body(self.max.take!)
+            }
+        }
+    }
+}
+
 // MARK: - Sequence Init (Copyable only)
 
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
