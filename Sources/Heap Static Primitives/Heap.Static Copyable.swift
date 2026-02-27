@@ -32,11 +32,28 @@ extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
         var _index: Heap.Index = .zero
 
         @usableFromInline
+        var _spanBuffer: [Element] = []
+
+        @usableFromInline
         init(_buffer: Buffer<Element>.Linear) {
             self._buffer = _buffer
             self._end = _buffer.count
         }
 
+        @_lifetime(&self)
+        @inlinable
+        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
+            _spanBuffer.removeAll(keepingCapacity: true)
+            var remaining = Int(maximumCount.rawValue)
+            while remaining > 0, _index < _end {
+                _spanBuffer.append(_buffer[_index])
+                _index += .one
+                remaining -= 1
+            }
+            return _spanBuffer.span
+        }
+
+        @_lifetime(self: immortal)
         @inlinable
         public mutating func next() -> Element? {
             guard _index < _end else { return nil }
