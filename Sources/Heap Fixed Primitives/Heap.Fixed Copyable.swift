@@ -19,43 +19,23 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Iterator for Heap.Fixed elements.
     public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
-        let _buffer: Buffer<Element>.Linear.Bounded
+        var _inner: Buffer<Element>.Linear.Bounded.Iterator
 
         @usableFromInline
-        let _end: Heap.Index.Count
-
-        @usableFromInline
-        var _index: Heap.Index = .zero
-
-        @usableFromInline
-        var _spanBuffer: [Element] = []
-
-        @usableFromInline
-        init(_buffer: Buffer<Element>.Linear.Bounded) {
-            self._buffer = _buffer
-            self._end = _buffer.count
+        init(_inner: Buffer<Element>.Linear.Bounded.Iterator) {
+            self._inner = _inner
         }
 
         @_lifetime(&self)
         @inlinable
         public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
-            _spanBuffer.removeAll(keepingCapacity: true)
-            var remaining = Int(maximumCount.rawValue)
-            while remaining > 0, _index < _end {
-                _spanBuffer.append(_buffer[_index])
-                _index += .one
-                remaining -= 1
-            }
-            return _spanBuffer.span
+            _inner.nextSpan(maximumCount: maximumCount)
         }
 
         @_lifetime(self: immortal)
         @inlinable
         public mutating func next() -> Element? {
-            guard _index < _end else { return nil }
-            let element = _buffer[_index]
-            _index += .one
-            return element
+            _inner.next()
         }
     }
 }
@@ -68,7 +48,7 @@ extension Heap.Fixed: Sequence.`Protocol` where Element: Copyable & Comparison.`
     /// - Note: Elements are yielded in heap order, which is **not** sorted order.
     @inlinable
     public borrowing func makeIterator() -> Iterator {
-        Iterator(_buffer: _buffer)
+        Iterator(_inner: _buffer.makeIterator())
     }
 
     /// Returns the count as the underestimated count since we know the exact size.
