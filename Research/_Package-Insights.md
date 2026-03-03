@@ -9,11 +9,6 @@ applies_to: [swift-heap-primitives]
 normative: false
 ---
 -->
-
-@Metadata {
-    @TitleHeading("Heap Primitives")
-}
-
 Design decisions, implementation patterns, and lessons learned specific to this package.
 
 ## Overview
@@ -172,8 +167,6 @@ The `.swift.txt` extension preserves failing code without breaking the build. Re
 
 ---
 
-## Topics
+## Related
 
-### Related Documents
-
-- <doc:Heap>
+- Heap
