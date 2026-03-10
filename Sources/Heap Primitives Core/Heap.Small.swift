@@ -33,6 +33,12 @@ extension Heap where Element: ~Copyable {
         /// The ordering direction for this heap.
         public let order: Order
 
+        // WORKAROUND: Forces compiler to execute deinit body.
+        // TRACKING: swiftlang/swift #86652 variant (nested ~Copyable deinit chain)
+        // WHEN TO REMOVE: When the compiler correctly destroys ~Copyable structs
+        //      with cross-package value-generic stored properties.
+        private var _deinitWorkaround: AnyObject? = nil
+
         /// Creates an empty small heap.
         ///
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
@@ -40,6 +46,14 @@ extension Heap where Element: ~Copyable {
         public init(order: Order = .ascending) {
             self._buffer = Buffer<Element>.Linear.Small<inlineCapacity>()
             self.order = order
+        }
+
+        deinit {
+            // WORKAROUND: Manually clean up elements via the mutating path.
+            // TRACKING: swiftlang/swift #86652 variant
+            unsafe withUnsafePointer(to: _buffer) { ptr in
+                unsafe UnsafeMutablePointer(mutating: ptr).pointee.remove.all()
+            }
         }
     }
 }
