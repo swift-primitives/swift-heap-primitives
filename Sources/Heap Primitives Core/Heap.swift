@@ -150,66 +150,6 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         }
     }
 
-    // MARK: - Static (nested in body for value generic parameter per COPY-FIX-002)
-
-    /// A fixed-capacity, inline-storage binary heap with compile-time capacity.
-    ///
-    /// `Heap.Static` stores elements directly within the struct's memory layout,
-    /// requiring no heap allocation. The capacity is specified as a compile-time
-    /// generic parameter.
-    public struct Static<let capacity: Int>: ~Copyable {
-        /// Errors that can occur during static heap operations.
-        public enum Error: Swift.Error, Sendable, Equatable {
-            /// An operation was attempted on an empty heap.
-            case empty
-        }
-
-        @usableFromInline
-        package var _buffer: Buffer<Element>.Linear.Inline<capacity>
-
-        /// The ordering direction for this heap.
-        public let order: Order
-
-        /// Creates an empty inline heap.
-        ///
-        /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
-        @inlinable
-        public init(order: Order = .ascending) {
-            self._buffer = Buffer<Element>.Linear.Inline<capacity>()
-            self.order = order
-        }
-    }
-
-    // MARK: - Small (nested in body for value generic parameter per COPY-FIX-002)
-
-    /// A binary heap with small-buffer optimization (SmallVec pattern).
-    ///
-    /// `Heap.Small` stores up to `inlineCapacity` elements in inline storage,
-    /// then automatically spills to heap storage when that capacity is exceeded.
-    @safe
-    public struct Small<let inlineCapacity: Int>: ~Copyable {
-        /// Errors that can occur during small heap operations.
-        public enum Error: Swift.Error, Sendable, Equatable {
-            /// An operation was attempted on an empty heap.
-            case empty
-        }
-
-        @usableFromInline
-        package var _buffer: Buffer<Element>.Linear.Small<inlineCapacity>
-
-        /// The ordering direction for this heap.
-        public let order: Order
-
-        /// Creates an empty small heap.
-        ///
-        /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
-        @inlinable
-        public init(order: Order = .ascending) {
-            self._buffer = Buffer<Element>.Linear.Small<inlineCapacity>()
-            self.order = order
-        }
-    }
-
     // MARK: - MinMax Heap (Declaration Only)
 
     /// Double-ended priority queue backed by a binary min-max heap.
@@ -266,8 +206,6 @@ extension Heap.MinMax: Copyable where Element: Copyable {}
 extension Heap: @unchecked Sendable where Element: Sendable {}
 extension Heap.Fixed: @unchecked Sendable where Element: Sendable {}
 extension Heap.MinMax: @unchecked Sendable where Element: Sendable {}
-extension Heap.Static: @unchecked Sendable where Element: Sendable {}
-extension Heap.Small: @unchecked Sendable where Element: Sendable {}
 
 // MARK: - Push.Outcome Conditional Conformances
 
