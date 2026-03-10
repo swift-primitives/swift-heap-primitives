@@ -17,7 +17,7 @@ struct HeapDeinitTests {
 
     final class Tracker: @unchecked Sendable {
         private var _storage: [Int] = []
-        var deinitCount: Int { _storage.count }
+        var count: Int { _storage.count }
         func append(_ id: Int) { _storage.append(id) }
     }
 
@@ -45,7 +45,7 @@ struct HeapDeinitTests {
             _ = heap.push(TrackedElement(2, tracker: tracker))
             _ = heap.push(TrackedElement(3, tracker: tracker))
         }
-        #expect(tracker.deinitCount == 3)
+        #expect(tracker.count == 3)
     }
 
     @Test("Static empty deinit does not crash")
@@ -66,7 +66,7 @@ struct HeapDeinitTests {
             heap.push(TrackedElement(2, tracker: tracker))
             heap.push(TrackedElement(3, tracker: tracker))
         }
-        #expect(tracker.deinitCount == 3)
+        #expect(tracker.count == 3)
     }
 
     @Test("Small deinit destroys all elements after spill")
@@ -80,7 +80,7 @@ struct HeapDeinitTests {
             heap.push(TrackedElement(3, tracker: tracker))
             heap.push(TrackedElement(4, tracker: tracker))
         }
-        #expect(tracker.deinitCount == 4)
+        #expect(tracker.count == 4)
     }
 
     @Test("Small empty deinit does not crash")
