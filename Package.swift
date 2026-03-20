@@ -48,6 +48,10 @@ let package = Package(
             name: "Heap MinMax Primitives",
             targets: ["Heap MinMax Primitives"]
         ),
+        .library(
+            name: "Heap Primitives Test Support",
+            targets: ["Heap Primitives Test Support"]
+        ),
     ],
     dependencies: [
         .package(path: "../swift-comparison-primitives"),
@@ -59,7 +63,8 @@ let package = Package(
         .package(path: "../swift-sequence-primitives"),
     ],
     targets: [
-        // Core: Heap struct (binary heap) + Fixed + Static + Small + Navigate + Error
+
+        // MARK: - Core
         .target(
             name: "Heap Primitives Core",
             dependencies: [
@@ -74,33 +79,44 @@ let package = Package(
                 .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
             ]
         ),
-        // Per-variant modules: Swift.Sequence conformances (Element: Copyable)
-        // Separate modules to avoid constraint poisoning on Core types
+
+        // MARK: - Binary
         .target(
             name: "Heap Binary Primitives",
             dependencies: ["Heap Primitives Core"]
         ),
+
+        // MARK: - Fixed
         .target(
             name: "Heap Fixed Primitives",
             dependencies: ["Heap Primitives Core"]
         ),
+
+        // MARK: - Static
         .target(
             name: "Heap Static Primitives",
             dependencies: ["Heap Primitives Core"]
         ),
+
+        // MARK: - Small
         .target(
             name: "Heap Small Primitives",
             dependencies: ["Heap Primitives Core"]
         ),
-        // Stub modules for future heap variants
+
+        // MARK: - Min
         .target(
             name: "Heap Min Primitives",
             dependencies: ["Heap Primitives Core"]
         ),
+
+        // MARK: - Max
         .target(
             name: "Heap Max Primitives",
             dependencies: ["Heap Primitives Core"]
         ),
+
+        // MARK: - MinMax
         .target(
             name: "Heap MinMax Primitives",
             dependencies: [
@@ -109,7 +125,8 @@ let package = Package(
                 .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
             ]
         ),
-        // Public: Re-exports all heap modules
+
+        // MARK: - Umbrella
         .target(
             name: "Heap Primitives",
             dependencies: [
@@ -123,13 +140,29 @@ let package = Package(
                 "Heap MinMax Primitives",
             ]
         ),
+
+        // MARK: - Tests
         .testTarget(
             name: "Heap Primitives Tests",
             dependencies: [
                 "Heap Primitives",
                 .product(name: "Index Primitives Test Support", package: "swift-index-primitives"),
             ]
-        )
+        ),
+
+        // MARK: - Test Support
+        .target(
+            name: "Heap Primitives Test Support",
+            dependencies: [
+                "Heap Primitives",
+                .product(name: "Index Primitives Test Support", package: "swift-index-primitives"),
+                .product(name: "Buffer Primitives Test Support", package: "swift-buffer-primitives"),
+                .product(name: "Collection Primitives Test Support", package: "swift-collection-primitives"),
+                .product(name: "Input Primitives Test Support", package: "swift-input-primitives"),
+                .product(name: "Sequence Primitives Test Support", package: "swift-sequence-primitives"),
+            ],
+            path: "Tests/Support"
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
