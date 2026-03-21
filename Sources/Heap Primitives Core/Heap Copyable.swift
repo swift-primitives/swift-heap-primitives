@@ -234,34 +234,3 @@ extension Heap: CustomStringConvertible {
 }
 #endif
 
-// MARK: - Sequence Conformance (Copyable only)
-
-extension Heap: Swift.Sequence where Element: Copyable {
-
-    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
-        @usableFromInline
-        var _inner: Buffer<Element>.Linear.Iterator
-
-        @usableFromInline
-        init(_inner: Buffer<Element>.Linear.Iterator) {
-            self._inner = _inner
-        }
-
-        @_lifetime(&self)
-        @inlinable
-        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
-            _inner.nextSpan(maximumCount: maximumCount)
-        }
-
-        @_lifetime(self: immortal)
-        @inlinable
-        public mutating func next() -> Element? {
-            _inner.next()
-        }
-    }
-
-    @inlinable
-    public func makeIterator() -> Iterator {
-        Iterator(_inner: _buffer.makeIterator())
-    }
-}

@@ -15,10 +15,42 @@ public import Buffer_Linear_Primitives
 public import Heap_Primitives_Core
 
 
+// MARK: - Swift.Sequence Conformance (Copyable only)
+
+extension Heap: Swift.Sequence where Element: Copyable {
+
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
+        @usableFromInline
+        var _inner: Buffer<Element>.Linear.Iterator
+
+        @usableFromInline
+        init(_inner: Buffer<Element>.Linear.Iterator) {
+            self._inner = _inner
+        }
+
+        @_lifetime(&self)
+        @inlinable
+        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
+            _inner.nextSpan(maximumCount: maximumCount)
+        }
+
+        @_lifetime(self: immortal)
+        @inlinable
+        public mutating func next() -> Element? {
+            _inner.next()
+        }
+    }
+
+    @inlinable
+    public func makeIterator() -> Iterator {
+        Iterator(_inner: _buffer.makeIterator())
+    }
+}
+
 // MARK: - Sequence.Protocol Conformance
 
 extension Heap: Sequence.`Protocol` where Element: Copyable & Comparison.`Protocol` {
-    // makeIterator() is provided by Swift.Sequence conformance in Heap Copyable.swift
+    // makeIterator() is provided by Swift.Sequence conformance above.
 
     /// Returns the count as the underestimated count since we know the exact size.
     ///

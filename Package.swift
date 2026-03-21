@@ -74,34 +74,43 @@ let package = Package(
                 .product(name: "Buffer Linear Inline Primitives", package: "swift-buffer-primitives"),
                 .product(name: "Buffer Linear Small Primitives", package: "swift-buffer-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
-                .product(name: "Collection Primitives", package: "swift-collection-primitives"),
-                .product(name: "Input Primitives", package: "swift-input-primitives"),
-                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
             ]
         ),
 
         // MARK: - Binary
         .target(
             name: "Heap Binary Primitives",
-            dependencies: ["Heap Primitives Core"]
+            dependencies: [
+                "Heap Primitives Core",
+                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
+            ]
         ),
 
         // MARK: - Fixed
         .target(
             name: "Heap Fixed Primitives",
-            dependencies: ["Heap Primitives Core"]
+            dependencies: [
+                "Heap Primitives Core",
+                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
+            ]
         ),
 
         // MARK: - Static
         .target(
             name: "Heap Static Primitives",
-            dependencies: ["Heap Primitives Core"]
+            dependencies: [
+                "Heap Primitives Core",
+                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
+            ]
         ),
 
         // MARK: - Small
         .target(
             name: "Heap Small Primitives",
-            dependencies: ["Heap Primitives Core"]
+            dependencies: [
+                "Heap Primitives Core",
+                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
+            ]
         ),
 
         // MARK: - Min
@@ -121,7 +130,6 @@ let package = Package(
             name: "Heap MinMax Primitives",
             dependencies: [
                 "Heap Primitives Core",
-                .product(name: "Property Primitives", package: "swift-property-primitives"),
                 .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
             ]
         ),
