@@ -96,11 +96,7 @@ where Tag == Heap<Element>.MinMax.Remove,
     ///   If `true`, the heap retains its current capacity.
     ///   If `false` (default), the capacity is released.
     /// - Complexity: O(n)
-    // WORKAROUND: @_optimize(none) suppresses CopyPropagation false positive
     // on remove.all() + conditional buffer reassignment in deep @inlinable chain.
-    // WHEN TO REMOVE: When swiftlang/swift fixes SIL ownership verification in CopyPropagation.
-    // TRACKING: swift-buffer-primitives/Research/rawlayout-release-crash-investigation.md (Bug 2)
-    @_optimize(none)
     @inlinable
     public func all(keepingCapacity: Bool = false) {
         unsafe base.pointee._buffer.remove.all()

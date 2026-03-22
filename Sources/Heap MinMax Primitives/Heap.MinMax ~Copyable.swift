@@ -86,11 +86,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         bubbleUp(insertionIndex)
     }
 
-    // WORKAROUND: @_optimize(none) suppresses CopyPropagation false positive
     // on multiple _buffer accessor chains (swap + remove + trickle) in deep @inlinable chain.
-    // WHEN TO REMOVE: When swiftlang/swift fixes SIL ownership verification in CopyPropagation.
-    // TRACKING: swift-buffer-primitives/Research/rawlayout-release-crash-investigation.md (Bug 2)
-    @_optimize(none)
     @usableFromInline
     package mutating func removeMin() -> Element? {
         guard !isEmpty else { return nil }
@@ -106,11 +102,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         return removed
     }
 
-    // WORKAROUND: @_optimize(none) suppresses CopyPropagation false positive
     // on multiple _buffer accessor chains (swap + remove + trickle) in deep @inlinable chain.
-    // WHEN TO REMOVE: When swiftlang/swift fixes SIL ownership verification in CopyPropagation.
-    // TRACKING: swift-buffer-primitives/Research/rawlayout-release-crash-investigation.md (Bug 2)
-    @_optimize(none)
     @usableFromInline
     package mutating func removeMax() -> Element? {
         guard !isEmpty else { return nil }
