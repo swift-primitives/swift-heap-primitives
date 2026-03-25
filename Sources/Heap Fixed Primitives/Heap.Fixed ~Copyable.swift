@@ -57,7 +57,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     @usableFromInline
     package mutating func insert(_ element: consuming Element) {
         let insertionIndex = _buffer.count.map(Ordinal.init)
-        _buffer.append(element)
+        _ = _buffer.append(element)
         bubbleUp(insertionIndex)
     }
 
@@ -405,7 +405,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
         for element in elements {
             if isFull { break }
-            _buffer.append(element)
+            _ = _buffer.append(element)
         }
 
         if count > .one {
