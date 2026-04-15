@@ -34,9 +34,63 @@ extension Heap.MinMax {
 
 // MARK: - Sendable
 
-extension Heap.MinMax.Fixed: @unchecked Sendable where Element: Sendable {}
-extension Heap.MinMax.Static: @unchecked Sendable where Element: Sendable {}
-extension Heap.MinMax.Small: @unchecked Sendable where Element: Sendable {}
+/// Sendable conformance for `Heap.MinMax.Fixed`.
+///
+/// ## Safety Invariant
+///
+/// `Heap.MinMax.Fixed` is `~Copyable`. The Sendable claim rests on the same
+/// unique-ownership argument as other `~Copyable` heap variants — transfer
+/// via move relinquishes the sender's access.
+///
+/// ## Intended Use
+///
+/// - Fixed-capacity double-ended priority queue built then transferred
+///   to a consuming actor or thread.
+/// - Embedded scheduler workloads with bounded capacity requirements.
+///
+/// ## Non-Goals
+///
+/// - Not a concurrent min-max queue; external synchronization required.
+extension Heap.MinMax.Fixed: @unsafe @unchecked Sendable where Element: Sendable {}
+
+/// Sendable conformance for `Heap.MinMax.Static`.
+///
+/// ## Safety Invariant
+///
+/// `Heap.MinMax.Static` is `~Copyable` with compile-time capacity and
+/// inline storage. Single ownership guarantees cross-thread transfer is
+/// sound; no heap allocation is involved.
+///
+/// ## Intended Use
+///
+/// - Stack-allocated double-ended priority queues transferred across
+///   isolation boundaries during setup.
+/// - Zero-allocation min-max heaps moved between phases of a pipeline.
+///
+/// ## Non-Goals
+///
+/// - Not shareable; inline storage is bound to the current owner.
+/// - No cross-thread mutation; single-owner is the sole supported model.
+extension Heap.MinMax.Static: @unsafe @unchecked Sendable where Element: Sendable {}
+
+/// Sendable conformance for `Heap.MinMax.Small`.
+///
+/// ## Safety Invariant
+///
+/// `Heap.MinMax.Small` is `~Copyable` with inline-plus-spill storage.
+/// Unique ownership ensures the sender relinquishes access on move; the
+/// inline bytes and any spilled heap allocation transfer as one unit.
+///
+/// ## Intended Use
+///
+/// - Small-size-optimized double-ended priority queues moved between
+///   isolation domains.
+///
+/// ## Non-Goals
+///
+/// - Not a concurrent min-max queue.
+/// - Spill transitions are not synchronized against external observers.
+extension Heap.MinMax.Small: @unsafe @unchecked Sendable where Element: Sendable {}
 
 // MARK: - Error Type Aliases
 

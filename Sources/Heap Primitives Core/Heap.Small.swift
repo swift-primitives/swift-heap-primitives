@@ -48,4 +48,25 @@ extension Heap where Element: ~Copyable {
 
 // MARK: - Sendable
 
-extension Heap.Small: @unchecked Sendable where Element: Sendable {}
+/// Sendable conformance for `Heap.Small`.
+///
+/// ## Safety Invariant
+///
+/// `Heap.Small` is unconditionally `~Copyable` (inline storage with
+/// automatic heap spill). Unique ownership ensures the move across
+/// threads relinquishes the sender's access; both the inline bytes and
+/// any spilled allocation transfer together.
+///
+/// ## Intended Use
+///
+/// - SmallVec-style priority queue handed from builder to consumer where
+///   typical workloads fit inline but can spill.
+/// - Transferring small-size-optimized heaps of `~Copyable` elements
+///   without forcing heap allocation for common cases.
+///
+/// ## Non-Goals
+///
+/// - Not safe for concurrent mutation on either the inline or spilled
+///   path; single-owner is the only supported model.
+/// - Spill transitions are not atomic with respect to external observers.
+extension Heap.Small: @unsafe @unchecked Sendable where Element: Sendable {}

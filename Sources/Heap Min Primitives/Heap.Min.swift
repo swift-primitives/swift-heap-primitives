@@ -39,4 +39,20 @@ extension Heap.Min: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Heap.Min: @unchecked Sendable where Element: Sendable {}
+/// Sendable conformance for `Heap.Min` (stub; `Heap` is the realized form).
+///
+/// ## Safety Invariant
+///
+/// `Heap.Min` is `~Copyable`; unique ownership will be the safety model
+/// once the type is implemented. The Sendable form matches `Heap`.
+///
+/// ## Intended Use
+///
+/// - Placeholder for a dedicated single-ended min-heap once implemented.
+/// - Consumers should use `Heap` with `.ascending` ordering until then.
+///
+/// ## Non-Goals
+///
+/// - Not functional today; init traps.
+/// - No synchronization; same constraints as `Heap` will apply.
+extension Heap.Min: @unsafe @unchecked Sendable where Element: Sendable {}

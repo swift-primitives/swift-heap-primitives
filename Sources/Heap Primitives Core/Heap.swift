@@ -203,9 +203,69 @@ extension Heap.MinMax: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Heap: @unchecked Sendable where Element: Sendable {}
-extension Heap.Fixed: @unchecked Sendable where Element: Sendable {}
-extension Heap.MinMax: @unchecked Sendable where Element: Sendable {}
+/// Sendable conformance for `Heap`.
+///
+/// ## Safety Invariant
+///
+/// `Heap` is `~Copyable` (move-only), so at most one owner exists at any point.
+/// Sending across threads is sound because the compiler enforces that the
+/// sender loses access after the move — there is no aliasing to race on.
+/// The internal `Buffer<Element>.Linear` is owned exclusively by the heap
+/// and moves with it.
+///
+/// ## Intended Use
+///
+/// - Transferring a prepared priority queue to a worker thread.
+/// - Handing off a heap of `~Copyable` resources across actors.
+/// - Actor-owned priority queue constructed outside the actor and passed in at init.
+///
+/// ## Non-Goals
+///
+/// - Does not grant concurrent access to a live heap.
+/// - `~Copyable` forbids multiple references across threads by construction.
+/// - Does not synchronize push/pop; external synchronization is required.
+extension Heap: @unsafe @unchecked Sendable where Element: Sendable {}
+
+/// Sendable conformance for `Heap.Fixed`.
+///
+/// ## Safety Invariant
+///
+/// `Heap.Fixed` is `~Copyable`. Single ownership is enforced by the type
+/// system; the fixed-capacity `Buffer<Element>.Linear.Bounded` it owns
+/// transfers with it across isolation boundaries.
+///
+/// ## Intended Use
+///
+/// - Transferring a pre-sized priority queue to a worker or actor.
+/// - Embedded/real-time contexts where capacity is bounded and the heap is
+///   constructed at startup then moved to its consumer.
+///
+/// ## Non-Goals
+///
+/// - Not a shared, concurrent fixed-capacity queue.
+/// - Does not guarantee overflow safety under concurrent push.
+extension Heap.Fixed: @unsafe @unchecked Sendable where Element: Sendable {}
+
+/// Sendable conformance for `Heap.MinMax`.
+///
+/// ## Safety Invariant
+///
+/// `Heap.MinMax` is `~Copyable`; its backing `Buffer<Element>.Linear`
+/// transfers under unique ownership. Cross-thread sends relinquish the
+/// sender's access, preventing data races by construction.
+///
+/// ## Intended Use
+///
+/// - Handing off a double-ended priority queue to a scheduler that needs
+///   both min and max access.
+/// - Transferring a min-max heap of `~Copyable` resources for deadline-ordered
+///   processing.
+///
+/// ## Non-Goals
+///
+/// - Does not support concurrent min-pop + max-pop from multiple threads.
+/// - Not thread-safe for mutation; external synchronization required.
+extension Heap.MinMax: @unsafe @unchecked Sendable where Element: Sendable {}
 
 // MARK: - Push.Outcome Conditional Conformances
 

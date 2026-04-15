@@ -39,4 +39,20 @@ extension Heap.Max: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Heap.Max: @unchecked Sendable where Element: Sendable {}
+/// Sendable conformance for `Heap.Max` (stub; `Heap` is the realized form).
+///
+/// ## Safety Invariant
+///
+/// `Heap.Max` is `~Copyable`; unique ownership will be the safety model
+/// once the type is implemented. The Sendable form matches `Heap`.
+///
+/// ## Intended Use
+///
+/// - Placeholder for a dedicated single-ended max-heap once implemented.
+/// - Consumers should use `Heap` with `.descending` ordering until then.
+///
+/// ## Non-Goals
+///
+/// - Not functional today; init traps.
+/// - No synchronization; same constraints as `Heap` will apply.
+extension Heap.Max: @unsafe @unchecked Sendable where Element: Sendable {}
