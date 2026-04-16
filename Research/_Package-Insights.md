@@ -3,8 +3,8 @@
 <!--
 ---
 title: Heap Primitives Insights
-version: 1.0.0
-last_updated: 2026-01-22
+version: 1.1.0
+last_updated: 2026-04-16
 applies_to: [swift-heap-primitives]
 normative: false
 ---
@@ -170,3 +170,24 @@ The `.swift.txt` extension preserves failing code without breaking the build. Re
 ## Related
 
 - Heap
+
+---
+
+## Heap.Min Is a Stub — Implement or Remove
+
+**Date**: 2026-04-16
+
+**Context**: The swift-executors (L3) audit cleanup discovered that `Heap.Min` fatalErrors on `init()`, forcing downstream consumers to use `Heap<Entry>` with `order: .ascending` instead.
+
+The type declaration's presence in the package surface creates a false affordance: research and design documents reference `Heap.Min` as an existing primitive when reasoning about ordered composition (e.g., Scheduled executor, priority queues). Implementation then discovers the stub and must rewrite the composition to use `Heap` with an explicit order argument.
+
+Two resolutions are viable:
+
+1. **Implement** `Heap.Min` (and `Heap.Max`) as thin wrappers over `Heap` with the order baked in. The wrappers express intent at the call site and eliminate the `order:` argument from downstream APIs.
+2. **Remove** the `Heap.Min` / `Heap.Max` type declarations entirely. Force consumers to use `Heap<Entry>` with explicit `order:`. This is consistent with Foundation-independent primitives avoiding convenience wrappers.
+
+The stub form — declared but fatalError-ing — is the worst option because it advertises capability without delivering it.
+
+**Applies to**: `Heap.Min`, `Heap.Max` type declarations within Heap Min Primitives and Heap Max Primitives.
+
+**Provenance**: `swift-institute/Research/Reflections/2026-04-15-executor-primitives-l1-and-l3-compositions.md`
