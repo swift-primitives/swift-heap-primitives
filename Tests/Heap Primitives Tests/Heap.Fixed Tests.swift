@@ -17,8 +17,8 @@ import Index_Primitives_Test_Support
 
 @Suite("Heap.Fixed (Single-Ended)")
 struct HeapFixedTests {
-    @Test("Init with capacity")
-    func initWithCapacity() throws {
+    @Test
+    func `Init with capacity`() throws {
         let heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         #expect(heap.isEmpty == true)
         #expect(Int(heap.count.rawValue.rawValue) == 0)
@@ -26,15 +26,15 @@ struct HeapFixedTests {
         #expect(heap.isFull == false)
     }
 
-    @Test("Init with negative capacity throws")
-    func initNegativeCapacityThrows() {
+    @Test
+    func `Init with negative capacity throws`() {
         #expect(throws: Heap<Int>.Fixed.Error.invalidCapacity) {
             _ = try Heap<Int>.Fixed(capacity: -1)
         }
     }
 
-    @Test("Push returns inserted on success")
-    func pushReturnsInserted() throws {
+    @Test
+    func `Push returns inserted on success`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 5, order: .ascending)
         let outcome = heap.push(42)
         switch outcome {
@@ -46,8 +46,8 @@ struct HeapFixedTests {
         #expect(Int(heap.count.rawValue.rawValue) == 1)
     }
 
-    @Test("Push returns overflow when full")
-    func pushReturnsOverflowWhenFull() throws {
+    @Test
+    func `Push returns overflow when full`() throws {
         // Buffer.Linear.Bounded allocates at least the requested capacity.
         // Fill the actual allocated capacity to test overflow.
         var heap = try Heap<Int>.Fixed(capacity: 2, order: .ascending)
@@ -67,8 +67,8 @@ struct HeapFixedTests {
         #expect(Int(heap.count.rawValue.rawValue) == actualCapacity)
     }
 
-    @Test("Min-heap ordering (ascending)")
-    func minHeapOrdering() throws {
+    @Test
+    func `Min-heap ordering (ascending)`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -79,8 +79,8 @@ struct HeapFixedTests {
         #expect(heap.peek == 1)  // Min at top
     }
 
-    @Test("Max-heap ordering (descending)")
-    func maxHeapOrdering() throws {
+    @Test
+    func `Max-heap ordering (descending)`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .descending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -91,8 +91,8 @@ struct HeapFixedTests {
         #expect(heap.peek == 9)  // Max at top
     }
 
-    @Test("Pop in order (min-heap)")
-    func popMinInOrder() throws {
+    @Test
+    func `Pop in order (min-heap)`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -106,8 +106,8 @@ struct HeapFixedTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Pop in order (max-heap)")
-    func popMaxInOrder() throws {
+    @Test
+    func `Pop in order (max-heap)`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .descending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -121,22 +121,22 @@ struct HeapFixedTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Pop throws when empty")
-    func popThrowsWhenEmpty() throws {
+    @Test
+    func `Pop throws when empty`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         #expect(throws: Heap<Int>.Fixed.Error.empty) {
             try heap.pop()
         }
     }
 
-    @Test("Take returns nil when empty")
-    func takeReturnsNilWhenEmpty() throws {
+    @Test
+    func `Take returns nil when empty`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         #expect(heap.take == nil)
     }
 
-    @Test("Clear removes all elements")
-    func clearRemovesAllElements() throws {
+    @Test
+    func `Clear removes all elements`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
@@ -148,8 +148,8 @@ struct HeapFixedTests {
         #expect(Int(heap.capacity.rawValue.rawValue) >= 10)  // Capacity unchanged (at least requested)
     }
 
-    @Test("Single element")
-    func singleElement() throws {
+    @Test
+    func `Single element`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(42)
 
@@ -157,8 +157,8 @@ struct HeapFixedTests {
         #expect(Int(heap.count.rawValue.rawValue) == 1)
     }
 
-    @Test("Copy-on-write semantics")
-    func copyOnWriteSemantics() throws {
+    @Test
+    func `Copy-on-write semantics`() throws {
         var heap1 = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap1.push(5)
         _ = heap1.push(3)
@@ -173,21 +173,21 @@ struct HeapFixedTests {
         #expect(heap2.peek == 3)
     }
 
-    @Test("Init from sequence")
-    func initFromSequence() throws {
+    @Test
+    func `Init from sequence`() throws {
         let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
         #expect(Int(heap.count.rawValue.rawValue) == 5)
         #expect(heap.peek == 1)
     }
 
-    @Test("Init from sequence truncates to capacity")
-    func initFromSequenceTruncates() throws {
+    @Test
+    func `Init from sequence truncates to capacity`() throws {
         let heap = try Heap<Int>.Fixed([1, 2, 3, 4, 5], capacity: 3, order: .ascending)
         #expect(Int(heap.count.rawValue.rawValue) == 3)
     }
 
-    @Test("Sequence conformance")
-    func sequenceConformance() throws {
+    @Test
+    func `Sequence conformance`() throws {
         let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
         var elements: [Int] = []
         for element in heap {
@@ -197,8 +197,8 @@ struct HeapFixedTests {
         #expect(Set(elements) == Set([1, 3, 5, 7, 9]))
     }
 
-    @Test("forEach with borrowing access")
-    func forEachBorrowingAccess() throws {
+    @Test
+    func `forEach with borrowing access`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
@@ -211,8 +211,8 @@ struct HeapFixedTests {
         #expect(sum == 6)
     }
 
-    @Test("withPriority borrowing access")
-    func withPriorityBorrowing() throws {
+    @Test
+    func `withPriority borrowing access`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -222,8 +222,8 @@ struct HeapFixedTests {
         #expect(value == 6)  // 3 * 2 (min element)
     }
 
-    @Test("Truncate reduces count")
-    func truncateReducesCount() throws {
+    @Test
+    func `Truncate reduces count`() throws {
         var heap = try Heap<Int>.Fixed([1, 2, 3, 4, 5], capacity: 10, order: .ascending)
         #expect(Int(heap.count.rawValue.rawValue) == 5)
 
@@ -231,16 +231,16 @@ struct HeapFixedTests {
         #expect(Int(heap.count.rawValue.rawValue) == 3)
     }
 
-    @Test("Zero capacity heap")
-    func zeroCapacityHeap() throws {
+    @Test
+    func `Zero capacity heap`() throws {
         // Buffer.Linear.Bounded may allocate some minimum capacity even for 0.
         // Test that we can at least create one and it starts empty.
         let heap = try Heap<Int>.Fixed(capacity: 0, order: .ascending)
         #expect(heap.isEmpty == true)
     }
 
-    @Test("drain(while:) drains some elements in priority order")
-    func drainWhileSome() throws {
+    @Test
+    func `drain(while:) drains some elements in priority order`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         for e in [5, 3, 8, 1, 4] { _ = heap.push(e) }
         var drained: [Int] = []
@@ -249,8 +249,8 @@ struct HeapFixedTests {
         #expect(Int(bitPattern: heap.count) == 2)
     }
 
-    @Test("drain(while:) drains zero elements")
-    func drainWhileNone() throws {
+    @Test
+    func `drain(while:) drains zero elements`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         for e in [5, 3, 8] { _ = heap.push(e) }
         var drained: [Int] = []
@@ -259,8 +259,8 @@ struct HeapFixedTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("drain(while:) drains all elements")
-    func drainWhileAll() throws {
+    @Test
+    func `drain(while:) drains all elements`() throws {
         var heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         for e in [5, 3, 8, 1] { _ = heap.push(e) }
         var drained: [Int] = []
@@ -291,8 +291,8 @@ struct HeapFixedNonCopyableTests {
         }
     }
 
-    @Test("Push and access ~Copyable elements")
-    func pushAndAccess() throws {
+    @Test
+    func `Push and access ~Copyable elements`() throws {
         var heap = try Heap<UniqueResource>.Fixed(capacity: 10, order: .ascending)
 
         _ = heap.push(UniqueResource(id: 10))
@@ -305,8 +305,8 @@ struct HeapFixedNonCopyableTests {
         #expect(minId == 5)
     }
 
-    @Test("Overflow preserves ~Copyable element")
-    func overflowPreservesElement() throws {
+    @Test
+    func `Overflow preserves ~Copyable element`() throws {
         // Buffer.Linear.Bounded allocates at least the requested capacity.
         // Fill the actual allocated capacity to test overflow.
         var heap = try Heap<UniqueResource>.Fixed(capacity: 2, order: .ascending)
@@ -324,8 +324,8 @@ struct HeapFixedNonCopyableTests {
         }
     }
 
-    @Test("forEach with ~Copyable elements")
-    func forEachNonCopyable() throws {
+    @Test
+    func `forEach with ~Copyable elements`() throws {
         var heap = try Heap<UniqueResource>.Fixed(capacity: 10, order: .ascending)
         _ = heap.push(UniqueResource(id: 3))
         _ = heap.push(UniqueResource(id: 1))

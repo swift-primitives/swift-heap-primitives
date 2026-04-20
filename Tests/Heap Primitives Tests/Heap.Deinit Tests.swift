@@ -36,8 +36,8 @@ struct HeapDeinitTests {
 
     // MARK: - Heap.Static
 
-    @Test("Static deinit destroys all elements")
-    func staticDeinitDestroysAllElements() {
+    @Test
+    func `Static deinit destroys all elements`() {
         let tracker = Tracker()
         do {
             var heap = Heap<TrackedElement>.Static<8>(order: .ascending)
@@ -48,8 +48,8 @@ struct HeapDeinitTests {
         #expect(tracker.count == 3)
     }
 
-    @Test("Static empty deinit does not crash")
-    func staticEmptyDeinitDoesNotCrash() {
+    @Test
+    func `Static empty deinit does not crash`() {
         do {
             let _ = Heap<TrackedElement>.Static<8>(order: .ascending)
         }
@@ -57,8 +57,8 @@ struct HeapDeinitTests {
 
     // MARK: - Heap.Small
 
-    @Test("Small deinit destroys all elements in inline mode")
-    func smallDeinitDestroysAllElementsInInlineMode() {
+    @Test
+    func `Small deinit destroys all elements in inline mode`() {
         let tracker = Tracker()
         do {
             var heap = Heap<TrackedElement>.Small<4>(order: .ascending)
@@ -69,8 +69,8 @@ struct HeapDeinitTests {
         #expect(tracker.count == 3)
     }
 
-    @Test("Small deinit destroys all elements after spill")
-    func smallDeinitDestroysAllElementsAfterSpill() {
+    @Test
+    func `Small deinit destroys all elements after spill`() {
         let tracker = Tracker()
         do {
             var heap = Heap<TrackedElement>.Small<2>(order: .ascending)
@@ -83,8 +83,8 @@ struct HeapDeinitTests {
         #expect(tracker.count == 4)
     }
 
-    @Test("Small empty deinit does not crash")
-    func smallEmptyDeinitDoesNotCrash() {
+    @Test
+    func `Small empty deinit does not crash`() {
         do {
             let _ = Heap<TrackedElement>.Small<4>(order: .ascending)
         }

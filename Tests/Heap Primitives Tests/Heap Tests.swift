@@ -16,8 +16,8 @@ import Testing
 
 @Suite("Heap (Single-Ended)")
 struct HeapSingleEndedTests {
-    @Test("Min-heap ordering (ascending)")
-    func minHeapOrdering() throws {
+    @Test
+    func `Min-heap ordering (ascending)`() throws {
         var heap = Heap<Int>(order: .ascending)
         heap.push(5)
         heap.push(3)
@@ -32,8 +32,8 @@ struct HeapSingleEndedTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Max-heap ordering (descending)")
-    func maxHeapOrdering() throws {
+    @Test
+    func `Max-heap ordering (descending)`() throws {
         var heap = Heap<Int>(order: .descending)
         heap.push(5)
         heap.push(3)
@@ -48,8 +48,8 @@ struct HeapSingleEndedTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Peek does not remove")
-    func peekDoesNotRemove() {
+    @Test
+    func `Peek does not remove`() {
         var heap = Heap<Int>(order: .ascending)
         heap.push(3)
         heap.push(1)
@@ -60,16 +60,16 @@ struct HeapSingleEndedTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("Empty heap")
-    func emptyHeap() {
+    @Test
+    func `Empty heap`() {
         var heap = Heap<Int>(order: .ascending)
         #expect(heap.isEmpty == true)
         #expect(heap.peek == nil)
         #expect(heap.take == nil)
     }
 
-    @Test("Single element")
-    func singleElement() throws {
+    @Test
+    func `Single element`() throws {
         var heap = Heap<Int>(order: .ascending)
         heap.push(42)
         #expect(heap.isEmpty == false)
@@ -79,8 +79,8 @@ struct HeapSingleEndedTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Init from sequence")
-    func initFromSequence() throws {
+    @Test
+    func `Init from sequence`() throws {
         var heap = Heap<Int>([5, 3, 7, 1], order: .ascending)
 
         #expect(Int(bitPattern: heap.count) == 4)
@@ -90,8 +90,8 @@ struct HeapSingleEndedTests {
         #expect(try heap.pop() == 7)
     }
 
-    @Test("Duplicate elements")
-    func duplicateElements() {
+    @Test
+    func `Duplicate elements`() {
         var heap = Heap<Int>(order: .ascending)
         heap.push(5)
         heap.push(5)
@@ -102,8 +102,8 @@ struct HeapSingleEndedTests {
         #expect(heap.take == 5)
         #expect(heap.take == nil)
     }
-    @Test("drain(while:) drains some elements in priority order")
-    func drainWhileSome() {
+    @Test
+    func `drain(while:) drains some elements in priority order`() {
         var heap = Heap<Int>([5, 3, 8, 1, 4], order: .ascending)
         var drained: [Int] = []
         heap.drain(while: { $0 < 5 }) { drained.append($0) }
@@ -111,8 +111,8 @@ struct HeapSingleEndedTests {
         #expect(Int(bitPattern: heap.count) == 2)
     }
 
-    @Test("drain(while:) drains zero elements when predicate is immediately false")
-    func drainWhileNone() {
+    @Test
+    func `drain(while:) drains zero elements when predicate is immediately false`() {
         var heap = Heap<Int>([5, 3, 8], order: .ascending)
         var drained: [Int] = []
         heap.drain(while: { $0 > 100 }) { drained.append($0) }
@@ -120,8 +120,8 @@ struct HeapSingleEndedTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("drain(while:) drains all elements when predicate is always true")
-    func drainWhileAll() {
+    @Test
+    func `drain(while:) drains all elements when predicate is always true`() {
         var heap = Heap<Int>([5, 3, 8, 1], order: .ascending)
         var drained: [Int] = []
         heap.drain(while: { _ in true }) { drained.append($0) }
@@ -129,8 +129,8 @@ struct HeapSingleEndedTests {
         #expect(heap.isEmpty)
     }
 
-    @Test("drain(while:) on empty heap")
-    func drainWhileEmpty() {
+    @Test
+    func `drain(while:) on empty heap`() {
         var heap = Heap<Int>(order: .ascending)
         var drained: [Int] = []
         heap.drain(while: { _ in true }) { drained.append($0) }
@@ -142,8 +142,8 @@ struct HeapSingleEndedTests {
 
 @Suite("Heap.MinMax (Double-Ended)")
 struct HeapMinMaxTests {
-    @Test("MinMax heap provides both min and max")
-    func minMaxHeapOrdering() throws {
+    @Test
+    func `MinMax heap provides both min and max`() throws {
         var heap: Heap<Int>.MinMax = [5, 3, 7, 1, 9]
 
         #expect(heap.peek.min == 1)
@@ -155,8 +155,8 @@ struct HeapMinMaxTests {
         #expect(heap.peek.max == 7)
     }
 
-    @Test("Pop min in order")
-    func popMinInOrder() throws {
+    @Test
+    func `Pop min in order`() throws {
         var heap: Heap<Int>.MinMax = [5, 3, 7, 1]
 
         #expect(try heap.min.pop() == 1)
@@ -166,8 +166,8 @@ struct HeapMinMaxTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Pop max in order")
-    func popMaxInOrder() throws {
+    @Test
+    func `Pop max in order`() throws {
         var heap: Heap<Int>.MinMax = [5, 3, 7, 1]
 
         #expect(try heap.max.pop() == 7)
@@ -177,8 +177,8 @@ struct HeapMinMaxTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Peek does not remove")
-    func peekDoesNotRemove() {
+    @Test
+    func `Peek does not remove`() {
         let heap: Heap<Int>.MinMax = [3, 1, 2]
 
         #expect(heap.peek.min == 1)
@@ -188,8 +188,8 @@ struct HeapMinMaxTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("Empty heap")
-    func emptyHeap() {
+    @Test
+    func `Empty heap`() {
         var heap = Heap<Int>.MinMax()
         #expect(heap.isEmpty == true)
         #expect(heap.peek.min == nil)
@@ -198,8 +198,8 @@ struct HeapMinMaxTests {
         #expect(heap.max.take == nil)
     }
 
-    @Test("Single element")
-    func singleElement() throws {
+    @Test
+    func `Single element`() throws {
         var heap: Heap<Int>.MinMax = [42]
         #expect(heap.isEmpty == false)
         #expect(Int(bitPattern: heap.count) == 1)
@@ -209,8 +209,8 @@ struct HeapMinMaxTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Duplicate elements")
-    func duplicateElements() {
+    @Test
+    func `Duplicate elements`() {
         var heap: Heap<Int>.MinMax = [5, 5, 5]
 
         #expect(heap.min.take == 5)
@@ -219,8 +219,8 @@ struct HeapMinMaxTests {
         #expect(heap.min.take == nil)
     }
 
-    @Test("Alternating min/max pops")
-    func alternatingPops() throws {
+    @Test
+    func `Alternating min/max pops`() throws {
         var heap: Heap<Int>.MinMax = [1, 2, 3, 4, 5]
 
         #expect(try heap.min.pop() == 1)
@@ -231,8 +231,8 @@ struct HeapMinMaxTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("drain(while:from: .min) drains smallest elements")
-    func drainWhileMin() {
+    @Test
+    func `drain(while:from: .min) drains smallest elements`() {
         var heap: Heap<Int>.MinMax = [5, 3, 8, 1, 4]
         var drained: [Int] = []
         heap.drain(while: { $0 < 5 }, from: .min) { drained.append($0) }
@@ -240,8 +240,8 @@ struct HeapMinMaxTests {
         #expect(Int(bitPattern: heap.count) == 2)
     }
 
-    @Test("drain(while:from: .max) drains largest elements")
-    func drainWhileMax() {
+    @Test
+    func `drain(while:from: .max) drains largest elements`() {
         var heap: Heap<Int>.MinMax = [5, 3, 8, 1, 4]
         var drained: [Int] = []
         heap.drain(while: { $0 > 4 }, from: .max) { drained.append($0) }
@@ -249,8 +249,8 @@ struct HeapMinMaxTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("drain(while:from:) drains zero elements when predicate is immediately false")
-    func drainWhileNone() {
+    @Test
+    func `drain(while:from:) drains zero elements when predicate is immediately false`() {
         var heap: Heap<Int>.MinMax = [5, 3, 8]
         var drained: [Int] = []
         heap.drain(while: { $0 > 100 }, from: .min) { drained.append($0) }
@@ -258,8 +258,8 @@ struct HeapMinMaxTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("drain(while:from:) drains all elements")
-    func drainWhileAll() {
+    @Test
+    func `drain(while:from:) drains all elements`() {
         var heap: Heap<Int>.MinMax = [5, 3, 8, 1]
         var drained: [Int] = []
         heap.drain(while: { _ in true }, from: .min) { drained.append($0) }

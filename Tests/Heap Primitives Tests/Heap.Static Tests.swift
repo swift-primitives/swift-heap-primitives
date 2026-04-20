@@ -17,16 +17,16 @@ import Index_Primitives_Test_Support
 
 @Suite("Heap.Static (Single-Ended)")
 struct HeapStaticTests {
-    @Test("Init creates empty heap")
-    func initCreatesEmpty() {
+    @Test
+    func `Init creates empty heap`() {
         let heap = Heap<Int>.Static<8>(order: .ascending)
         #expect(heap.isEmpty == true)
         #expect(Int(bitPattern: heap.count) == 0)
         #expect(heap.isFull == false)
     }
 
-    @Test("Push returns inserted on success")
-    func pushReturnsInserted() {
+    @Test
+    func `Push returns inserted on success`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         let outcome = heap.push(42)
         switch outcome {
@@ -38,8 +38,8 @@ struct HeapStaticTests {
         #expect(Int(bitPattern: heap.count) == 1)
     }
 
-    @Test("Push returns overflow when full")
-    func pushReturnsOverflowWhenFull() {
+    @Test
+    func `Push returns overflow when full`() {
         var heap = Heap<Int>.Static<2>(order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
@@ -55,8 +55,8 @@ struct HeapStaticTests {
         #expect(Int(bitPattern: heap.count) == 2)
     }
 
-    @Test("Min-heap ordering (ascending)")
-    func minHeapOrdering() {
+    @Test
+    func `Min-heap ordering (ascending)`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -66,8 +66,8 @@ struct HeapStaticTests {
         #expect(heap.peek == 1)  // Min at top
     }
 
-    @Test("Max-heap ordering (descending)")
-    func maxHeapOrdering() {
+    @Test
+    func `Max-heap ordering (descending)`() {
         var heap = Heap<Int>.Static<8>(order: .descending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -77,8 +77,8 @@ struct HeapStaticTests {
         #expect(heap.peek == 7)  // Max at top
     }
 
-    @Test("Pop in order (min-heap)")
-    func popMinInOrder() throws {
+    @Test
+    func `Pop in order (min-heap)`() throws {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -92,8 +92,8 @@ struct HeapStaticTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Pop in order (max-heap)")
-    func popMaxInOrder() throws {
+    @Test
+    func `Pop in order (max-heap)`() throws {
         var heap = Heap<Int>.Static<8>(order: .descending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -107,22 +107,22 @@ struct HeapStaticTests {
         #expect(heap.isEmpty == true)
     }
 
-    @Test("Pop throws when empty")
-    func popThrowsWhenEmpty() {
+    @Test
+    func `Pop throws when empty`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         #expect(throws: Heap<Int>.Static<8>.Error.empty) {
             try heap.pop()
         }
     }
 
-    @Test("Take returns nil when empty")
-    func takeReturnsNilWhenEmpty() {
+    @Test
+    func `Take returns nil when empty`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         #expect(heap.take == nil)
     }
 
-    @Test("Clear removes all elements")
-    func clearRemovesAllElements() {
+    @Test
+    func `Clear removes all elements`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
@@ -133,8 +133,8 @@ struct HeapStaticTests {
         #expect(Int(bitPattern: heap.count) == 0)
     }
 
-    @Test("Single element")
-    func singleElement() {
+    @Test
+    func `Single element`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         _ = heap.push(42)
 
@@ -142,8 +142,8 @@ struct HeapStaticTests {
         #expect(Int(bitPattern: heap.count) == 1)
     }
 
-    @Test("Fill to capacity")
-    func fillToCapacity() {
+    @Test
+    func `Fill to capacity`() {
         var heap = Heap<Int>.Static<4>(order: .ascending)
         _ = heap.push(4)
         _ = heap.push(2)
@@ -155,8 +155,8 @@ struct HeapStaticTests {
         #expect(heap.peek == 1)  // Min at top
     }
 
-    @Test("forEach with borrowing access")
-    func forEachBorrowingAccess() {
+    @Test
+    func `forEach with borrowing access`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
@@ -169,8 +169,8 @@ struct HeapStaticTests {
         #expect(sum == 6)
     }
 
-    @Test("withPriority borrowing access")
-    func withPriorityBorrowing() {
+    @Test
+    func `withPriority borrowing access`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         _ = heap.push(5)
         _ = heap.push(3)
@@ -180,8 +180,8 @@ struct HeapStaticTests {
         #expect(value == 6)  // 3 * 2 (min element)
     }
 
-    @Test("Truncate reduces count")
-    func truncateReducesCount() {
+    @Test
+    func `Truncate reduces count`() {
         var heap = Heap<Int>.Static<8>(order: .ascending)
         _ = heap.push(1)
         _ = heap.push(2)
@@ -193,8 +193,8 @@ struct HeapStaticTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("Large capacity heap")
-    func largeCapacityHeap() {
+    @Test
+    func `Large capacity heap`() {
         var heap = Heap<Int>.Static<16>(order: .ascending)
         for i in 0..<16 {
             _ = heap.push(i)
@@ -203,8 +203,8 @@ struct HeapStaticTests {
         #expect(heap.peek == 0)  // Min at top
     }
 
-    @Test("drain(while:) drains some elements in priority order")
-    func drainWhileSome() {
+    @Test
+    func `drain(while:) drains some elements in priority order`() {
         var heap = Heap<Int>.Static<16>(order: .ascending)
         for e in [5, 3, 8, 1, 4] { _ = heap.push(e) }
         var drained: [Int] = []
@@ -213,8 +213,8 @@ struct HeapStaticTests {
         #expect(Int(bitPattern: heap.count) == 2)
     }
 
-    @Test("drain(while:) drains zero elements")
-    func drainWhileNone() {
+    @Test
+    func `drain(while:) drains zero elements`() {
         var heap = Heap<Int>.Static<16>(order: .ascending)
         for e in [5, 3, 8] { _ = heap.push(e) }
         var drained: [Int] = []
@@ -223,8 +223,8 @@ struct HeapStaticTests {
         #expect(Int(bitPattern: heap.count) == 3)
     }
 
-    @Test("drain(while:) drains all elements")
-    func drainWhileAll() {
+    @Test
+    func `drain(while:) drains all elements`() {
         var heap = Heap<Int>.Static<16>(order: .ascending)
         for e in [5, 3, 8, 1] { _ = heap.push(e) }
         var drained: [Int] = []
@@ -255,8 +255,8 @@ struct HeapStaticNonCopyableTests {
         }
     }
 
-    @Test("Push and access ~Copyable elements")
-    func pushAndAccess() {
+    @Test
+    func `Push and access ~Copyable elements`() {
         var heap = Heap<UniqueResource>.Static<8>(order: .ascending)
 
         _ = heap.push(UniqueResource(id: 10))
@@ -269,8 +269,8 @@ struct HeapStaticNonCopyableTests {
         #expect(minId == 5)
     }
 
-    @Test("Overflow preserves ~Copyable element")
-    func overflowPreservesElement() {
+    @Test
+    func `Overflow preserves ~Copyable element`() {
         var heap = Heap<UniqueResource>.Static<2>(order: .ascending)
         _ = heap.push(UniqueResource(id: 1))
         _ = heap.push(UniqueResource(id: 2))
@@ -284,8 +284,8 @@ struct HeapStaticNonCopyableTests {
         }
     }
 
-    @Test("forEach with ~Copyable elements")
-    func forEachNonCopyable() {
+    @Test
+    func `forEach with ~Copyable elements`() {
         var heap = Heap<UniqueResource>.Static<8>(order: .ascending)
         _ = heap.push(UniqueResource(id: 3))
         _ = heap.push(UniqueResource(id: 1))
@@ -298,8 +298,8 @@ struct HeapStaticNonCopyableTests {
         #expect(Set(ids) == Set([1, 2, 3]))
     }
 
-    @Test("Deinit properly cleans up ~Copyable elements")
-    func deinitCleansUp() {
+    @Test
+    func `Deinit properly cleans up ~Copyable elements`() {
         // This test ensures no crash on deallocation
         var heap = Heap<UniqueResource>.Static<4>(order: .ascending)
         _ = heap.push(UniqueResource(id: 1))
