@@ -229,9 +229,9 @@ where Tag == Heap<Element>.Remove,
     // on remove.all() + conditional buffer reassignment in deep @inlinable chain.
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        unsafe base.pointee._buffer.remove.all()
+        unsafe base.value._buffer.remove.all()
         if !keepingCapacity {
-            unsafe (base.pointee._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
+            unsafe (base.value._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
         }
     }
 }

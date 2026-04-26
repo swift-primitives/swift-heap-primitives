@@ -315,8 +315,8 @@ where Tag == Heap<Element>.MinMax.Min,
     /// - Complexity: O(1)
     @inlinable
     public var peek: Element? {
-        guard !(unsafe base.pointee.isEmpty) else { return nil }
-        return unsafe base.pointee._buffer[.zero]
+        guard !(unsafe base.value.isEmpty) else { return nil }
+        return unsafe base.value._buffer[.zero]
     }
 
     /// Removes and returns the minimum element.
@@ -326,8 +326,8 @@ where Tag == Heap<Element>.MinMax.Min,
     /// - Complexity: O(log n)
     @inlinable
     public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-        unsafe base.pointee._buffer.ensureUnique()
-        guard let element = unsafe base.pointee.removeMin() else {
+        unsafe base.value._buffer.ensureUnique()
+        guard let element = unsafe base.value.removeMin() else {
             throw .empty
         }
         return element
@@ -339,8 +339,8 @@ where Tag == Heap<Element>.MinMax.Min,
     /// - Complexity: O(log n)
     @inlinable
     public var take: Element? {
-        unsafe base.pointee._buffer.ensureUnique()
-        return unsafe base.pointee.removeMin()
+        unsafe base.value._buffer.ensureUnique()
+        return unsafe base.value.removeMin()
     }
 }
 
@@ -380,19 +380,19 @@ where Tag == Heap<Element>.MinMax.Max,
     /// - Complexity: O(1)
     @inlinable
     public var peek: Element? {
-        guard !(unsafe base.pointee.isEmpty) else { return nil }
-        let count = unsafe base.pointee._buffer.count
+        guard !(unsafe base.value.isEmpty) else { return nil }
+        let count = unsafe base.value._buffer.count
         if count == .one {
-            return unsafe base.pointee._buffer[.zero]
+            return unsafe base.value._buffer[.zero]
         }
         let leftMax = Heap<Element>.Navigate.leftChildOfRoot
         if count == .one + .one {
-            return unsafe base.pointee._buffer[leftMax]
+            return unsafe base.value._buffer[leftMax]
         }
 
         let rightMax = Heap<Element>.Navigate.rightChildOfRoot
-        let e1 = unsafe base.pointee._buffer[leftMax]
-        let e2 = unsafe base.pointee._buffer[rightMax]
+        let e1 = unsafe base.value._buffer[leftMax]
+        let e2 = unsafe base.value._buffer[rightMax]
         return e1 < e2 ? e2 : e1
     }
 
@@ -403,8 +403,8 @@ where Tag == Heap<Element>.MinMax.Max,
     /// - Complexity: O(log n)
     @inlinable
     public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-        unsafe base.pointee._buffer.ensureUnique()
-        guard let element = unsafe base.pointee.removeMax() else {
+        unsafe base.value._buffer.ensureUnique()
+        guard let element = unsafe base.value.removeMax() else {
             throw .empty
         }
         return element
@@ -416,7 +416,7 @@ where Tag == Heap<Element>.MinMax.Max,
     /// - Complexity: O(log n)
     @inlinable
     public var take: Element? {
-        unsafe base.pointee._buffer.ensureUnique()
-        return unsafe base.pointee.removeMax()
+        unsafe base.value._buffer.ensureUnique()
+        return unsafe base.value.removeMax()
     }
 }

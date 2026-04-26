@@ -261,8 +261,8 @@ where Tag == Heap<Element>.Fixed.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        while !(unsafe base.pointee._buffer.isEmpty) {
-            _ = unsafe base.pointee._buffer.remove.last()
+        while !(unsafe base.value._buffer.isEmpty) {
+            _ = unsafe base.value._buffer.remove.last()
         }
     }
 }
@@ -356,8 +356,8 @@ where Tag == Heap<Element>.Fixed.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        unsafe base.pointee.makeUnique()
-        unsafe base.pointee._buffer.remove.all()
+        unsafe base.value.makeUnique()
+        unsafe base.value._buffer.remove.all()
     }
 }
 

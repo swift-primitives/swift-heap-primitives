@@ -256,7 +256,7 @@ where Tag == Heap<Element>.Static<n>.Remove,
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        unsafe base.pointee._buffer.remove.all()
+        unsafe base.value._buffer.remove.all()
     }
 }
 
