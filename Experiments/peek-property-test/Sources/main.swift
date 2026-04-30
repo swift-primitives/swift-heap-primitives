@@ -4,6 +4,7 @@
 // Status: CONFIRMED
 //
 // Result: Property.Typed<Element> pattern works for PeekAccessor migration.
+// Revalidated: Swift 6.3.1 (2026-04-30) — PASSES
 //
 // Key insight: Heap.MinMax: Copyable where Element: Copyable
 // This means in the context where peek is available (Element: Copyable),
