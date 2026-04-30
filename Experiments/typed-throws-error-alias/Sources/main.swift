@@ -1,4 +1,5 @@
 // Status: SUPERSEDED -- direct nested enum pattern shipped; see [API-ERR-001] typed throws. (Phase 1b stale-triage 2026-04-30)
+// Revalidated: Swift 6.3.1 (2026-04-30) — SUPERSEDED (per existing Status line; not re-run)
 // ============================================================================
 // EXPERIMENT: typed-throws-error-alias
 // ============================================================================
