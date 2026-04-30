@@ -1,7 +1,7 @@
 {
   "$schema": "https://swift-institute.org/schemas/experiments-index-v1.json",
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-04-18",
+  "generatedAt": "2026-04-30",
   "title": "Experiments Index",
   "blurb": "",
   "scope": "swift-heap-primitives (swift-primitives)",
@@ -24,10 +24,10 @@
       "purpose": "Break generic chain for typed throws with nested type paths like Heap.Fixed.Error",
       "date": "2026-02-03",
       "toolchain": "Swift 6.2",
-      "status": "CONFIRMED",
-      "statusDetail": null,
-      "statusRaw": "CONFIRMED",
-      "supersededBy": null,
+      "status": "SUPERSEDED",
+      "statusDetail": "direct nested enum pattern shipped; see [API-ERR-001] typed throws (Phase 1b stale-triage 2026-04-30)",
+      "statusRaw": "CONFIRMED -> SUPERSEDED (Phase 1b stale-triage 2026-04-30)",
+      "supersededBy": "direct nested enum pattern shipped; see [API-ERR-001] typed throws",
       "crossRefs": []
     }
   ]
