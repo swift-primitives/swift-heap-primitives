@@ -27,11 +27,6 @@ jobs:
   docs:
     uses: swift-institute/.github/.github/workflows/swift-docs.yml@main
     with:
-      umbrella-module: Heap_Primitives
-      umbrella-display-name: "Heap Primitives"
-      umbrella-bundle-id: "swift-heap-primitives.Heap-Primitives"
-      umbrella-docc-path: "Sources/Heap Primitives/Heap Primitives.docc"
-      exclude-modules: "Heap_Primitives_Test_Support"
       enable-private-repos: true
     secrets:
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
