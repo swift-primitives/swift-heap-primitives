@@ -216,9 +216,10 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed
-where Tag == Heap<Element>.Remove,
-      Base == Heap<Element>,
-      Element: ~Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.Remove,
+    Base == Heap<Element>,
+    Element: ~Copyable & Comparison.`Protocol`
 {
     /// Removes all elements from the heap.
     ///

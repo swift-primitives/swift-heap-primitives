@@ -12,7 +12,6 @@
 public import Buffer_Linear_Primitives
 public import Property_Primitives
 
-
 // MARK: - Namespaces
 
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
@@ -48,7 +47,6 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public var capacity: Heap.Index.Count { _buffer.capacity }
 }
-
 
 // MARK: - Internal Heap Operations
 
@@ -250,9 +248,10 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed
-where Tag == Heap<Element>.Fixed.Remove,
-      Base == Heap<Element>.Fixed,
-      Element: ~Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.Fixed.Remove,
+    Base == Heap<Element>.Fixed,
+    Element: ~Copyable & Comparison.`Protocol`
 {
     /// Removes all elements from the heap.
     ///
@@ -297,7 +296,6 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
         _buffer.forEach(body)
     }
 }
-
 
 // MARK: - Copy-on-Write (Copyable elements only)
 
@@ -345,9 +343,10 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed
-where Tag == Heap<Element>.Fixed.Remove,
-      Base == Heap<Element>.Fixed,
-      Element: Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.Fixed.Remove,
+    Base == Heap<Element>.Fixed,
+    Element: Copyable & Comparison.`Protocol`
 {
     /// Removes all elements from the heap (CoW-aware).
     ///

@@ -9,7 +9,6 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
 extension Heap.MinMax {
     /// Fixed-capacity min-max heap.
     @safe

@@ -9,10 +9,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Sequence_Primitives
-internal import Property_Primitives
 public import Buffer_Linear_Primitives
-
+internal import Property_Primitives
+public import Sequence_Primitives
 
 // MARK: - Heap.Small Iterator
 
@@ -180,48 +179,72 @@ extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
     /// Accessor for drain operations.
     public var drain: Drain.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: Drain.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: Drain.View = unsafe .init(&self)
+            yield &view
+        }
     }
 
     /// Accessor for forEach operations.
     public var forEach: ForEach.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: ForEach.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: ForEach.View = unsafe .init(&self)
+            yield &view
+        }
     }
 
     /// Accessor for predicate satisfaction checks.
     public var satisfies: Satisfies.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: Satisfies.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: Satisfies.View = unsafe .init(&self)
+            yield &view
+        }
     }
 
     /// Accessor for finding the first matching element.
     public var first: First.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: First.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: First.View = unsafe .init(&self)
+            yield &view
+        }
     }
 
     /// Accessor for reduce operations.
     public var reduce: Reduce.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: Reduce.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: Reduce.View = unsafe .init(&self)
+            yield &view
+        }
     }
 
     /// Accessor for containment checks.
     public var contains: Contains.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: Contains.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: Contains.View = unsafe .init(&self)
+            yield &view
+        }
     }
 
     /// Accessor for drop operations.
     public var drop: Drop.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: Drop.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: Drop.View = unsafe .init(&self)
+            yield &view
+        }
     }
 
     /// Accessor for prefix operations.
     public var prefix: Prefix.View {
         mutating _read { yield unsafe .init(&self) }
-        mutating _modify { var view: Prefix.View = unsafe .init(&self); yield &view }
+        mutating _modify {
+            var view: Prefix.View = unsafe .init(&self)
+            yield &view
+        }
     }
 }

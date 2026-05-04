@@ -9,9 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
-internal import Property_Primitives
 public import Buffer_Linear_Primitives
-
+internal import Property_Primitives
 
 // MARK: - Sequence Init (Copyable only)
 
@@ -227,10 +226,9 @@ extension Heap: ExpressibleByArrayLiteral where Element: Copyable {
 // MARK: - CustomStringConvertible
 
 #if !hasFeature(Embedded)
-extension Heap: CustomStringConvertible {
-    public var description: String {
-        "Heap(\(count) elements, order: \(order))"
+    extension Heap: CustomStringConvertible {
+        public var description: String {
+            "Heap(\(count) elements, order: \(order))"
+        }
     }
-}
 #endif
-

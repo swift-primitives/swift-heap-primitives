@@ -70,7 +70,6 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
 
 }
 
-
 // MARK: - Conditional Drain
 
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
@@ -144,7 +143,6 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     }
 }
 
-
 // MARK: - Equatable (Copyable only)
 
 extension Heap.MinMax: Equatable where Element: Equatable & Copyable {
@@ -188,11 +186,11 @@ extension Heap.MinMax: ExpressibleByArrayLiteral where Element: Copyable {
 // MARK: - CustomStringConvertible
 
 #if !hasFeature(Embedded)
-extension Heap.MinMax: CustomStringConvertible {
-    public var description: String {
-        "Heap.MinMax(\(count) elements)"
+    extension Heap.MinMax: CustomStringConvertible {
+        public var description: String {
+            "Heap.MinMax(\(count) elements)"
+        }
     }
-}
 #endif
 
 // MARK: - Sequence Conformance (Copyable only)
@@ -244,9 +242,10 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.Typed
-where Tag == Heap<Element>.MinMax.Peek,
-      Base == Heap<Element>.MinMax,
-      Element: Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.MinMax.Peek,
+    Base == Heap<Element>.MinMax,
+    Element: Copyable & Comparison.`Protocol`
 {
     /// The minimum element, or `nil` if the heap is empty.
     ///
@@ -305,9 +304,10 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed
-where Tag == Heap<Element>.MinMax.Min,
-      Base == Heap<Element>.MinMax,
-      Element: Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.MinMax.Min,
+    Base == Heap<Element>.MinMax,
+    Element: Copyable & Comparison.`Protocol`
 {
     /// Returns the minimum element without removing it.
     ///
@@ -370,9 +370,10 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed
-where Tag == Heap<Element>.MinMax.Max,
-      Base == Heap<Element>.MinMax,
-      Element: Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.MinMax.Max,
+    Base == Heap<Element>.MinMax,
+    Element: Copyable & Comparison.`Protocol`
 {
     /// Returns the maximum element without removing it.
     ///

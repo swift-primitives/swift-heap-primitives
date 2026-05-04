@@ -108,7 +108,6 @@ extension Heap.MinMax.Fixed {
 // in their respective struct bodies because they have value generic parameters
 // that would require explicit generic arguments when referencing the base types.
 
-
 // MARK: - Property Typealias
 
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
@@ -140,9 +139,10 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed
-where Tag == Heap<Element>.MinMax.Remove,
-      Base == Heap<Element>.MinMax,
-      Element: ~Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.MinMax.Remove,
+    Base == Heap<Element>.MinMax,
+    Element: ~Copyable & Comparison.`Protocol`
 {
     /// Removes all elements from the heap.
     ///

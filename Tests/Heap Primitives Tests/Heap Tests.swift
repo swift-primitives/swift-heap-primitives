@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 import Testing
+
 @testable import Heap_Primitives
 
 // MARK: - Single-Ended Heap Tests

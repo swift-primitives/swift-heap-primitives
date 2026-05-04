@@ -9,8 +9,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import Testing
 import Index_Primitives_Test_Support
+import Testing
+
 @testable import Heap_Primitives
 
 // MARK: - Heap.Static Tests (Single-Ended)

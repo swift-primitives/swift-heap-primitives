@@ -9,9 +9,10 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Sequence_Primitives
-internal import Property_Primitives
 public import Buffer_Linear_Primitives
+public import Heap_Primitives_Core
+internal import Property_Primitives
+public import Sequence_Primitives
 
 // MARK: - Heap.Fixed Iterator
 
@@ -132,8 +133,6 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
 }
 
-public import Heap_Primitives_Core
-
 // MARK: - Swift.Sequence Conformance
 //
 // Bridge to Swift.Sequence for `for-in` loops and stdlib algorithms.
@@ -141,6 +140,6 @@ public import Heap_Primitives_Core
 
 extension Heap.Fixed: Swift.Sequence where Element: Copyable {
     /// Returns the count as the underestimated count since we know the exact size.
-//    @inlinable
-//    public var underestimatedCount: Int { Int(bitPattern: count) }
+    //    @inlinable
+    //    public var underestimatedCount: Int { Int(bitPattern: count) }
 }

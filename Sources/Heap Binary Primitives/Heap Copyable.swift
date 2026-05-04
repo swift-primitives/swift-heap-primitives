@@ -9,11 +9,10 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Sequence_Primitives
-internal import Property_Primitives
 public import Buffer_Linear_Primitives
 public import Heap_Primitives_Core
-
+internal import Property_Primitives
+public import Sequence_Primitives
 
 // MARK: - Swift.Sequence Conformance (Copyable only)
 

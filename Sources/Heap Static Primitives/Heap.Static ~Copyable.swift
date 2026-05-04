@@ -11,7 +11,6 @@
 
 public import Property_Primitives
 
-
 // MARK: - Namespaces
 
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
@@ -43,7 +42,6 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     @inlinable
     public var isFull: Bool { _buffer.isFull }
 }
-
 
 // MARK: - Internal Heap Operations
 
@@ -247,9 +245,10 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed.Valued
-where Tag == Heap<Element>.Static<n>.Remove,
-      Base == Heap<Element>.Static<n>,
-      Element: ~Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.Static<n>.Remove,
+    Base == Heap<Element>.Static<n>,
+    Element: ~Copyable & Comparison.`Protocol`
 {
     /// Removes all elements from the heap.
     ///
@@ -290,9 +289,6 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
         _buffer.forEach(body)
     }
 }
-
-
-
 
 // MARK: - Truncate
 

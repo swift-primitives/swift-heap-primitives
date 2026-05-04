@@ -12,7 +12,6 @@
 public import Buffer_Linear_Primitives
 public import Property_Primitives
 
-
 // MARK: - Namespaces
 
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
@@ -52,9 +51,10 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 }
 
 extension Property_Primitives.Property.View.Typed.Valued
-where Tag == Heap<Element>.Small<n>.Remove,
-      Base == Heap<Element>.Small<n>,
-      Element: ~Copyable & Comparison.`Protocol`
+where
+    Tag == Heap<Element>.Small<n>.Remove,
+    Base == Heap<Element>.Small<n>,
+    Element: ~Copyable & Comparison.`Protocol`
 {
     /// Removes all elements from the heap.
     ///

@@ -9,7 +9,6 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
 extension Heap.MinMax {
     /// Min-max heap with small-buffer optimization.
     @safe

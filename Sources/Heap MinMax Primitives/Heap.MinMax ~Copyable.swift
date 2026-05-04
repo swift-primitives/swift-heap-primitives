@@ -11,7 +11,6 @@
 
 public import Heap_Primitives_Core
 
-
 extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for minimum element operations.
     public enum Min {
@@ -117,7 +116,8 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         let leftMax = Heap.Navigate.leftChildOfRoot
         let rightMax = Heap.Navigate.rightChildOfRoot
-        let maxIndex = _buffer[leftMax] < _buffer[rightMax]
+        let maxIndex =
+            _buffer[leftMax] < _buffer[rightMax]
             ? rightMax
             : leftMax
 
@@ -150,7 +150,8 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
         let parentIsLess = _buffer[parentIndex] < _buffer[current]
 
         if (currentIsMin && parentIsLess)
-            || (!currentIsMin && nodeIsLess) {
+            || (!currentIsMin && nodeIsLess)
+        {
             _buffer.swap(at: current, with: parentIndex)
             current = parentIndex
             currentIsMin = !currentIsMin
@@ -158,14 +159,16 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         if currentIsMin {
             while let p = nav.parent(of: current),
-                  let gpIndex = nav.parent(of: p) {
+                let gpIndex = nav.parent(of: p)
+            {
                 guard !(_buffer[gpIndex] < _buffer[current]) else { break }
                 _buffer.swap(at: current, with: gpIndex)
                 current = gpIndex
             }
         } else {
             while let p = nav.parent(of: current),
-                  let gpIndex = nav.parent(of: p) {
+                let gpIndex = nav.parent(of: p)
+            {
                 guard !(_buffer[current] < _buffer[gpIndex]) else { break }
                 _buffer.swap(at: current, with: gpIndex)
                 current = gpIndex
@@ -354,7 +357,8 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
         let leftMax = Heap.Navigate.leftChildOfRoot
         let rightMax = Heap.Navigate.rightChildOfRoot
-        let maxIndex = _buffer[leftMax] < _buffer[rightMax]
+        let maxIndex =
+            _buffer[leftMax] < _buffer[rightMax]
             ? rightMax
             : leftMax
         return body(_buffer[maxIndex])

@@ -9,8 +9,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import Testing
 import Index_Primitives_Test_Support
+import Testing
+
 @testable import Heap_Primitives
 
 @Suite("Heap.Small (Single-Ended)")
@@ -136,7 +137,7 @@ struct HeapSmallTests {
     @Test
     func `Pop throws when empty`() {
         typealias TestHeap = Heap<Int>.Small<8>
-        
+
         var heap = TestHeap(order: .ascending)
         #expect(throws: TestHeap.Error.empty) {
             try heap.pop()
