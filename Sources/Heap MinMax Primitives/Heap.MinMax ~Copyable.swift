@@ -310,7 +310,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
 
             var pos = firstPos
             while pos <= lastPos {
-                let index = Heap.Index(__unchecked: (), Ordinal(pos))
+                let index = Heap.Index(_unchecked: Ordinal(pos))
                 if isMin {
                     trickleDownMin(index)
                 } else {

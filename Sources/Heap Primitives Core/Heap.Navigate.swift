@@ -57,7 +57,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         public func parent(of index: Heap.Index) -> Heap.Index? {
             guard index > .zero else { return nil }
             let pos = index.position.rawValue
-            return Heap.Index(__unchecked: (), Ordinal((pos &- 1) / 2))
+            return Heap.Index(_unchecked: Ordinal((pos &- 1) / 2))
         }
 
         /// Returns the index of the specified child of the element at the given index.
@@ -74,7 +74,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             case .left: childPos = 2 &* pos &+ 1
             case .right: childPos = 2 &* pos &+ 2
             }
-            let result = Heap.Index(__unchecked: (), Ordinal(childPos))
+            let result = Heap.Index(_unchecked: Ordinal(childPos))
             guard result < _count else { return nil }
             return result
         }
@@ -84,21 +84,21 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
         /// Raw arithmetic is principled: Cardinal has no division ([IMPL-001]).
         @inlinable
         package var lastNonLeaf: Heap.Index? {
-            let raw = _count.rawValue.rawValue
+            let raw = _count.underlying.rawValue
             guard raw > 1 else { return nil }
-            return Heap.Index(__unchecked: (), Ordinal((raw / 2) &- 1))
+            return Heap.Index(_unchecked: Ordinal((raw / 2) &- 1))
         }
 
         /// Index of the left child of root (position 1).
         @inlinable
         package static var leftChildOfRoot: Heap.Index {
-            Heap.Index(__unchecked: (), Ordinal(1))
+            Heap.Index(_unchecked: Ordinal(1))
         }
 
         /// Index of the right child of root (position 2).
         @inlinable
         package static var rightChildOfRoot: Heap.Index {
-            Heap.Index(__unchecked: (), Ordinal(2))
+            Heap.Index(_unchecked: Ordinal(2))
         }
 
         /// Returns whether the given index represents a valid position.

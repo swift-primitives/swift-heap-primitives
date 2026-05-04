@@ -131,7 +131,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             }
             // Boundary: Int → typed count. Cardinal(UInt(...)) is the canonical Int→Cardinal path.
             self._buffer = Buffer<Element>.Linear.Bounded(
-                minimumCapacity: Heap.Index.Count(__unchecked: (), Cardinal(UInt(capacity)))
+                minimumCapacity: Heap.Index.Count(_unchecked: Cardinal(UInt(capacity)))
             )
             self.order = order
         }

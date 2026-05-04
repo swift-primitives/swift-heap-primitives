@@ -27,7 +27,7 @@ extension Heap.MinMax {
                 throw .invalidCapacity
             }
             self._buffer = Buffer<Element>.Linear.Bounded(
-                minimumCapacity: Heap.Index.Count(__unchecked: (), Cardinal(UInt(capacity)))
+                minimumCapacity: Heap.Index.Count(_unchecked: Cardinal(UInt(capacity)))
             )
         }
     }

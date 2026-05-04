@@ -21,8 +21,8 @@ struct HeapFixedTests {
     func `Init with capacity`() throws {
         let heap = try Heap<Int>.Fixed(capacity: 10, order: .ascending)
         #expect(heap.isEmpty == true)
-        #expect(Int(heap.count.rawValue.rawValue) == 0)
-        #expect(Int(heap.capacity.rawValue.rawValue) >= 10)
+        #expect(Int(heap.count.underlying.rawValue) == 0)
+        #expect(Int(heap.capacity.underlying.rawValue) >= 10)
         #expect(heap.isFull == false)
     }
 
@@ -43,7 +43,7 @@ struct HeapFixedTests {
         case .overflow:
             Issue.record("Expected .inserted but got .overflow")
         }
-        #expect(Int(heap.count.rawValue.rawValue) == 1)
+        #expect(Int(heap.count.underlying.rawValue) == 1)
     }
 
     @Test
@@ -51,7 +51,7 @@ struct HeapFixedTests {
         // Buffer.Linear.Bounded allocates at least the requested capacity.
         // Fill the actual allocated capacity to test overflow.
         var heap = try Heap<Int>.Fixed(capacity: 2, order: .ascending)
-        let actualCapacity = Int(heap.capacity.rawValue.rawValue)
+        let actualCapacity = Int(heap.capacity.underlying.rawValue)
         for i in 0..<actualCapacity {
             _ = heap.push(i)
         }
@@ -64,7 +64,7 @@ struct HeapFixedTests {
         case .overflow(let element):
             #expect(element == 999)  // Element preserved
         }
-        #expect(Int(heap.count.rawValue.rawValue) == actualCapacity)
+        #expect(Int(heap.count.underlying.rawValue) == actualCapacity)
     }
 
     @Test
@@ -144,8 +144,8 @@ struct HeapFixedTests {
 
         heap.remove.all()
         #expect(heap.isEmpty == true)
-        #expect(Int(heap.count.rawValue.rawValue) == 0)
-        #expect(Int(heap.capacity.rawValue.rawValue) >= 10)  // Capacity unchanged (at least requested)
+        #expect(Int(heap.count.underlying.rawValue) == 0)
+        #expect(Int(heap.capacity.underlying.rawValue) >= 10)  // Capacity unchanged (at least requested)
     }
 
     @Test
@@ -154,7 +154,7 @@ struct HeapFixedTests {
         _ = heap.push(42)
 
         #expect(heap.peek == 42)
-        #expect(Int(heap.count.rawValue.rawValue) == 1)
+        #expect(Int(heap.count.underlying.rawValue) == 1)
     }
 
     @Test
@@ -167,8 +167,8 @@ struct HeapFixedTests {
 
         _ = heap1.push(1)
 
-        #expect(Int(heap1.count.rawValue.rawValue) == 3)
-        #expect(Int(heap2.count.rawValue.rawValue) == 2)
+        #expect(Int(heap1.count.underlying.rawValue) == 3)
+        #expect(Int(heap2.count.underlying.rawValue) == 2)
         #expect(heap1.peek == 1)
         #expect(heap2.peek == 3)
     }
@@ -176,14 +176,14 @@ struct HeapFixedTests {
     @Test
     func `Init from sequence`() throws {
         let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
-        #expect(Int(heap.count.rawValue.rawValue) == 5)
+        #expect(Int(heap.count.underlying.rawValue) == 5)
         #expect(heap.peek == 1)
     }
 
     @Test
     func `Init from sequence truncates to capacity`() throws {
         let heap = try Heap<Int>.Fixed([1, 2, 3, 4, 5], capacity: 3, order: .ascending)
-        #expect(Int(heap.count.rawValue.rawValue) == 3)
+        #expect(Int(heap.count.underlying.rawValue) == 3)
     }
 
     @Test
@@ -225,10 +225,10 @@ struct HeapFixedTests {
     @Test
     func `Truncate reduces count`() throws {
         var heap = try Heap<Int>.Fixed([1, 2, 3, 4, 5], capacity: 10, order: .ascending)
-        #expect(Int(heap.count.rawValue.rawValue) == 5)
+        #expect(Int(heap.count.underlying.rawValue) == 5)
 
         heap.truncate(to: 3)
-        #expect(Int(heap.count.rawValue.rawValue) == 3)
+        #expect(Int(heap.count.underlying.rawValue) == 3)
     }
 
     @Test
@@ -299,7 +299,7 @@ struct HeapFixedNonCopyableTests {
         _ = heap.push(UniqueResource(id: 5))
         _ = heap.push(UniqueResource(id: 15))
 
-        #expect(Int(heap.count.rawValue.rawValue) == 3)
+        #expect(Int(heap.count.underlying.rawValue) == 3)
 
         let minId = heap.withPriority { $0.id }
         #expect(minId == 5)
@@ -310,7 +310,7 @@ struct HeapFixedNonCopyableTests {
         // Buffer.Linear.Bounded allocates at least the requested capacity.
         // Fill the actual allocated capacity to test overflow.
         var heap = try Heap<UniqueResource>.Fixed(capacity: 2, order: .ascending)
-        let actualCapacity = Int(heap.capacity.rawValue.rawValue)
+        let actualCapacity = Int(heap.capacity.underlying.rawValue)
         for i in 0..<actualCapacity {
             _ = heap.push(UniqueResource(id: i))
         }
