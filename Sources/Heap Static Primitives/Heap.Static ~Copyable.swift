@@ -16,7 +16,7 @@ public import Property_Primitives
 extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for remove operations.
     public enum Remove {
-        public typealias View = Heap<Element>.Static<capacity>.Property<Remove>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Heap<Element>.Static<capacity>.Property<Remove>.Inout.Typed<Element>.Valued<capacity>
     }
 }
 
@@ -244,7 +244,7 @@ extension Heap.Static where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed.Valued
+extension Property_Primitives.Property.Inout.Typed.Valued
 where
     Tag == Heap<Element>.Static<n>.Remove,
     Base == Heap<Element>.Static<n>,
@@ -255,7 +255,7 @@ where
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        unsafe base.value._buffer.remove.all()
+        base.value._buffer.remove.all()
     }
 }
 

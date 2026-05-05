@@ -65,7 +65,7 @@ extension Heap.Fixed: Sequence.Clearable where Element: Copyable & Comparison.`P
     /// Removes all elements from the heap.
     ///
     /// The capacity remains unchanged (fixed-capacity heap).
-    /// This enables `.forEach.consuming { }` pattern via `Property.View` extension.
+    /// This enables `.forEach.consuming { }` pattern via `Property.Inout` extension.
     @inlinable
     public mutating func removeAll() {
         remove.all()
@@ -121,13 +121,13 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
 extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Accessor for drain operations.
-    public var drain: Property<Sequence.Drain>.View {
+    public var drain: Property<Sequence.Drain>.Inout {
         mutating _read {
-            yield unsafe Property<Sequence.Drain>.View(&self)
+            yield Property<Sequence.Drain>.Inout(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Sequence.Drain>.View(&self)
-            yield &view
+            var accessor = Property<Sequence.Drain>.Inout(&self)
+            yield &accessor
         }
     }
 

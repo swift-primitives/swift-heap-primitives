@@ -17,7 +17,7 @@ public import Property_Primitives
 extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for remove operations.
     public enum Remove {
-        public typealias View = Heap<Element>.Property<Remove>.View.Typed<Element>
+        public typealias View = Heap<Element>.Property<Remove>.Inout.Typed<Element>
     }
 }
 
@@ -215,7 +215,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed
+extension Property_Primitives.Property.Inout.Typed
 where
     Tag == Heap<Element>.Remove,
     Base == Heap<Element>,
@@ -230,7 +230,7 @@ where
     // on remove.all() + conditional buffer reassignment in deep @inlinable chain.
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        unsafe base.value._buffer.remove.all()
+        base.value._buffer.remove.all()
         if !keepingCapacity {
             unsafe (base.value._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
         }

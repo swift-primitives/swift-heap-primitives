@@ -29,7 +29,7 @@ extension Heap.MinMax: Sequence.`Protocol` where Element: Copyable & Comparison.
 extension Heap.MinMax: Sequence.Clearable where Element: Copyable & Comparison.`Protocol` {
     /// Removes all elements from the heap.
     ///
-    /// This enables `.forEach.consuming { }` pattern via `Property.View` extension.
+    /// This enables `.forEach.consuming { }` pattern via `Property.Inout` extension.
     @inlinable
     public mutating func removeAll() {
         remove.all(keepingCapacity: false)
@@ -58,13 +58,13 @@ extension Heap.MinMax: Sequence.Drain.`Protocol` where Element: Copyable & Compa
 
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// Accessor for drain operations.
-    public var drain: Property<Sequence.Drain>.View {
+    public var drain: Property<Sequence.Drain>.Inout {
         mutating _read {
-            yield unsafe Property<Sequence.Drain>.View(&self)
+            yield Property<Sequence.Drain>.Inout(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Sequence.Drain>.View(&self)
-            yield &view
+            var accessor = Property<Sequence.Drain>.Inout(&self)
+            yield &accessor
         }
     }
 
@@ -278,7 +278,7 @@ where
     }
 }
 
-// MARK: - Min Accessor (Property.View.Typed)
+// MARK: - Min Accessor (Property.Inout.Typed)
 
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// Accessor for minimum element operations.
@@ -303,7 +303,7 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed
+extension Property_Primitives.Property.Inout.Typed
 where
     Tag == Heap<Element>.MinMax.Min,
     Base == Heap<Element>.MinMax,
@@ -315,8 +315,8 @@ where
     /// - Complexity: O(1)
     @inlinable
     public var peek: Element? {
-        guard !(unsafe base.value.isEmpty) else { return nil }
-        return unsafe base.value._buffer[.zero]
+        guard !(base.value.isEmpty) else { return nil }
+        return base.value._buffer[.zero]
     }
 
     /// Removes and returns the minimum element.
@@ -326,8 +326,8 @@ where
     /// - Complexity: O(log n)
     @inlinable
     public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-        unsafe base.value._buffer.ensureUnique()
-        guard let element = unsafe base.value.removeMin() else {
+        base.value._buffer.ensureUnique()
+        guard let element = base.value.removeMin() else {
             throw .empty
         }
         return element
@@ -339,12 +339,12 @@ where
     /// - Complexity: O(log n)
     @inlinable
     public var take: Element? {
-        unsafe base.value._buffer.ensureUnique()
-        return unsafe base.value.removeMin()
+        base.value._buffer.ensureUnique()
+        return base.value.removeMin()
     }
 }
 
-// MARK: - Max Accessor (Property.View.Typed)
+// MARK: - Max Accessor (Property.Inout.Typed)
 
 extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     /// Accessor for maximum element operations.
@@ -369,7 +369,7 @@ extension Heap.MinMax where Element: Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed
+extension Property_Primitives.Property.Inout.Typed
 where
     Tag == Heap<Element>.MinMax.Max,
     Base == Heap<Element>.MinMax,
@@ -381,19 +381,19 @@ where
     /// - Complexity: O(1)
     @inlinable
     public var peek: Element? {
-        guard !(unsafe base.value.isEmpty) else { return nil }
-        let count = unsafe base.value._buffer.count
+        guard !(base.value.isEmpty) else { return nil }
+        let count = base.value._buffer.count
         if count == .one {
-            return unsafe base.value._buffer[.zero]
+            return base.value._buffer[.zero]
         }
         let leftMax = Heap<Element>.Navigate.leftChildOfRoot
         if count == .one + .one {
-            return unsafe base.value._buffer[leftMax]
+            return base.value._buffer[leftMax]
         }
 
         let rightMax = Heap<Element>.Navigate.rightChildOfRoot
-        let e1 = unsafe base.value._buffer[leftMax]
-        let e2 = unsafe base.value._buffer[rightMax]
+        let e1 = base.value._buffer[leftMax]
+        let e2 = base.value._buffer[rightMax]
         return e1 < e2 ? e2 : e1
     }
 
@@ -404,8 +404,8 @@ where
     /// - Complexity: O(log n)
     @inlinable
     public func pop() throws(Heap<Element>.MinMax.Error) -> Element {
-        unsafe base.value._buffer.ensureUnique()
-        guard let element = unsafe base.value.removeMax() else {
+        base.value._buffer.ensureUnique()
+        guard let element = base.value.removeMax() else {
             throw .empty
         }
         return element
@@ -417,7 +417,7 @@ where
     /// - Complexity: O(log n)
     @inlinable
     public var take: Element? {
-        unsafe base.value._buffer.ensureUnique()
-        return unsafe base.value.removeMax()
+        base.value._buffer.ensureUnique()
+        return base.value.removeMax()
     }
 }

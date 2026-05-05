@@ -63,7 +63,7 @@ extension Heap: Sequence.`Protocol` where Element: Copyable & Comparison.`Protoc
 extension Heap: Sequence.Clearable where Element: Copyable & Comparison.`Protocol` {
     /// Removes all elements from the heap.
     ///
-    /// This enables `.forEach.consuming { }` pattern via `Property.View` extension.
+    /// This enables `.forEach.consuming { }` pattern via `Property.Inout` extension.
     @inlinable
     public mutating func removeAll() {
         remove.all(keepingCapacity: false)
@@ -104,13 +104,13 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// // heap is now empty but still usable
     /// heap.push(10)  // OK
     /// ```
-    public var drain: Property<Sequence.Drain>.View {
+    public var drain: Property<Sequence.Drain>.Inout {
         mutating _read {
-            yield unsafe Property<Sequence.Drain>.View(&self)
+            yield Property<Sequence.Drain>.Inout(&self)
         }
         mutating _modify {
-            var view = unsafe Property<Sequence.Drain>.View(&self)
-            yield &view
+            var accessor = Property<Sequence.Drain>.Inout(&self)
+            yield &accessor
         }
     }
 }

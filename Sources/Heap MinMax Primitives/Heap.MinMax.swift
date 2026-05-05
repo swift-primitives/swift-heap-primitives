@@ -138,7 +138,7 @@ extension Heap.MinMax where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed
+extension Property_Primitives.Property.Inout.Typed
 where
     Tag == Heap<Element>.MinMax.Remove,
     Base == Heap<Element>.MinMax,
@@ -153,7 +153,7 @@ where
     // on remove.all() + conditional buffer reassignment in deep @inlinable chain.
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        unsafe base.value._buffer.remove.all()
+        base.value._buffer.remove.all()
         if !keepingCapacity {
             unsafe (base.value._buffer = Buffer<Element>.Linear(minimumCapacity: .zero))
         }

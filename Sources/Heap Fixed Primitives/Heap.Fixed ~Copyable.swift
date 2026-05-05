@@ -17,7 +17,7 @@ public import Property_Primitives
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for remove operations.
     public enum Remove {
-        public typealias View = Heap<Element>.Fixed.Property<Remove>.View.Typed<Element>
+        public typealias View = Heap<Element>.Fixed.Property<Remove>.Inout.Typed<Element>
     }
 }
 
@@ -247,7 +247,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed
+extension Property_Primitives.Property.Inout.Typed
 where
     Tag == Heap<Element>.Fixed.Remove,
     Base == Heap<Element>.Fixed,
@@ -260,8 +260,8 @@ where
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        while !(unsafe base.value._buffer.isEmpty) {
-            _ = unsafe base.value._buffer.remove.last()
+        while !(base.value._buffer.isEmpty) {
+            _ = base.value._buffer.remove.last()
         }
     }
 }
@@ -342,7 +342,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed
+extension Property_Primitives.Property.Inout.Typed
 where
     Tag == Heap<Element>.Fixed.Remove,
     Base == Heap<Element>.Fixed,
@@ -355,8 +355,8 @@ where
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        unsafe base.value.makeUnique()
-        unsafe base.value._buffer.remove.all()
+        base.value.makeUnique()
+        base.value._buffer.remove.all()
     }
 }
 

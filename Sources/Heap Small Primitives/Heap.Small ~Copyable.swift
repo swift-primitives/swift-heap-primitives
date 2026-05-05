@@ -17,7 +17,7 @@ public import Property_Primitives
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     /// Namespace for remove operations.
     public enum Remove {
-        public typealias View = Heap<Element>.Small<inlineCapacity>.Property<Remove>.View.Typed<Element>.Valued<inlineCapacity>
+        public typealias View = Heap<Element>.Small<inlineCapacity>.Property<Remove>.Inout.Typed<Element>.Valued<inlineCapacity>
     }
 }
 
@@ -50,7 +50,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     }
 }
 
-extension Property_Primitives.Property.View.Typed.Valued
+extension Property_Primitives.Property.Inout.Typed.Valued
 where
     Tag == Heap<Element>.Small<n>.Remove,
     Base == Heap<Element>.Small<n>,
@@ -63,7 +63,7 @@ where
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        unsafe base.value._buffer.remove.all()
+        base.value._buffer.remove.all()
     }
 }
 

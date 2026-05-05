@@ -77,7 +77,7 @@ extension Heap.Static: Sequence.`Protocol` where Element: Copyable & Comparison.
 extension Heap.Static: Sequence.Clearable where Element: Copyable & Comparison.`Protocol` {
     /// Removes all elements from the heap.
     ///
-    /// This enables `.forEach.consuming { }` pattern via `Property.View` extension.
+    /// This enables `.forEach.consuming { }` pattern via `Property.Inout` extension.
     @inlinable
     public mutating func removeAll() {
         remove.all()
@@ -134,28 +134,28 @@ extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
 
 extension Heap.Static where Element: Copyable & Comparison.`Protocol` {
     public enum Drain {
-        public typealias View = Property<Sequence.Drain>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.Drain>.Inout.Typed<Element>.Valued<capacity>
     }
     public enum ForEach {
-        public typealias View = Property<Sequence.ForEach>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.ForEach>.Inout.Typed<Element>.Valued<capacity>
     }
     public enum Satisfies {
-        public typealias View = Property<Sequence.Satisfies>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.Satisfies>.Inout.Typed<Element>.Valued<capacity>
     }
     public enum First {
-        public typealias View = Property<Sequence.First>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.First>.Inout.Typed<Element>.Valued<capacity>
     }
     public enum Reduce {
-        public typealias View = Property<Sequence.Reduce>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.Reduce>.Inout.Typed<Element>.Valued<capacity>
     }
     public enum Contains {
-        public typealias View = Property<Sequence.Contains>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.Contains>.Inout.Typed<Element>.Valued<capacity>
     }
     public enum Drop {
-        public typealias View = Property<Sequence.Drop>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.Drop>.Inout.Typed<Element>.Valued<capacity>
     }
     public enum Prefix {
-        public typealias View = Property<Sequence.Prefix>.View.Typed<Element>.Valued<capacity>
+        public typealias View = Property<Sequence.Prefix>.Inout.Typed<Element>.Valued<capacity>
     }
 }
 
