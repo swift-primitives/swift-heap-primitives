@@ -25,6 +25,8 @@ extension Heap where Element: ~Copyable {
         public enum Error: Swift.Error, Sendable, Equatable {
             /// An operation was attempted on an empty heap.
             case empty
+            /// The heap is full and cannot accept more elements.
+            case overflow
         }
 
         /// Element cleanup is handled by Storage.Inline's deinit.

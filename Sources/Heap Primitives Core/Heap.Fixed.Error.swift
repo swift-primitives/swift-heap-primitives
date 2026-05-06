@@ -14,6 +14,8 @@ extension Heap.Fixed.Error: CustomStringConvertible {
             return "invalid capacity (negative)"
         case .empty:
             return "operation attempted on empty heap"
+        case .overflow:
+            return "heap is full"
         }
     }
 }

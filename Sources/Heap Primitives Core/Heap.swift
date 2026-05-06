@@ -107,6 +107,8 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
             case invalidCapacity
             /// An operation was attempted on an empty heap.
             case empty
+            /// The heap is full and cannot accept more elements.
+            case overflow
         }
 
         @usableFromInline

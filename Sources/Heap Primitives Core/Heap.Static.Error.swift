@@ -12,6 +12,8 @@ extension Heap.Static.Error: CustomStringConvertible {
         switch self {
         case .empty:
             return "operation attempted on empty heap"
+        case .overflow:
+            return "heap is full"
         }
     }
 }
