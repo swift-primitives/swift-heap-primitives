@@ -205,3 +205,19 @@ extension Heap where Element: ~Copyable {
         }
     }
 }
+
+// MARK: - Sequence Bulk-Add (Copyable Element only)
+
+extension Heap.Builder where Element: Copyable {
+    /// Bulk-add a Swift.Sequence without per-iteration allocation. The
+    /// resulting elements are heapified in O(n) by the convenience init.
+    @inlinable
+    public static func buildExpression<S: Swift.Sequence>(_ expression: S) -> Buffer<Element>.Linear
+    where S.Element == Element {
+        var result = Buffer<Element>.Linear(minimumCapacity: .zero)
+        for value in expression {
+            result.append(value)
+        }
+        return result
+    }
+}
