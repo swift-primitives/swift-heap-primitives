@@ -21,7 +21,7 @@ extension Heap.Static where Element: ~Copyable {
     public init(
         order: Heap<Element>.Order = .ascending,
         @Heap<Element>.Builder _ builder: () -> Buffer<Element>.Linear
-    ) throws(Self.Error) {
+    ) throws(Heap.Static.Error) {
         var buffer = builder()
         self.init(order: order)
         while !buffer.isEmpty {

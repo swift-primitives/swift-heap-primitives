@@ -21,7 +21,7 @@ extension Heap.Fixed where Element: ~Copyable {
         capacity: Int,
         order: Heap<Element>.Order = .ascending,
         @Heap<Element>.Builder _ builder: () -> Buffer<Element>.Linear
-    ) throws(Self.Error) {
+    ) throws(Heap.Fixed.Error) {
         var fixed = try Heap<Element>.Fixed(capacity: capacity, order: order)
         var buffer = builder()
         while !buffer.isEmpty {
