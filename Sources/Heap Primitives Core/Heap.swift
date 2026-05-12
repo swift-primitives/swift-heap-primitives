@@ -58,6 +58,9 @@ import Buffer_Linear_Primitives
 /// - Push: O(log n)
 /// - Pop: O(log n)
 /// - Init from sequence: O(n)
+// WHY: Category D — structural Sendable workaround; the type is
+// WHY: structurally value-safe but the compiler cannot synthesize
+// WHY: Sendable due to a stored pointer / generic parameter shape.
 @safe
 public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
@@ -99,6 +102,9 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     }
 
     // MARK: - Fixed Capacity Heap
+    // WHY: Category D — structural Sendable workaround; the type is
+    // WHY: structurally value-safe but the compiler cannot synthesize
+    // WHY: Sendable due to a stored pointer / generic parameter shape.
     @safe
     public struct Fixed: ~Copyable {
         /// Errors that can occur during fixed heap operations.
@@ -160,6 +166,9 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     /// All operations are implemented in the `Heap MinMax Primitives` module.
     ///
     /// See ``Heap/MinMax`` documentation in `Heap MinMax Primitives` for full API details.
+    // WHY: Category D — structural Sendable workaround; the type is
+    // WHY: structurally value-safe but the compiler cannot synthesize
+    // WHY: Sendable due to a stored pointer / generic parameter shape.
     @safe
     public struct MinMax: ~Copyable {
         @usableFromInline

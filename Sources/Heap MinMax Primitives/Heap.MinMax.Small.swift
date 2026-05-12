@@ -11,6 +11,9 @@
 
 extension Heap.MinMax {
     /// Min-max heap with small-buffer optimization.
+    // SAFETY: Safe by construction — backing storage uses only stdlib
+    // SAFETY: safe types; `@safe` documents that this type performs no
+    // SAFETY: unsafe operations.
     @safe
     public struct Small<let inlineCapacity: Int>: ~Copyable {
         /// Errors that can occur during small min-max heap operations.

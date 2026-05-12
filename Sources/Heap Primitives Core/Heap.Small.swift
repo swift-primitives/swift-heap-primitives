@@ -19,6 +19,9 @@ extension Heap where Element: ~Copyable {
     ///
     /// `Heap.Small` stores up to `inlineCapacity` elements in inline storage,
     /// then automatically spills to heap storage when that capacity is exceeded.
+    // WHY: Category D — structural Sendable workaround; the type is
+    // WHY: structurally value-safe but the compiler cannot synthesize
+    // WHY: Sendable due to a stored pointer / generic parameter shape.
     @safe
     public struct Small<let inlineCapacity: Int>: ~Copyable {
         /// Errors that can occur during small heap operations.

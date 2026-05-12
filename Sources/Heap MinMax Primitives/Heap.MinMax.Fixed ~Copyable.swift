@@ -11,6 +11,9 @@
 
 extension Heap.MinMax {
     /// Fixed-capacity min-max heap.
+    // SAFETY: Safe by construction — backing storage uses only stdlib
+    // SAFETY: safe types; `@safe` documents that this type performs no
+    // SAFETY: unsafe operations.
     @safe
     public struct Fixed: ~Copyable {
         @usableFromInline
