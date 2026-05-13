@@ -69,4 +69,4 @@ extension Heap where Element: ~Copyable {
 ///
 /// - Not a shared buffer — inline storage is tied to one owner at a time.
 /// - No synchronization; mutating access must remain single-threaded.
-extension Heap.Static: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.Static: Sendable where Element: Sendable {}

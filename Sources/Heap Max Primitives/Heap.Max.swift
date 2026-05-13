@@ -55,4 +55,4 @@ extension Heap.Max: Copyable where Element: Copyable {}
 ///
 /// - Not functional today; init traps.
 /// - No synchronization; same constraints as `Heap` will apply.
-extension Heap.Max: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.Max: Sendable where Element: Sendable {}

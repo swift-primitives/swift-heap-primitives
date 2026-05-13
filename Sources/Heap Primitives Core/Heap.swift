@@ -235,7 +235,7 @@ extension Heap.MinMax: Copyable where Element: Copyable {}
 /// - Does not grant concurrent access to a live heap.
 /// - `~Copyable` forbids multiple references across threads by construction.
 /// - Does not synchronize push/pop; external synchronization is required.
-extension Heap: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap: Sendable where Element: Sendable {}
 
 /// Sendable conformance for `Heap.Fixed`.
 ///
@@ -255,7 +255,7 @@ extension Heap: @unsafe @unchecked Sendable where Element: Sendable {}
 ///
 /// - Not a shared, concurrent fixed-capacity queue.
 /// - Does not guarantee overflow safety under concurrent push.
-extension Heap.Fixed: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.Fixed: Sendable where Element: Sendable {}
 
 /// Sendable conformance for `Heap.MinMax`.
 ///
@@ -276,7 +276,7 @@ extension Heap.Fixed: @unsafe @unchecked Sendable where Element: Sendable {}
 ///
 /// - Does not support concurrent min-pop + max-pop from multiple threads.
 /// - Not thread-safe for mutation; external synchronization required.
-extension Heap.MinMax: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.MinMax: Sendable where Element: Sendable {}
 
 // MARK: - Push.Outcome Conditional Conformances
 

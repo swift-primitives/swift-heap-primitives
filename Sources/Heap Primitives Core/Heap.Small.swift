@@ -72,4 +72,4 @@ extension Heap where Element: ~Copyable {
 /// - Not safe for concurrent mutation on either the inline or spilled
 ///   path; single-owner is the only supported model.
 /// - Spill transitions are not atomic with respect to external observers.
-extension Heap.Small: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.Small: Sendable where Element: Sendable {}
