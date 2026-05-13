@@ -55,4 +55,4 @@ extension Heap.Min: Copyable where Element: Copyable {}
 ///
 /// - Not functional today; init traps.
 /// - No synchronization; same constraints as `Heap` will apply.
-extension Heap.Min: Sendable where Element: Sendable {}
+extension Heap.Min: @unsafe @unchecked Sendable where Element: Sendable {}
