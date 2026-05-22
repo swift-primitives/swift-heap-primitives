@@ -51,7 +51,7 @@ extension Heap.MinMax {
 /// ## Non-Goals
 ///
 /// - Not a concurrent min-max queue; external synchronization required.
-extension Heap.MinMax.Fixed: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.MinMax.Fixed: @unchecked Sendable where Element: Sendable {}
 
 /// Sendable conformance for `Heap.MinMax.Static`.
 ///
@@ -71,7 +71,7 @@ extension Heap.MinMax.Fixed: @unsafe @unchecked Sendable where Element: Sendable
 ///
 /// - Not shareable; inline storage is bound to the current owner.
 /// - No cross-thread mutation; single-owner is the sole supported model.
-extension Heap.MinMax.Static: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.MinMax.Static: @unchecked Sendable where Element: Sendable {}
 
 /// Sendable conformance for `Heap.MinMax.Small`.
 ///
@@ -90,7 +90,7 @@ extension Heap.MinMax.Static: @unsafe @unchecked Sendable where Element: Sendabl
 ///
 /// - Not a concurrent min-max queue.
 /// - Spill transitions are not synchronized against external observers.
-extension Heap.MinMax.Small: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Heap.MinMax.Small: @unchecked Sendable where Element: Sendable {}
 
 // MARK: - Error Type Aliases
 
