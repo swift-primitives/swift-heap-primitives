@@ -57,6 +57,7 @@ let package = Package(
         .package(path: "../swift-comparison-primitives"),
         .package(path: "../swift-index-primitives"),
         .package(path: "../swift-buffer-primitives"),
+        .package(path: "../swift-buffer-linear-primitives"),
         .package(path: "../swift-collection-primitives"),
         .package(path: "../swift-input-primitives"),
         .package(path: "../swift-property-primitives"),
@@ -70,9 +71,9 @@ let package = Package(
             dependencies: [
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Buffer Linear Primitives", package: "swift-buffer-primitives"),
-                .product(name: "Buffer Linear Inline Primitives", package: "swift-buffer-primitives"),
-                .product(name: "Buffer Linear Small Primitives", package: "swift-buffer-primitives"),
+                .product(name: "Buffer Linear Primitives", package: "swift-buffer-linear-primitives"),
+                .product(name: "Buffer Linear Inline Primitives", package: "swift-buffer-linear-primitives"),
+                .product(name: "Buffer Linear Small Primitives", package: "swift-buffer-linear-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
             ]
         ),
