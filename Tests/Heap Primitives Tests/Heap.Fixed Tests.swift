@@ -188,10 +188,12 @@ struct HeapFixedTests {
     }
 
     @Test
-    func `Sequence conformance`() throws {
+    func `Iterable conformance`() throws {
         let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
         var elements: [Int] = []
-        for element in heap {
+        // SE-0516 migration: `for-in` (Swift.Sequence) is the DEFERRED interop axis;
+        // multipass borrowing iteration is the inherited Iterable `forEach` floor.
+        heap.forEach { element in
             elements.append(element)
         }
         #expect(elements.count == 5)

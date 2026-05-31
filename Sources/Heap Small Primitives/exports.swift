@@ -9,9 +9,10 @@
 //
 // ===----------------------------------------------------------------------===//
 
-// Re-export core types
-@_exported public import Heap_Primitives_Core
+@_exported public import Heap_Small_Primitive
+@_exported public import Sequence_Primitives
 
 // Note: Heap.Small is unconditionally ~Copyable (due to deinit requirement),
-// so it cannot conform to Swift.Sequence which requires Copyable.
-// Use forEach { } for iteration instead of for-in loops.
+// so it conforms to Iterable (multipass borrowing) + Sequenceable (single-pass
+// consuming) — NOT Swift.Sequence. Use forEach { } for iteration instead of
+// for-in loops.

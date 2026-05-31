@@ -9,5 +9,5 @@
 //
 // ===----------------------------------------------------------------------===//
 
-// Re-export core types
-@_exported public import Heap_Primitives_Core
+@_exported public import Heap_Fixed_Primitive
+@_exported public import Sequence_Primitives

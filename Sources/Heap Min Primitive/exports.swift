@@ -9,10 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-@_exported public import Heap_Static_Primitive
-@_exported public import Sequence_Primitives
+// exports.swift
+// Re-exports for Heap Min Primitive (the single-ended min-heap stub type module).
 
-// Note: Heap.Static is unconditionally ~Copyable (due to deinit requirement),
-// so it conforms to Iterable (multipass borrowing) + Sequenceable (single-pass
-// consuming) — NOT Swift.Sequence. Use forEach { } for iteration instead of
-// for-in loops.
+@_exported public import Heap_Primitive
