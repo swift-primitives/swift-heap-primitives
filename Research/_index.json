@@ -17,18 +17,6 @@
       "tier": null,
       "scope": null,
       "version": "1.0.0"
-    },
-    {
-      "file": "heap-operations-audit.md",
-      "displayName": "heap-operations-audit.md",
-      "topic": "Inventories all public operations across every variant (Heap, Fixed, Static, Small, MinMax) and compares against canonical Heap/Priority Queue ADT operations. Identifies gaps in variant completeness and intentionally absent operations.",
-      "date": "2026-02-16",
-      "status": "RECOMMENDATION",
-      "statusDetail": null,
-      "statusRaw": "RECOMMENDATION",
-      "tier": null,
-      "scope": null,
-      "version": "1.0.0"
     }
   ]
 }
