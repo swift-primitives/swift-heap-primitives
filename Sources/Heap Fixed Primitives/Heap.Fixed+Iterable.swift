@@ -17,7 +17,7 @@ import Memory_Iterator_Primitives
 // MARK: - Iterable (multipass, borrowing)
 //
 // `makeIterator()` is vended FOR FREE by the memory→Iterable bridge over the
-// `Memory.Contiguous.Protocol` conformance (type module), yielding `Iterator.Chunk`.
+// `Span.`Protocol`` conformance (type module), yielding `Iterator.Chunk`.
 // `forEach` is inherited from the Iterable floor. Heap order, NOT sorted order.
 
 extension Heap.Fixed: Iterable where Element: ~Copyable {

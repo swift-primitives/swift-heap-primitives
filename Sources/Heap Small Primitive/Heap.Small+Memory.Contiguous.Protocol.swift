@@ -10,21 +10,21 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
-public import Memory_Contiguous_Primitives
+public import Span_Protocol_Primitives
 public import Buffer_Linear_Small_Primitive
 
-// MARK: - Memory.Contiguous.Protocol Conformance
+// MARK: - Span.`Protocol` Conformance
 //
 // Co-located with the type and its span witness ([MOD-036] refined-C). The
 // memory→Iterable bridge keys off this conformance to vend the borrowing
 // `Iterator.Chunk` when the type also declares `: Iterable` (ops module).
 // Elements are in heap order, NOT sorted order.
 
-extension Heap.Small: Memory.Contiguous.`Protocol` where Element: ~Copyable {
+extension Heap.Small: Span.`Protocol` where Element: ~Copyable {
     /// A read-only view of the heap's elements in heap order.
-    /// Witness for `Memory.Contiguous.Protocol`.
+    /// Witness for `Span.\`Protocol\``.
     @inlinable
-    public var span: Span<Element> {
+    public var span: Swift.Span<Element> {
         @_lifetime(borrow self)
         borrowing get {
             let span = _buffer.span

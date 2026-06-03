@@ -304,7 +304,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 
 // MARK: - Span Access
 //
-// The read-only `span` is the `Memory.Contiguous.Protocol` witness, co-located in
+// The read-only `span` is the `Span.`Protocol`` witness, co-located in
 // Heap.Small+Memory.Contiguous.Protocol.swift.
 
 extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {

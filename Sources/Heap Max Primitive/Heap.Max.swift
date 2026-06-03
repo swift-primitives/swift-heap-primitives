@@ -26,7 +26,7 @@ extension Heap where Element: ~Copyable {
     /// ## Iteration
     ///
     /// `Heap.Max` is a stub with no backing storage; it therefore carries no
-    /// iteration surface (no `Memory.Contiguous.Protocol` / `Iterable` /
+    /// iteration surface (no `Span.`Protocol`` / `Iterable` /
     /// `Sequenceable`). These conformances arrive when the type is realized.
     public struct Max: ~Copyable {
         // TODO: Implement max-only heap
