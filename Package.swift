@@ -58,7 +58,7 @@ let package = Package(
         .package(url: "https://github.com/swift-primitives/swift-sequence-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-iterator-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-memory-primitives.git", branch: "main"),
-        .package(path: "../swift-span-primitives"),
+        .package(url: "https://github.com/swift-primitives/swift-span-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-memory-iterator-primitives.git", branch: "main"),
     ],
     targets: [
