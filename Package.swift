@@ -49,17 +49,17 @@ let package = Package(
         // W2 mesh: buffer packages on their  worktrees so every path to memory
         // unifies on identity swift-memory-primitives (no url-form memory in the
         // graph => no 'multiple similar targets' collision).
-        .package(path: "../swift-buffer-primitives"),
-        .package(path: "../swift-buffer-linear-primitives"),
-        .package(path: "../swift-storage-primitives"),
+        .package(url: "https://github.com/swift-primitives/swift-buffer-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-buffer-linear-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-storage-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-collection-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-input-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-sequence-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-iterator-primitives.git", branch: "main"),
-        .package(path: "../swift-memory-primitives"),
+        .package(url: "https://github.com/swift-primitives/swift-memory-primitives.git", branch: "main"),
         .package(path: "../swift-span-primitives"),
-        .package(path: "../swift-memory-iterator-primitives"),
+        .package(url: "https://github.com/swift-primitives/swift-memory-iterator-primitives.git", branch: "main"),
     ],
     targets: [
 
