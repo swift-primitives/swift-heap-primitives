@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+import Storage_Heap_Primitives
 public import Buffer_Linear_Inline_Primitive
 
 extension Heap.MinMax {
@@ -24,12 +25,12 @@ extension Heap.MinMax {
         /// Element cleanup is handled by Storage.Inline's deinit.
 
         @usableFromInline
-        package var _buffer: Buffer<Element>.Linear.Inline<capacity>
+        package var _buffer: Buffer<Storage<Element>.Heap>.Linear.Inline<capacity>
 
         /// Creates an empty inline min-max heap.
         @inlinable
         public init() {
-            self._buffer = Buffer<Element>.Linear.Inline<capacity>()
+            self._buffer = Buffer<Storage<Element>.Heap>.Linear.Inline<capacity>()
         }
     }
 }

@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Sequence_Primitives
+import Storage_Heap_Primitives
 public import Heap_Small_Primitive
 public import Buffer_Linear_Small_Primitives
 
@@ -21,7 +22,7 @@ public import Buffer_Linear_Small_Primitives
 
 extension Heap.Small: Sequenceable where Element: Copyable {
     @_implements(Sequenceable, Iterator)
-    public typealias SequenceableIterator = Buffer<Element>.Linear.Small<inlineCapacity>.Scalar
+    public typealias SequenceableIterator = Buffer<Storage<Element>.Heap>.Linear.Small<inlineCapacity>.Scalar
 
     /// Returns the count as the underestimated count since we know the exact size.
     @inlinable

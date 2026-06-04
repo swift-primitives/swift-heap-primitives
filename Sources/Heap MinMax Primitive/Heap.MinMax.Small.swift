@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+import Storage_Heap_Primitives
 public import Buffer_Linear_Small_Primitive
 
 extension Heap.MinMax {
@@ -28,12 +29,12 @@ extension Heap.MinMax {
         /// Element cleanup is handled by Storage.Inline's deinit (inline path) or Storage.Heap's deinit (spilled path).
 
         @usableFromInline
-        package var _buffer: Buffer<Element>.Linear.Small<inlineCapacity>
+        package var _buffer: Buffer<Storage<Element>.Heap>.Linear.Small<inlineCapacity>
 
         /// Creates an empty small min-max heap.
         @inlinable
         public init() {
-            self._buffer = Buffer<Element>.Linear.Small<inlineCapacity>()
+            self._buffer = Buffer<Storage<Element>.Heap>.Linear.Small<inlineCapacity>()
         }
     }
 }

@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+import Storage_Heap_Primitives
 public import Buffer_Linear_Inline_Primitives
 
 extension Heap where Element: ~Copyable {
@@ -45,14 +46,14 @@ extension Heap where Element: ~Copyable {
         public let order: Order
 
         @usableFromInline
-        package var _buffer: Buffer<Element>.Linear.Inline<capacity>
+        package var _buffer: Buffer<Storage<Element>.Heap>.Linear.Inline<capacity>
 
         /// Creates an empty inline heap.
         ///
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
         @inlinable
         public init(order: Order = .ascending) {
-            self._buffer = Buffer<Element>.Linear.Inline<capacity>()
+            self._buffer = Buffer<Storage<Element>.Heap>.Linear.Inline<capacity>()
             self.order = order
         }
     }

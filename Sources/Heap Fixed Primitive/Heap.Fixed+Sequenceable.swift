@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+import Storage_Heap_Primitives
 public import Buffer_Linear_Bounded_Primitive
 public import Buffer_Linear_Bounded_Primitives
 
@@ -24,7 +25,7 @@ extension Heap.Fixed where Element: Copyable {
 
     /// A single-pass consuming iterator in heap order. Witness for `Sequenceable`.
     @inlinable
-    public consuming func makeIterator() -> Buffer<Element>.Linear.Bounded.Scalar {
+    public consuming func makeIterator() -> Buffer<Storage<Element>.Heap>.Linear.Bounded.Scalar {
         _buffer.makeIterator()
     }
 }

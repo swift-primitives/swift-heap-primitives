@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Buffer_Linear_Primitives
+import Storage_Heap_Primitives
 public import Heap_Primitive
 
 extension Heap where Element: ~Copyable {
@@ -52,7 +53,7 @@ extension Heap where Element: ~Copyable {
     /// `buildArray` is omitted because Swift's result-builder transform's
     /// buildArray step uses `Swift.Array<Component>`, which currently
     /// requires `Component: Copyable`. The component here is the
-    /// ~Copyable `Buffer<Element>.Linear`.
+    /// ~Copyable `Buffer<Storage<Element>.Heap>.Linear`.
     @resultBuilder
     public enum Builder {
 
@@ -61,24 +62,24 @@ extension Heap where Element: ~Copyable {
         @inlinable
         public static func buildExpression(
             _ expression: consuming Element
-        ) -> Buffer<Element>.Linear {
-            var result = Buffer<Element>.Linear(minimumCapacity: .one)
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            var result = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .one)
             result.append(consume expression)
             return result
         }
 
         @inlinable
         public static func buildExpression(
-            _ expression: consuming Buffer<Element>.Linear
-        ) -> Buffer<Element>.Linear {
+            _ expression: consuming Buffer<Storage<Element>.Heap>.Linear
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
             consume expression
         }
 
         @inlinable
         public static func buildExpression(
             _ expression: consuming Element?
-        ) -> Buffer<Element>.Linear {
-            var result = Buffer<Element>.Linear(minimumCapacity: .zero)
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            var result = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
             if let value = consume expression {
                 result.append(consume value)
             }
@@ -89,28 +90,28 @@ extension Heap where Element: ~Copyable {
 
         @inlinable
         public static func buildPartialBlock(
-            first: consuming Buffer<Element>.Linear
-        ) -> Buffer<Element>.Linear {
+            first: consuming Buffer<Storage<Element>.Heap>.Linear
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
             consume first
         }
 
         @inlinable
         public static func buildPartialBlock(
             first: Void
-        ) -> Buffer<Element>.Linear {
-            Buffer<Element>.Linear(minimumCapacity: .zero)
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
         }
 
         @inlinable
         public static func buildPartialBlock(
             first: Never
-        ) -> Buffer<Element>.Linear {}
+        ) -> Buffer<Storage<Element>.Heap>.Linear {}
 
         @inlinable
         public static func buildPartialBlock(
-            accumulated: consuming Buffer<Element>.Linear,
-            next: consuming Buffer<Element>.Linear
-        ) -> Buffer<Element>.Linear {
+            accumulated: consuming Buffer<Storage<Element>.Heap>.Linear,
+            next: consuming Buffer<Storage<Element>.Heap>.Linear
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
             var result = consume accumulated
             var rest = consume next
             while !rest.isEmpty {
@@ -122,33 +123,33 @@ extension Heap where Element: ~Copyable {
         // MARK: - Block Building
 
         @inlinable
-        public static func buildBlock() -> Buffer<Element>.Linear {
-            Buffer<Element>.Linear(minimumCapacity: .zero)
+        public static func buildBlock() -> Buffer<Storage<Element>.Heap>.Linear {
+            Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
         }
 
         // MARK: - Control Flow
 
         @inlinable
         public static func buildOptional(
-            _ component: consuming Buffer<Element>.Linear?
-        ) -> Buffer<Element>.Linear {
+            _ component: consuming Buffer<Storage<Element>.Heap>.Linear?
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
             if let result = consume component {
                 return consume result
             }
-            return Buffer<Element>.Linear(minimumCapacity: .zero)
+            return Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
         }
 
         @inlinable
         public static func buildEither(
-            first: consuming Buffer<Element>.Linear
-        ) -> Buffer<Element>.Linear {
+            first: consuming Buffer<Storage<Element>.Heap>.Linear
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
             consume first
         }
 
         @inlinable
         public static func buildEither(
-            second: consuming Buffer<Element>.Linear
-        ) -> Buffer<Element>.Linear {
+            second: consuming Buffer<Storage<Element>.Heap>.Linear
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
             consume second
         }
 
@@ -156,8 +157,8 @@ extension Heap where Element: ~Copyable {
 
         @inlinable
         public static func buildLimitedAvailability(
-            _ component: consuming Buffer<Element>.Linear
-        ) -> Buffer<Element>.Linear {
+            _ component: consuming Buffer<Storage<Element>.Heap>.Linear
+        ) -> Buffer<Storage<Element>.Heap>.Linear {
             consume component
         }
     }
@@ -193,7 +194,7 @@ extension Heap where Element: ~Copyable {
     @inlinable
     public init(
         order: Order = .ascending,
-        @Heap.Builder _ builder: () -> Buffer<Element>.Linear
+        @Heap.Builder _ builder: () -> Buffer<Storage<Element>.Heap>.Linear
     ) {
         var buffer = builder()
         self.init(order: order)
@@ -212,9 +213,9 @@ extension Heap.Builder where Element: Copyable {
     /// Bulk-add a Swift.Sequence without per-iteration allocation. The
     /// resulting elements are heapified in O(n) by the convenience init.
     @inlinable
-    public static func buildExpression<S: Swift.Sequence>(_ expression: S) -> Buffer<Element>.Linear
+    public static func buildExpression<S: Swift.Sequence>(_ expression: S) -> Buffer<Storage<Element>.Heap>.Linear
     where S.Element == Element {
-        var result = Buffer<Element>.Linear(minimumCapacity: .zero)
+        var result = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
         for value in expression {
             result.append(value)
         }

@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+import Storage_Heap_Primitives
 public import Heap_Fixed_Primitive
 public import Heap_Static_Primitive
 public import Heap_Small_Primitive
@@ -18,7 +19,7 @@ public import Buffer_Linear_Primitives
 // MARK: - Variant `@Heap.Builder` DSL inits
 //
 // Each capacity variant carries a thin `init(@Heap.Builder …)` that drains the
-// linear `Buffer<Element>.Linear` accumulator (from the shared `@Heap.Builder`
+// linear `Buffer<Storage<Element>.Heap>.Linear` accumulator (from the shared `@Heap.Builder`
 // grammar) through the variant's own `push`. Centralized here in the base ops
 // module (mirroring stack/set-ordered's Variants+Builder) because `Heap.Builder`
 // lives in this module while the variant types live in their own type modules.
@@ -32,7 +33,7 @@ extension Heap.Fixed where Element: ~Copyable {
     public init(
         capacity: Int,
         order: Heap<Element>.Order = .ascending,
-        @Heap<Element>.Builder _ builder: () -> Buffer<Element>.Linear
+        @Heap<Element>.Builder _ builder: () -> Buffer<Storage<Element>.Heap>.Linear
     ) throws(Self.Error) {
         var fixed = try Heap<Element>.Fixed(capacity: capacity, order: order)
         var buffer = builder()
@@ -59,7 +60,7 @@ extension Heap.Static where Element: ~Copyable {
     /// boundary.
     public init(
         order: Heap<Element>.Order = .ascending,
-        @Heap<Element>.Builder _ builder: () -> Buffer<Element>.Linear
+        @Heap<Element>.Builder _ builder: () -> Buffer<Storage<Element>.Heap>.Linear
     ) throws(Self.Error) {
         var buffer = builder()
         self.init(order: order)
@@ -83,7 +84,7 @@ extension Heap.Small where Element: ~Copyable {
     /// Non-throwing because Small spills inline capacity to the heap.
     public init(
         order: Heap<Element>.Order = .ascending,
-        @Heap<Element>.Builder _ builder: () -> Buffer<Element>.Linear
+        @Heap<Element>.Builder _ builder: () -> Buffer<Storage<Element>.Heap>.Linear
     ) {
         var buffer = builder()
         self.init(order: order)

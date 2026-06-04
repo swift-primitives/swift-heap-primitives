@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+import Storage_Heap_Primitives
 public import Buffer_Linear_Primitive
 public import Buffer_Linear_Primitives
 
@@ -24,7 +25,7 @@ extension Heap.MinMax where Element: Copyable {
 
     /// A single-pass consuming iterator in min-max heap order. Witness for `Sequenceable`.
     @inlinable
-    public consuming func makeIterator() -> Buffer<Element>.Linear.Scalar {
+    public consuming func makeIterator() -> Buffer<Storage<Element>.Heap>.Linear.Scalar {
         _buffer.makeIterator()
     }
 }
