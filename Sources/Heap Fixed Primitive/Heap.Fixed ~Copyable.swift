@@ -484,27 +484,40 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     ///
     /// - Warning: Modifying elements may break the heap invariant.
     ///   After modification, you may need to re-heapify.
+    ///
+    /// Rebuilt over `Buffer.Linear.Bounded`'s form-α `mutableSpan()` *method*
+    /// (D1; the underlying property was dropped at the ⑤-(N) reparam — a generic
+    /// substrate cannot vend a forwarding mutable-span property). The `<E>` pin is
+    /// satisfied concretely (`_buffer`'s substrate is `Storage<Element>.Heap`).
     @inlinable
     public var mutableSpan: MutableSpan<Element> {
-        mutating _read {
-            yield _buffer.mutableSpan
+        @_lifetime(&self)
+        mutating get {
+            _buffer.mutableSpan()
         }
+        @_lifetime(&self)
         _modify {
-            yield &_buffer.mutableSpan
+            var span = _buffer.mutableSpan()
+            yield &span
         }
     }
 }
 
 extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// A mutable view of the heap's elements (CoW-aware).
+    ///
+    /// Rebuilt over `Buffer.Linear.Bounded`'s form-α `mutableSpan()` *method* (D1).
     @inlinable
     public var mutableSpan: MutableSpan<Element> {
-        mutating _read {
-            yield _buffer.mutableSpan
+        @_lifetime(&self)
+        mutating get {
+            _buffer.mutableSpan()
         }
+        @_lifetime(&self)
         _modify {
             makeUnique()
-            yield &_buffer.mutableSpan
+            var span = _buffer.mutableSpan()
+            yield &span
         }
     }
 }
