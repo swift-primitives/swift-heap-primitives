@@ -315,7 +315,7 @@ extension HeapBuilderTests.StaticMethods {
     @Test
     func `buildExpression single element`() {
         var result = Heap<Int>.Builder.buildExpression(42)
-        // Result is a Buffer<Int>.Linear (intermediate type)
+        // Result is a Buffer<Storage<Int>.Heap>.Linear (intermediate type)
         #expect(!result.isEmpty)
         #expect(result.remove.first() == 42)
     }
@@ -329,7 +329,7 @@ extension HeapBuilderTests.StaticMethods {
 
     @Test
     func `buildOptional none returns empty buffer`() {
-        let component: Buffer<Int>.Linear? = nil
+        let component: Buffer<Storage<Int>.Heap>.Linear? = nil
         let result = Heap<Int>.Builder.buildOptional(component)
         let isEmpty = result.isEmpty
         #expect(isEmpty)
