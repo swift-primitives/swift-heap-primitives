@@ -9,9 +9,12 @@
 //
 // ===----------------------------------------------------------------------===//
 
-// exports.swift
-// Re-exports for Heap Static Primitive (the inline-storage heap type module).
+public import Heap_Primitive
 
-@_exported public import Heap_Primitive
-@_exported public import Buffer_Linear_Inline_Primitive
-@_exported public import Buffer_Linear_Inline_Primitives
+extension Heap.MinMax {
+    /// Errors that can occur during min-max heap operations.
+    public enum Error: Swift.Error, Sendable, Equatable {
+        /// An operation was attempted on an empty heap.
+        case empty
+    }
+}

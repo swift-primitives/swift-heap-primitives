@@ -75,33 +75,6 @@ extension Heap.MinMax.Fixed: @unchecked Sendable where Element: Sendable {}
 ///
 /// - Not shareable; inline storage is bound to the current owner.
 /// - No cross-thread mutation; single-owner is the sole supported model.
-extension Heap.MinMax.Static: @unchecked Sendable where Element: Sendable {}
-
-/// Sendable conformance for `Heap.MinMax.Small`.
-///
-/// ## Safety Invariant
-///
-/// `Heap.MinMax.Small` is `~Copyable` with inline-plus-spill storage.
-/// Unique ownership ensures the sender relinquishes access on move; the
-/// inline bytes and any spilled heap allocation transfer as one unit.
-///
-/// ## Intended Use
-///
-/// - Small-size-optimized double-ended priority queues moved between
-///   isolation domains.
-///
-/// ## Non-Goals
-///
-/// - Not a concurrent min-max queue.
-/// - Spill transitions are not synchronized against external observers.
-extension Heap.MinMax.Small: @unchecked Sendable where Element: Sendable {}
-
-// MARK: - Error Type Aliases
-
-extension Heap.MinMax {
-    /// Errors that can occur during min-max heap operations.
-    public typealias Error = Heap.Error
-}
 
 extension Heap.MinMax.Fixed {
     /// Errors that can occur during fixed min-max heap operations.
