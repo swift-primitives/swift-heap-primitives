@@ -10,6 +10,10 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+public import Storage_Small_Primitives
+public import Storage_Primitive
+public import Buffer_Linear_Primitive
+public import Buffer_Linear_Primitives
 import Storage_Heap_Primitives
 public import Buffer_Linear_Small_Primitives
 
@@ -42,14 +46,14 @@ extension Heap where Element: ~Copyable {
         public let order: Order
 
         @usableFromInline
-        package var _buffer: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Small<inlineCapacity>
+        package var _buffer: Buffer<Storage<Element>.Small<inlineCapacity>>.Linear
 
         /// Creates an empty small heap.
         ///
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
         @inlinable
         public init(order: Order = .ascending) {
-            self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Small<inlineCapacity>()
+            self._buffer = Buffer<Storage<Element>.Small<inlineCapacity>>.Linear()
             self.order = order
         }
     }

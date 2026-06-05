@@ -10,6 +10,10 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+public import Storage_Small_Primitives
+public import Storage_Primitive
+public import Buffer_Linear_Primitive
+public import Buffer_Linear_Primitives
 public import Buffer_Linear_Small_Primitive
 public import Buffer_Linear_Small_Primitives
 public import Property_Primitives
@@ -66,7 +70,7 @@ where
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        base.value._buffer.remove.all()
+        base.value._buffer.removeAll()
     }
 }
 
@@ -87,7 +91,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Whether the heap is currently using heap storage.
     @inlinable
-    public var isSpilled: Bool { _buffer.isSpilled }
+    public var isSpilled: Bool { _buffer.substrate.isSpilled }
 }
 
 // MARK: - Internal Heap Operations
@@ -107,13 +111,13 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
         guard !isEmpty else { return nil }
 
         if count == .one {
-            return _buffer.remove.last()
+            return _buffer.removeLast()
         }
 
         // Swap root with last, remove last, trickle down
         let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
         _buffer.swap(at: .zero, with: lastIndex)
-        let removed = _buffer.remove.last()
+        let removed = _buffer.removeLast()
         trickleDown(.zero)
         return removed
     }
@@ -297,7 +301,7 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     public mutating func truncate(to newCount: Heap.Index.Count) {
         guard newCount < count else { return }
         while count > newCount {
-            _ = _buffer.remove.last()
+            _ = _buffer.removeLast()
         }
     }
 }
@@ -315,11 +319,12 @@ extension Heap.Small where Element: ~Copyable & Comparison.`Protocol` {
     public var mutableSpan: MutableSpan<Element> {
         @_lifetime(&self)
         mutating get {
-            _buffer.mutableSpan
+            _buffer.mutableSpan()
         }
         @_lifetime(&self)
         _modify {
-            yield &_buffer.mutableSpan
+            var span = _buffer.mutableSpan()
+            yield &span
         }
     }
 }

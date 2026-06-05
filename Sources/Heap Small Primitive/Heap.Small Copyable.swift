@@ -10,6 +10,10 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+public import Storage_Small_Primitives
+public import Storage_Primitive
+public import Buffer_Linear_Primitive
+public import Buffer_Linear_Primitives
 import Buffer_Linear_Small_Primitives
 
 // MARK: - Peek (Copyable elements)
@@ -42,7 +46,7 @@ extension Heap.Small where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
         while !isEmpty {
-            body(_buffer.remove.last())
+            body(_buffer.removeLast())
         }
     }
 
