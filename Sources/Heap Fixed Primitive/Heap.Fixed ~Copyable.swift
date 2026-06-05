@@ -488,7 +488,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Rebuilt over `Buffer.Linear.Bounded`'s form-α `mutableSpan()` *method*
     /// (D1; the underlying property was dropped at the ⑤-(N) reparam — a generic
     /// substrate cannot vend a forwarding mutable-span property). The `<E>` pin is
-    /// satisfied concretely (`_buffer`'s substrate is `Storage<Element>.Heap`).
+    /// satisfied concretely (`_buffer`'s substrate is `Storage<Element>.Contiguous<Memory.Heap<Element>>`).
     @inlinable
     public var mutableSpan: MutableSpan<Element> {
         @_lifetime(&self)

@@ -10,6 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Buffer_Linear_Primitive
+public import Memory_Heap_Primitives
+public import Storage_Contiguous_Primitives
 import Storage_Heap_Primitives
 public import Buffer_Linear_Primitives
 
@@ -25,7 +27,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
 
     /// A single-pass consuming iterator in heap order. Witness for `Sequenceable`.
     @inlinable
-    public consuming func makeIterator() -> Buffer<Storage<Element>.Heap>.Linear.Scalar {
+    public consuming func makeIterator() -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Scalar {
         _buffer.makeIterator()
     }
 }

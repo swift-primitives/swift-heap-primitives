@@ -106,7 +106,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     /// sequence-family conformances in the ops module reach this storage
     /// only through the public `span` / `makeIterator` witnesses.
     @usableFromInline
-    package var _buffer: Buffer<Storage<Element>.Heap>.Linear
+    package var _buffer: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
 
     // MARK: - Init
 
@@ -116,7 +116,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     @inlinable
     public init(order: Order = .ascending) {
         self.order = order
-        self._buffer = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+        self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
     }
 
     // MARK: - Fixed Capacity Heap
@@ -136,7 +136,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         }
 
         @usableFromInline
-        package var _buffer: Buffer<Storage<Element>.Heap>.Linear.Bounded
+        package var _buffer: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Bounded
 
         /// The ordering direction for this heap.
         public let order: Order
@@ -156,7 +156,7 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
                 throw .invalidCapacity
             }
             // Boundary: Int → typed count. Cardinal(UInt(...)) is the canonical Int→Cardinal path.
-            self._buffer = Buffer<Storage<Element>.Heap>.Linear.Bounded(
+            self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Bounded(
                 minimumCapacity: Heap.Index.Count(_unchecked: Cardinal(UInt(capacity)))
             )
             self.order = order
@@ -191,12 +191,12 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
     @safe
     public struct MinMax: ~Copyable {
         @usableFromInline
-        package var _buffer: Buffer<Storage<Element>.Heap>.Linear
+        package var _buffer: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
 
         /// Creates an empty min-max heap.
         @inlinable
         public init() {
-            self._buffer = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+            self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
         }
     }
 
@@ -240,7 +240,7 @@ extension Heap.MinMax: Copyable where Element: Copyable {}
 /// `Heap` is `~Copyable` (move-only), so at most one owner exists at any point.
 /// Sending across threads is sound because the compiler enforces that the
 /// sender loses access after the move — there is no aliasing to race on.
-/// The internal `Buffer<Storage<Element>.Heap>.Linear` is owned exclusively by the heap
+/// The internal `Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear` is owned exclusively by the heap
 /// and moves with it.
 ///
 /// ## Intended Use
@@ -261,7 +261,7 @@ extension Heap: @unsafe @unchecked Sendable where Element: Sendable {}
 /// ## Safety Invariant
 ///
 /// `Heap.Fixed` is `~Copyable`. Single ownership is enforced by the type
-/// system; the fixed-capacity `Buffer<Storage<Element>.Heap>.Linear.Bounded` it owns
+/// system; the fixed-capacity `Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Bounded` it owns
 /// transfers with it across isolation boundaries.
 ///
 /// ## Intended Use
@@ -280,7 +280,7 @@ extension Heap.Fixed: @unsafe @unchecked Sendable where Element: Sendable {}
 ///
 /// ## Safety Invariant
 ///
-/// `Heap.MinMax` is `~Copyable`; its backing `Buffer<Storage<Element>.Heap>.Linear`
+/// `Heap.MinMax` is `~Copyable`; its backing `Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear`
 /// transfers under unique ownership. Cross-thread sends relinquish the
 /// sender's access, preventing data races by construction.
 ///

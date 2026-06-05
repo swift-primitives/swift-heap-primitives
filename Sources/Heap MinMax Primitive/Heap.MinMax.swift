@@ -14,6 +14,8 @@
 // nested types and extensions for the MinMax heap.
 
 public import Heap_Primitive
+public import Memory_Heap_Primitives
+public import Storage_Contiguous_Primitives
 import Storage_Heap_Primitives
 public import Buffer_Linear_Primitives
 public import Property_Primitives
@@ -157,7 +159,7 @@ where
     public func all(keepingCapacity: Bool = false) {
         base.value._buffer.remove.all()
         if !keepingCapacity {
-            unsafe (base.value._buffer = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero))
+            unsafe (base.value._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero))
         }
     }
 }

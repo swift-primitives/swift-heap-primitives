@@ -10,6 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
+public import Memory_Heap_Primitives
+public import Storage_Contiguous_Primitives
 import Storage_Heap_Primitives
 public import Buffer_Linear_Bounded_Primitive
 import Index_Primitives
@@ -22,7 +24,7 @@ extension Heap.MinMax {
     @safe
     public struct Fixed: ~Copyable {
         @usableFromInline
-        package var _buffer: Buffer<Storage<Element>.Heap>.Linear.Bounded
+        package var _buffer: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Bounded
 
         /// Creates an empty fixed-capacity min-max heap.
         ///
@@ -33,7 +35,7 @@ extension Heap.MinMax {
             guard capacity >= 0 else {
                 throw .invalidCapacity
             }
-            self._buffer = Buffer<Storage<Element>.Heap>.Linear.Bounded(
+            self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Bounded(
                 minimumCapacity: Heap.Index.Count(_unchecked: Cardinal(UInt(capacity)))
             )
         }

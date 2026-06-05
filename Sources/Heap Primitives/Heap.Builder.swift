@@ -53,7 +53,7 @@ extension Heap where Element: ~Copyable {
     /// `buildArray` is omitted because Swift's result-builder transform's
     /// buildArray step uses `Swift.Array<Component>`, which currently
     /// requires `Component: Copyable`. The component here is the
-    /// ~Copyable `Buffer<Storage<Element>.Heap>.Linear`.
+    /// ~Copyable `Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear`.
     @resultBuilder
     public enum Builder {
 
@@ -62,24 +62,24 @@ extension Heap where Element: ~Copyable {
         @inlinable
         public static func buildExpression(
             _ expression: consuming Element
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
-            var result = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .one)
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
+            var result = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .one)
             result.append(consume expression)
             return result
         }
 
         @inlinable
         public static func buildExpression(
-            _ expression: consuming Buffer<Storage<Element>.Heap>.Linear
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            _ expression: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
             consume expression
         }
 
         @inlinable
         public static func buildExpression(
             _ expression: consuming Element?
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
-            var result = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
+            var result = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
             if let value = consume expression {
                 result.append(consume value)
             }
@@ -90,28 +90,28 @@ extension Heap where Element: ~Copyable {
 
         @inlinable
         public static func buildPartialBlock(
-            first: consuming Buffer<Storage<Element>.Heap>.Linear
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            first: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
             consume first
         }
 
         @inlinable
         public static func buildPartialBlock(
             first: Void
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
-            Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
+            Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
         }
 
         @inlinable
         public static func buildPartialBlock(
             first: Never
-        ) -> Buffer<Storage<Element>.Heap>.Linear {}
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {}
 
         @inlinable
         public static func buildPartialBlock(
-            accumulated: consuming Buffer<Storage<Element>.Heap>.Linear,
-            next: consuming Buffer<Storage<Element>.Heap>.Linear
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            accumulated: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear,
+            next: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
             var result = consume accumulated
             var rest = consume next
             while !rest.isEmpty {
@@ -123,33 +123,33 @@ extension Heap where Element: ~Copyable {
         // MARK: - Block Building
 
         @inlinable
-        public static func buildBlock() -> Buffer<Storage<Element>.Heap>.Linear {
-            Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+        public static func buildBlock() -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
+            Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
         }
 
         // MARK: - Control Flow
 
         @inlinable
         public static func buildOptional(
-            _ component: consuming Buffer<Storage<Element>.Heap>.Linear?
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            _ component: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear?
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
             if let result = consume component {
                 return consume result
             }
-            return Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+            return Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
         }
 
         @inlinable
         public static func buildEither(
-            first: consuming Buffer<Storage<Element>.Heap>.Linear
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            first: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
             consume first
         }
 
         @inlinable
         public static func buildEither(
-            second: consuming Buffer<Storage<Element>.Heap>.Linear
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            second: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
             consume second
         }
 
@@ -157,8 +157,8 @@ extension Heap where Element: ~Copyable {
 
         @inlinable
         public static func buildLimitedAvailability(
-            _ component: consuming Buffer<Storage<Element>.Heap>.Linear
-        ) -> Buffer<Storage<Element>.Heap>.Linear {
+            _ component: consuming Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
+        ) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
             consume component
         }
     }
@@ -194,7 +194,7 @@ extension Heap where Element: ~Copyable {
     @inlinable
     public init(
         order: Order = .ascending,
-        @Heap.Builder _ builder: () -> Buffer<Storage<Element>.Heap>.Linear
+        @Heap.Builder _ builder: () -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
     ) {
         var buffer = builder()
         self.init(order: order)
@@ -213,9 +213,9 @@ extension Heap.Builder where Element: Copyable {
     /// Bulk-add a Swift.Sequence without per-iteration allocation. The
     /// resulting elements are heapified in O(n) by the convenience init.
     @inlinable
-    public static func buildExpression<S: Swift.Sequence>(_ expression: S) -> Buffer<Storage<Element>.Heap>.Linear
+    public static func buildExpression<S: Swift.Sequence>(_ expression: S) -> Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear
     where S.Element == Element {
-        var result = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+        var result = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
         for value in expression {
             result.append(value)
         }

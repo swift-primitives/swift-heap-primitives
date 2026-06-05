@@ -36,20 +36,20 @@ extension Heap where Element: ~Copyable {
             case empty
         }
 
-        /// Element cleanup is handled by Storage.Inline's deinit (inline path) or Storage.Heap's deinit (spilled path).
+        /// Element cleanup is handled by Storage.Inline's deinit (inline path) or Storage.Contiguous<Memory.Heap>'s deinit (spilled path).
 
         /// The ordering direction for this heap.
         public let order: Order
 
         @usableFromInline
-        package var _buffer: Buffer<Storage<Element>.Heap>.Linear.Small<inlineCapacity>
+        package var _buffer: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Small<inlineCapacity>
 
         /// Creates an empty small heap.
         ///
         /// - Parameter order: The ordering direction. Defaults to `.ascending` (min-heap).
         @inlinable
         public init(order: Order = .ascending) {
-            self._buffer = Buffer<Storage<Element>.Heap>.Linear.Small<inlineCapacity>()
+            self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Small<inlineCapacity>()
             self.order = order
         }
     }

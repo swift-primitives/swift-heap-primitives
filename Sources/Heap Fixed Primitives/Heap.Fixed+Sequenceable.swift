@@ -10,6 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Sequence_Primitives
+public import Memory_Heap_Primitives
+public import Storage_Contiguous_Primitives
 import Storage_Heap_Primitives
 public import Heap_Fixed_Primitive
 public import Buffer_Linear_Bounded_Primitive
@@ -23,7 +25,7 @@ public import Buffer_Linear_Bounded_Primitives
 
 extension Heap.Fixed: Sequenceable where Element: Copyable {
     @_implements(Sequenceable, Iterator)
-    public typealias SequenceableIterator = Buffer<Storage<Element>.Heap>.Linear.Bounded.Scalar
+    public typealias SequenceableIterator = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Bounded.Scalar
 
     /// Returns the count as the underestimated count since we know the exact size.
     @inlinable

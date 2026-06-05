@@ -10,6 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Sequence_Primitives
+public import Memory_Heap_Primitives
+public import Storage_Contiguous_Primitives
 import Storage_Heap_Primitives
 public import Heap_MinMax_Primitive
 public import Buffer_Linear_Primitive
@@ -23,7 +25,7 @@ public import Buffer_Linear_Primitives
 
 extension Heap.MinMax: Sequenceable where Element: Copyable {
     @_implements(Sequenceable, Iterator)
-    public typealias SequenceableIterator = Buffer<Storage<Element>.Heap>.Linear.Scalar
+    public typealias SequenceableIterator = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear.Scalar
 
     /// Returns the count as the underestimated count since we know the exact size.
     @inlinable

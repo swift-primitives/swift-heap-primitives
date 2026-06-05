@@ -10,6 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Buffer_Linear_Primitives
+public import Memory_Heap_Primitives
+public import Storage_Contiguous_Primitives
 import Storage_Heap_Primitives
 internal import Property_Primitives
 
@@ -25,7 +27,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public init(_ elements: some Swift.Sequence<Element>, order: Order = .ascending) {
         self.order = order
-        self._buffer = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: .zero)
+        self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
 
         for element in elements {
             appendWithoutHeapify(element)
@@ -85,8 +87,8 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     ///
     /// - Complexity: O(n) to copy elements.
     @inlinable
-    public var unordered: Buffer<Storage<Element>.Heap>.Linear {
-        var result = Buffer<Storage<Element>.Heap>.Linear(minimumCapacity: count)
+    public var unordered: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
+        var result = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: count)
         var idx: Heap.Index = .zero
         let end = count.map(Ordinal.init)
         while idx < end {
