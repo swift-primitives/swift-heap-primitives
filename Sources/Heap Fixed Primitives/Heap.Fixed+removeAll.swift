@@ -9,17 +9,16 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Heap_MinMax_Primitive
-import Sequence_Primitives
+public import Heap_Fixed_Primitive
 
-// MARK: - Sequence.Clearable Conformance
+// MARK: - removeAll()
 
-extension Heap.MinMax: Sequence.Clearable where Element: Copyable & Comparison.`Protocol` {
+extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Removes all elements from the heap.
     ///
-    /// This enables `.forEach.consuming { }` pattern via `Property.Inout` extension.
+    /// The capacity remains unchanged (fixed-capacity heap).
     @inlinable
     public mutating func removeAll() {
-        remove.all(keepingCapacity: false)
+        remove.all()
     }
 }

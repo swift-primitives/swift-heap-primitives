@@ -10,14 +10,11 @@
 // ===----------------------------------------------------------------------===//
 
 public import Heap_Primitive
-import Sequence_Primitives
 
-// MARK: - Sequence.Clearable Conformance
+// MARK: - removeAll()
 
-extension Heap: Sequence.Clearable where Element: Copyable & Comparison.`Protocol` {
+extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// Removes all elements from the heap.
-    ///
-    /// This enables `.forEach.consuming { }` pattern via `Property.Inout` extension.
     @inlinable
     public mutating func removeAll() {
         remove.all(keepingCapacity: false)
