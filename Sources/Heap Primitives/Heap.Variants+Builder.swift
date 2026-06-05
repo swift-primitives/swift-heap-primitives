@@ -12,8 +12,6 @@
 public import Heap_Primitive
 import Storage_Heap_Primitives
 public import Heap_Fixed_Primitive
-public import Heap_Static_Primitive
-public import Heap_Small_Primitive
 public import Buffer_Linear_Primitives
 
 // MARK: - Variant `@Heap.Builder` DSL inits

@@ -19,8 +19,6 @@
 
 @_exported public import Heap_Primitive
 @_exported public import Heap_Fixed_Primitives
-@_exported public import Heap_Static_Primitives
-@_exported public import Heap_Small_Primitives
 @_exported public import Heap_Min_Primitives
 @_exported public import Heap_Max_Primitives
 @_exported public import Heap_MinMax_Primitives
