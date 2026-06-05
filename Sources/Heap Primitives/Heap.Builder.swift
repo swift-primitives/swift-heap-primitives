@@ -10,7 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Buffer_Linear_Primitives
-import Storage_Heap_Primitives
+import Storage_Contiguous_Primitives
 public import Heap_Primitive
 
 extension Heap where Element: ~Copyable {

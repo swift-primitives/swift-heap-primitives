@@ -10,7 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Buffer_Linear_Primitive
-import Storage_Heap_Primitives
+import Storage_Contiguous_Primitives
 public import Buffer_Linear_Primitives
 public import Comparison_Primitives
 public import Index_Primitives

@@ -12,7 +12,7 @@
 public import Buffer_Linear_Primitives
 public import Memory_Heap_Primitives
 public import Storage_Contiguous_Primitives
-import Storage_Heap_Primitives
+import Storage_Contiguous_Primitives
 internal import Property_Primitives
 
 // MARK: - Sequence Init (Copyable only)
