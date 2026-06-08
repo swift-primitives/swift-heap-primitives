@@ -57,33 +57,10 @@ extension Heap.MinMax {
 /// - Not a concurrent min-max queue; external synchronization required.
 extension Heap.MinMax.Fixed: @unchecked Sendable where Element: Sendable {}
 
-/// Sendable conformance for `Heap.MinMax.Static`.
-///
-/// ## Safety Invariant
-///
-/// `Heap.MinMax.Static` is `~Copyable` with compile-time capacity and
-/// inline storage. Single ownership guarantees cross-thread transfer is
-/// sound; no heap allocation is involved.
-///
-/// ## Intended Use
-///
-/// - Stack-allocated double-ended priority queues transferred across
-///   isolation boundaries during setup.
-/// - Zero-allocation min-max heaps moved between phases of a pipeline.
-///
-/// ## Non-Goals
-///
-/// - Not shareable; inline storage is bound to the current owner.
-/// - No cross-thread mutation; single-owner is the sole supported model.
-
 extension Heap.MinMax.Fixed {
     /// Errors that can occur during fixed min-max heap operations.
     public typealias Error = Heap.Fixed.Error
 }
-
-// Note: Heap.MinMax.Static and Heap.MinMax.Small define their own Error enums
-// in their respective struct bodies because they have value generic parameters
-// that would require explicit generic arguments when referencing the base types.
 
 // MARK: - Property Typealias
 

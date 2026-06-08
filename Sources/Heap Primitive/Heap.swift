@@ -228,9 +228,6 @@ extension Heap.Fixed: Copyable where Element: Copyable {}
 /// `Heap.MinMax` is `Copyable` when its elements are `Copyable`.
 extension Heap.MinMax: Copyable where Element: Copyable {}
 
-// Note: Heap.Static is UNCONDITIONALLY ~Copyable due to deinit requirement.
-// Note: Heap.Small is UNCONDITIONALLY ~Copyable due to deinit requirement.
-
 // MARK: - Sendable
 
 /// Sendable conformance for `Heap`.
