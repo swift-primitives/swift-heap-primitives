@@ -306,6 +306,25 @@ extension HeapBuilderTests.Integration {
         let popped = try HeapBuilderTests.drainPopOrder(heap)
         #expect(popped == [1, 3, 5, 8, 10])
     }
+
+    @Test
+    func `Builder-built Copyable heap supports CoW copies`() throws {
+        // Regression: the convenience init's Copyable twin constructs through
+        // the clone-capturing path — a copy of a builder-built heap must
+        // detach on mutation, not trap on a clone-less shared box.
+        let original = Heap<Int> {
+            5
+            1
+            3
+        }
+        var copy = original
+        copy.push(0)
+        #expect(try copy.pop() == 0)
+        #expect(try copy.pop() == 1)
+        let originalPeek = original.peek
+        #expect(originalPeek == 1)  // original untouched
+        #expect(Int(bitPattern: original.count) == 3)
+    }
 }
 
 // MARK: - Static Method Tests
@@ -315,9 +334,12 @@ extension HeapBuilderTests.StaticMethods {
     @Test
     func `buildExpression single element`() {
         var result = Heap<Int>.Builder.buildExpression(42)
-        // Result is a Buffer<Storage<Int>.Contiguous<Memory.Heap<Int>>>.Linear (intermediate type)
-        #expect(!result.isEmpty)
-        #expect(result.remove.first() == 42)
+        // Result is a Column.Heap<Int> (intermediate type, ~Copyable):
+        // #expect cannot capture it — bind copyable locals.
+        let isEmpty = result.isEmpty
+        #expect(!isEmpty)
+        let first = result.remove.first()
+        #expect(first == 42)
     }
 
     @Test
@@ -329,8 +351,9 @@ extension HeapBuilderTests.StaticMethods {
 
     @Test
     func `buildOptional none returns empty buffer`() {
-        let component: Buffer<Storage<Int>.Contiguous<Memory.Heap<Int>>>.Linear? = nil
-        let result = Heap<Int>.Builder.buildOptional(component)
+        // nil literal: the parameter type (the Column.Heap<Int> accumulator)
+        // binds the optional without spelling the substrate here.
+        let result = Heap<Int>.Builder.buildOptional(nil)
         let isEmpty = result.isEmpty
         #expect(isEmpty)
     }

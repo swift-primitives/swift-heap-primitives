@@ -175,6 +175,33 @@ struct HeapFixedTests {
     }
 
     @Test
+    func `Copies share storage until mutation, and the CoW detach preserves capacity`() throws {
+        var a = try Heap<Int>.Fixed(capacity: 4, order: .ascending)
+        _ = a.push(2)
+        _ = a.push(1)
+
+        // Copy shares the box; the first mutation of `b` detaches through the
+        // CAPACITY-PRESERVING clone (a shrink-to-fit copy would make the
+        // in-contract pushes below overflow).
+        var b = a
+        _ = b.push(3)
+        #expect(Int(bitPattern: a.count) == 2)  // a untouched by b's mutation
+        #expect(Int(bitPattern: b.count) == 3)
+        #expect(Int(bitPattern: b.capacity) == 4)
+
+        let outcome = b.push(4)  // still in-contract after the detach
+        switch outcome {
+        case .inserted:
+            break  // Expected
+        case .overflow:
+            Issue.record("Expected .inserted but got .overflow")
+        }
+        #expect(b.isFull == true)
+        #expect(a.peek == 1)
+        #expect(b.peek == 1)
+    }
+
+    @Test
     func `Init from sequence`() throws {
         let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
         #expect(Int(heap.count.underlying.rawValue) == 5)
@@ -188,11 +215,12 @@ struct HeapFixedTests {
     }
 
     @Test
-    func `Iterable conformance`() throws {
+    func `forEach traverses all elements`() throws {
         let heap = try Heap<Int>.Fixed([5, 3, 7, 1, 9], capacity: 10, order: .ascending)
         var elements: [Int] = []
-        // SE-0516 migration: `for-in` (Swift.Sequence) is the DEFERRED interop axis;
-        // multipass borrowing iteration is the inherited Iterable `forEach` floor.
+        // The `Iterable` lattice membership is withdrawn at the A-1 reshape
+        // (the stored Shared column has no returning span); `forEach` survives
+        // as a plain member over the column's scoped borrowing access.
         heap.forEach { element in
             elements.append(element)
         }

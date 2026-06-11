@@ -9,12 +9,22 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Buffer_Linear_Primitives
+public import Buffer_Linear_Primitive
 public import Memory_Heap_Primitives
 public import Storage_Contiguous_Primitives
-import Storage_Contiguous_Primitives
+public import Column_Primitives
+public import Shared_Primitive
 public import Property_Primitives
 import Index_Primitives
+
+// The base operation surface, generic over element copyability. Every mutation
+// crosses the stored `Shared` column through the gate-first scoped accessor
+// (`withUnique` — a no-op gate on the statically-unique `~Copyable`-element
+// lane, the CoW restore on the `Copyable`-element lane), so ONE body serves
+// both lanes; the hand-rolled `ensureUnique` CoW and its `Copyable` shadow
+// methods are deleted (the A-1 reshape — `Shared` supplies CoW). The sift
+// algorithms run INSIDE the gate as static column-level functions: one gate
+// per semantic mutation, not one per element access.
 
 // MARK: - Namespaces
 
@@ -44,58 +54,32 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     public var isEmpty: Bool { _buffer.isEmpty }
 }
 
-// MARK: - Core Operations (Internal)
+// MARK: - Column-Level Heap Algorithms (static; run inside the withUnique gate)
+//
+// The former mutating sift methods restructured as static functions over the
+// open column: a mutating method on `self` cannot run inside the gate (the
+// closure already holds exclusive access to `_buffer`), so the algorithms
+// take the uniquely-held column `inout` and the order by value.
 
 extension Heap where Element: ~Copyable & Comparison.`Protocol` {
-    /// Appends element without maintaining heap property (for bulk init).
-    @usableFromInline
-    package mutating func appendWithoutHeapify(_ element: consuming Element) {
-        _buffer.append(element)
-    }
-
-    /// Inserts an element and restores heap property.
-    @usableFromInline
-    package mutating func insert(_ element: consuming Element) {
-        let insertionIndex = _buffer.count.map(Ordinal.init)
-        _buffer.append(element)
-        bubbleUp(insertionIndex)
-    }
-
-    /// Removes and returns the priority element (min for ascending, max for descending).
-    @usableFromInline
-    package mutating func removePriority() -> Element? {
-        guard !isEmpty else { return nil }
-
-        if count == .one {
-            return _buffer.remove.last()
-        }
-
-        // Swap root with last, remove last, trickle down
-        let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
-        _buffer.swap(at: .zero, with: lastIndex)
-        let removed = _buffer.remove.last()
-        trickleDown(.zero)
-        return removed
-    }
-}
-
-// MARK: - Bubble Up (Single-Ended Heap)
-
-extension Heap where Element: ~Copyable & Comparison.`Protocol` {
-    /// Restores heap property by moving element up.
+    /// Restores heap property by moving the element at `index` up.
     ///
     /// For ascending order (min-heap): element bubbles up while smaller than parent.
     /// For descending order (max-heap): element bubbles up while larger than parent.
     @usableFromInline
-    package mutating func bubbleUp(_ index: Heap.Index) {
+    package static func bubbleUp(
+        _ column: inout Column.Heap<Element>,
+        at index: Heap.Index,
+        order: Order
+    ) {
         var current = index
-        let nav = navigate
+        let nav = Navigate(_count: column.count)
 
         switch order {
         case .ascending:
             while let parent = nav.parent(of: current) {
-                if _buffer[current] < _buffer[parent] {
-                    _buffer.swap(at: current, with: parent)
+                if column[current] < column[parent] {
+                    column.swap(at: current, with: parent)
                     current = parent
                 } else {
                     break
@@ -103,8 +87,8 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             }
         case .descending:
             while let parent = nav.parent(of: current) {
-                if _buffer[parent] < _buffer[current] {
-                    _buffer.swap(at: current, with: parent)
+                if column[parent] < column[current] {
+                    column.swap(at: current, with: parent)
                     current = parent
                 } else {
                     break
@@ -112,37 +96,37 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             }
         }
     }
-}
 
-// MARK: - Trickle Down (Single-Ended Heap)
-
-extension Heap where Element: ~Copyable & Comparison.`Protocol` {
-    /// Restores heap property by moving element down.
+    /// Restores heap property by moving the element at `startIndex` down.
     ///
     /// For ascending order (min-heap): element trickles down to larger of children.
     /// For descending order (max-heap): element trickles down to smaller of children.
     @usableFromInline
-    package mutating func trickleDown(_ startIndex: Heap.Index) {
+    package static func trickleDown(
+        _ column: inout Column.Heap<Element>,
+        at startIndex: Heap.Index,
+        order: Order
+    ) {
         var current = startIndex
-        let nav = navigate
+        let nav = Navigate(_count: column.count)
 
         switch order {
         case .ascending:
             while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
-                if _buffer[leftChild] < _buffer[smallest] {
+                if column[leftChild] < column[smallest] {
                     smallest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if _buffer[rightChild] < _buffer[smallest] {
+                    if column[rightChild] < column[smallest] {
                         smallest = rightChild
                     }
                 }
 
                 if smallest == current { break }
 
-                _buffer.swap(at: current, with: smallest)
+                column.swap(at: current, with: smallest)
                 current = smallest
             }
 
@@ -150,36 +134,96 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
             while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
-                if _buffer[largest] < _buffer[leftChild] {
+                if column[largest] < column[leftChild] {
                     largest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if _buffer[largest] < _buffer[rightChild] {
+                    if column[largest] < column[rightChild] {
                         largest = rightChild
                     }
                 }
 
                 if largest == current { break }
 
-                _buffer.swap(at: current, with: largest)
+                column.swap(at: current, with: largest)
                 current = largest
             }
         }
     }
-}
 
-// MARK: - Heapify (Floyd's Algorithm)
-
-extension Heap where Element: ~Copyable & Comparison.`Protocol` {
-    /// Converts storage to valid heap in O(n).
+    /// Converts column contents to a valid heap in O(n) (Floyd's algorithm).
     @usableFromInline
-    package mutating func heapify() {
-        guard var idx = navigate.lastNonLeaf else { return }
+    package static func heapify(
+        _ column: inout Column.Heap<Element>,
+        order: Order
+    ) {
+        guard var idx = Navigate(_count: column.count).lastNonLeaf else { return }
         while true {
-            trickleDown(idx)
+            Self.trickleDown(&column, at: idx, order: order)
             guard idx > .zero else { break }
             idx = try! idx.predecessor.exact()
         }
+    }
+
+    /// Removes and returns the priority element from the open column
+    /// (min for ascending, max for descending).
+    @usableFromInline
+    package static func removePriority(
+        from column: inout Column.Heap<Element>,
+        order: Order
+    ) -> Element? {
+        guard !column.isEmpty else { return nil }
+
+        if column.count == .one {
+            return .some(column.removeLast())
+        }
+
+        // Swap root with last, remove last, trickle down
+        let lastIndex = column.count.subtract.saturating(.one).map(Ordinal.init)
+        column.swap(at: .zero, with: lastIndex)
+        let removed = column.removeLast()
+        Self.trickleDown(&column, at: .zero, order: order)
+        return .some(removed)
+    }
+}
+
+// MARK: - Core Operations (Internal)
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Appends element without maintaining heap property (for bulk init).
+    @usableFromInline
+    package mutating func appendWithoutHeapify(_ element: consuming Element) {
+        // The payload-threading form: a `consuming` parameter cannot be
+        // consumed inside a closure capture ([MEM-OWN-017]), so the element
+        // crosses the box as a `consuming` closure PARAMETER.
+        _buffer.withUnique(consuming: element) { column, element in
+            column.append(element)
+        }
+    }
+
+    /// Inserts an element and restores heap property.
+    @usableFromInline
+    package mutating func insert(_ element: consuming Element) {
+        let order = self.order
+        _buffer.withUnique(consuming: element) { column, element in
+            let insertionIndex = column.count.map(Ordinal.init)
+            column.append(element)
+            Self.bubbleUp(&column, at: insertionIndex, order: order)
+        }
+    }
+
+    /// Removes and returns the priority element (min for ascending, max for descending).
+    @usableFromInline
+    package mutating func removePriority() -> Element? {
+        let order = self.order
+        return _buffer.withUnique { Self.removePriority(from: &$0, order: order) }
+    }
+
+    /// Converts storage to valid heap in O(n).
+    @usableFromInline
+    package mutating func heapify() {
+        let order = self.order
+        _buffer.withUnique { Self.heapify(&$0, order: order) }
     }
 }
 
@@ -189,7 +233,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// Inserts an element into the heap.
     ///
     /// - Parameter element: The element to insert.
-    /// - Complexity: O(log n)
+    /// - Complexity: O(log n), O(n) if a CoW copy is triggered
     @inlinable
     public mutating func push(_ element: consuming Element) {
         insert(element)
@@ -210,10 +254,10 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     /// ```
     public var remove: Remove.View {
         mutating _read {
-            yield unsafe .init(&self)
+            yield .init(&self)
         }
         mutating _modify {
-            var view: Remove.View = unsafe .init(&self)
+            var view: Remove.View = .init(&self)
             yield &view
         }
     }
@@ -231,13 +275,9 @@ where
     ///   If `true`, the heap retains its current capacity.
     ///   If `false` (default), the capacity is released.
     /// - Complexity: O(n)
-    // on remove.all() + conditional buffer reassignment in deep @inlinable chain.
     @inlinable
     public func all(keepingCapacity: Bool = false) {
-        base.value._buffer.remove.all()
-        if !keepingCapacity {
-            unsafe (base.value._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero))
-        }
+        base.value._buffer.withUnique { $0.removeAll(keepingCapacity: keepingCapacity) }
     }
 }
 
@@ -253,5 +293,25 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     public mutating func withPriority<R>(_ body: (borrowing Element) -> R) -> R? {
         guard count > .zero else { return nil }
         return body(_buffer[.zero])
+    }
+}
+
+// MARK: - Scoped Span Access
+
+extension Heap where Element: ~Copyable & Comparison.`Protocol` {
+    /// Calls `body` with a read-only span over the heap's elements in heap
+    /// order (which is **not** sorted order).
+    ///
+    /// The scoped form replaces the former `span` property (the withdrawn
+    /// `Span.Protocol` witness): a returning span cannot be forwarded out of
+    /// the stored `Shared` column's class hop (the coroutine-window rule), so
+    /// the region view is scoped.
+    ///
+    /// - Complexity: O(1)
+    @inlinable
+    public func withSpan<R, Failure: Swift.Error>(
+        _ body: (Swift.Span<Element>) throws(Failure) -> R
+    ) throws(Failure) -> R {
+        try _buffer.withSpan(body)
     }
 }

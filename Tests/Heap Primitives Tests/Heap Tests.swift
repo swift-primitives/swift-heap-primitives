@@ -141,6 +141,12 @@ struct HeapSingleEndedTests {
 
 // MARK: - MinMax Heap Tests
 
+// ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
+// (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
+// full template round. The gate self-restores when the MinMax targets
+// return (canImport needs a CLEAN build to re-evaluate).
+#if canImport(Heap_MinMax_Primitives)
+
 @Suite("Heap.MinMax (Double-Ended)")
 struct HeapMinMaxTests {
     @Test
@@ -268,3 +274,5 @@ struct HeapMinMaxTests {
         #expect(heap.isEmpty)
     }
 }
+
+#endif  // canImport(Heap_MinMax_Primitives)

@@ -11,9 +11,21 @@
 
 public import Heap_Primitive
 public import Buffer_Linear_Bounded_Primitive
-public import Buffer_Linear_Bounded_Primitives
+public import Column_Primitives
+public import Shared_Primitive
 public import Property_Primitives
 import Index_Primitives
+
+// The fixed-capacity operation surface, generic over element copyability.
+// Every mutation crosses the stored `Shared` column through the gate-first
+// scoped accessor (`withUnique` — a no-op gate on the statically-unique
+// `~Copyable`-element lane, the CoW restore on the `Copyable`-element lane),
+// so ONE body serves both lanes; the hand-rolled `makeUnique` CoW and its
+// `Copyable` shadow methods are deleted (the A-1 reshape — `Shared` supplies
+// CoW). Unlike the growable column, `Shared` pins no span forms for the
+// bounded column, so the scoped span pair here crosses the box through the
+// generic devices (`withColumn` / `withUnique`) — the sanctioned
+// family-pins-its-own-ops path.
 
 // MARK: - Namespaces
 
@@ -44,60 +56,38 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
 
     /// Whether the heap is full.
     @inlinable
-    public var isFull: Bool { _buffer.isFull }
+    public var isFull: Bool { _buffer.count >= requestedCapacity }
 
     /// The fixed capacity of this heap.
+    ///
+    /// The underlying storage may round its physical capacity up; this is the
+    /// heap's contract bound — `push` rejects at exactly this count.
     @inlinable
-    public var capacity: Heap.Index.Count { _buffer.capacity }
+    public var capacity: Heap.Index.Count { requestedCapacity }
 }
 
-// MARK: - Internal Heap Operations
+// MARK: - Column-Level Heap Algorithms (static; run inside the withUnique gate)
+
+// NOTE: Identical to the base Heap's column algorithms — duplicated because
+// Column.Heap and Column.Bounded are distinct types with no shared protocol
+// surface for these ops. If buffer-primitives adds one, consolidate.
 
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// Inserts an element and restores heap property.
+    /// Restores heap property by moving the element at `index` up.
     @usableFromInline
-    package mutating func insert(_ element: consuming Element) {
-        let insertionIndex = _buffer.count.map(Ordinal.init)
-        _ = _buffer.append(element)
-        bubbleUp(insertionIndex)
-    }
-
-    /// Removes and returns the priority element.
-    @usableFromInline
-    package mutating func removePriority() -> Element? {
-        guard !isEmpty else { return nil }
-
-        if count == .one {
-            return _buffer.remove.last()
-        }
-
-        // Swap root with last, remove last, trickle down
-        let lastIndex = _buffer.count.subtract.saturating(.one).map(Ordinal.init)
-        _buffer.swap(at: .zero, with: lastIndex)
-        let removed = _buffer.remove.last()
-        trickleDown(.zero)
-        return removed
-    }
-}
-
-// MARK: - Bubble Up (Single-Ended Heap)
-
-// NOTE: Identical to Heap.bubbleUp/trickleDown — duplicated because
-// Buffer.Linear variants are distinct types with no shared protocol.
-// If buffer-primitives adds a shared protocol, consolidate.
-
-extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// Restores heap property by moving element up.
-    @usableFromInline
-    package mutating func bubbleUp(_ index: Heap.Index) {
+    package static func bubbleUp(
+        _ column: inout Column.Bounded<Element>,
+        at index: Heap.Index,
+        order: Heap.Order
+    ) {
         var current = index
-        let nav = navigate
+        let nav = Heap.Navigate(_count: column.count)
 
         switch order {
         case .ascending:
             while let parent = nav.parent(of: current) {
-                if _buffer[current] < _buffer[parent] {
-                    _buffer.swap(at: current, with: parent)
+                if column[current] < column[parent] {
+                    column.swap(at: current, with: parent)
                     current = parent
                 } else {
                     break
@@ -105,8 +95,8 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             }
         case .descending:
             while let parent = nav.parent(of: current) {
-                if _buffer[parent] < _buffer[current] {
-                    _buffer.swap(at: current, with: parent)
+                if column[parent] < column[current] {
+                    column.swap(at: current, with: parent)
                     current = parent
                 } else {
                     break
@@ -114,34 +104,34 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             }
         }
     }
-}
 
-// MARK: - Trickle Down (Single-Ended Heap)
-
-extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// Restores heap property by moving element down.
+    /// Restores heap property by moving the element at `startIndex` down.
     @usableFromInline
-    package mutating func trickleDown(_ startIndex: Heap.Index) {
+    package static func trickleDown(
+        _ column: inout Column.Bounded<Element>,
+        at startIndex: Heap.Index,
+        order: Heap.Order
+    ) {
         var current = startIndex
-        let nav = navigate
+        let nav = Heap.Navigate(_count: column.count)
 
         switch order {
         case .ascending:
             while let leftChild = nav.child(.left, of: current) {
                 var smallest = current
 
-                if _buffer[leftChild] < _buffer[smallest] {
+                if column[leftChild] < column[smallest] {
                     smallest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if _buffer[rightChild] < _buffer[smallest] {
+                    if column[rightChild] < column[smallest] {
                         smallest = rightChild
                     }
                 }
 
                 if smallest == current { break }
 
-                _buffer.swap(at: current, with: smallest)
+                column.swap(at: current, with: smallest)
                 current = smallest
             }
 
@@ -149,58 +139,120 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
             while let leftChild = nav.child(.left, of: current) {
                 var largest = current
 
-                if _buffer[largest] < _buffer[leftChild] {
+                if column[largest] < column[leftChild] {
                     largest = leftChild
                 }
                 if let rightChild = nav.child(.right, of: current) {
-                    if _buffer[largest] < _buffer[rightChild] {
+                    if column[largest] < column[rightChild] {
                         largest = rightChild
                     }
                 }
 
                 if largest == current { break }
 
-                _buffer.swap(at: current, with: largest)
+                column.swap(at: current, with: largest)
                 current = largest
             }
         }
     }
-}
 
-// MARK: - Heapify
-
-extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// Converts storage to valid heap in O(n).
+    /// Converts column contents to a valid heap in O(n) (Floyd's algorithm).
     @usableFromInline
-    package mutating func heapify() {
-        guard var idx = navigate.lastNonLeaf else { return }
+    package static func heapify(
+        _ column: inout Column.Bounded<Element>,
+        order: Heap.Order
+    ) {
+        guard var idx = Heap.Navigate(_count: column.count).lastNonLeaf else { return }
         while true {
-            trickleDown(idx)
+            Self.trickleDown(&column, at: idx, order: order)
             guard idx > .zero else { break }
             idx = try! idx.predecessor.exact()
         }
     }
+
+    /// Removes and returns the priority element from the open column.
+    @usableFromInline
+    package static func removePriority(
+        from column: inout Column.Bounded<Element>,
+        order: Heap.Order
+    ) -> Element? {
+        guard !column.isEmpty else { return nil }
+
+        if column.count == .one {
+            return .some(column.remove.last())
+        }
+
+        // Swap root with last, remove last, trickle down
+        let lastIndex = column.count.subtract.saturating(.one).map(Ordinal.init)
+        column.swap(at: .zero, with: lastIndex)
+        let removed = column.remove.last()
+        Self.trickleDown(&column, at: .zero, order: order)
+        return .some(removed)
+    }
 }
 
-// MARK: - Core Operations (Base - for ~Copyable elements)
+// MARK: - Internal Heap Operations
+
+extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
+    /// Appends element without maintaining heap property (for bulk init).
+    ///
+    /// - Precondition: not full at the contract bound (callers guard `isFull`).
+    @usableFromInline
+    package mutating func appendWithoutHeapify(_ element: consuming Element) {
+        // The payload-threading form ([MEM-OWN-017]); the physical capacity is
+        // at least the contract bound, so the guarded append cannot reject.
+        _buffer.withUnique(consuming: element) { column, element in
+            _ = column.append(element)
+        }
+    }
+
+    /// Converts storage to valid heap in O(n).
+    @usableFromInline
+    package mutating func heapify() {
+        let order = self.order
+        _buffer.withUnique { Self.heapify(&$0, order: order) }
+    }
+
+    /// Removes and returns the priority element.
+    @usableFromInline
+    package mutating func removePriority() -> Element? {
+        let order = self.order
+        return _buffer.withUnique { Self.removePriority(from: &$0, order: order) }
+    }
+}
+
+// MARK: - Core Operations
 
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Pushes an element onto the heap.
     ///
-    /// Returns an ``Outcome`` indicating whether the element was inserted
-    /// or returned due to overflow.
+    /// Returns an ``Heap/Push/Outcome`` indicating whether the element was
+    /// inserted or returned due to overflow.
     ///
     /// - Parameter element: The element to push.
     /// - Returns: `.inserted` if successful, `.overflow(element)` if the heap is full.
-    /// - Complexity: O(log n)
+    /// - Complexity: O(log n), O(n) if a CoW copy is triggered
     @inlinable
     @discardableResult
     public mutating func push(_ element: consuming Element) -> Heap.Push.Outcome {
+        // The heap's contract is the REQUESTED capacity (the physical
+        // allocation may round up); reject at the contract bound first.
         guard !isFull else {
             return .overflow(element)
         }
-        insert(element)
-        return .inserted
+        let order = self.order
+        // The payload-threading form ([MEM-OWN-017]): the element crosses the
+        // box as a `consuming` closure PARAMETER; the column's `append`
+        // returns the rejected element when the physical capacity is
+        // exhausted, threaded OUT through the gate.
+        return _buffer.withUnique(consuming: element) { column, element in
+            let insertionIndex = column.count.map(Ordinal.init)
+            guard let rejected = column.append(element) else {
+                Self.bubbleUp(&column, at: insertionIndex, order: order)
+                return .inserted
+            }
+            return .overflow(rejected)
+        }
     }
 
     /// Takes and returns the priority element, or nil if empty.
@@ -217,7 +269,7 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// Pops and returns the priority element.
     ///
     /// - Returns: The priority element.
-    /// - Throws: ``Fixed/Error/empty`` if the heap is empty.
+    /// - Throws: ``Heap/Fixed/Error/empty`` if the heap is empty.
     /// - Complexity: O(log n)
     @inlinable
     public mutating func pop() throws(Heap.Fixed.Error) -> Element {
@@ -241,10 +293,10 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// ```
     public var remove: Remove.View {
         mutating _read {
-            yield unsafe .init(&self)
+            yield .init(&self)
         }
         mutating _modify {
-            var view: Remove.View = unsafe .init(&self)
+            var view: Remove.View = .init(&self)
             yield &view
         }
     }
@@ -263,9 +315,7 @@ where
     /// - Complexity: O(n)
     @inlinable
     public func all() {
-        while !(base.value._buffer.isEmpty) {
-            _ = base.value._buffer.remove.last()
-        }
+        base.value._buffer.withUnique { $0.remove.all() }
     }
 }
 
@@ -283,70 +333,8 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
         return body(_buffer[.zero])
     }
 
-    // Note: borrowing `forEach` is inherited from the Iterable floor (ops module).
-}
-
-// MARK: - Copy-on-Write (Copyable elements only)
-
-extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
-    /// Ensures the storage is uniquely referenced before mutation.
-    @usableFromInline
-    package mutating func makeUnique() {
-        _buffer.ensureUnique()
-    }
-
-    /// Pushes an element onto the heap (CoW-aware).
-    ///
-    /// - Parameter element: The element to push.
-    /// - Returns: `.inserted` if successful, `.overflow(element)` if the heap is full.
-    /// - Complexity: O(log n)
-    @inlinable
-    @discardableResult
-    public mutating func push(_ element: Element) -> Heap.Push.Outcome {
-        makeUnique()
-        guard !isFull else {
-            return .overflow(element)
-        }
-        insert(element)
-        return .inserted
-    }
-
-    /// Takes and returns the priority element, or nil if empty (CoW-aware).
-    @inlinable
-    public var take: Element? {
-        mutating get {
-            makeUnique()
-            return removePriority()
-        }
-    }
-
-    /// Pops and returns the priority element (CoW-aware).
-    @inlinable
-    public mutating func pop() throws(Heap.Fixed.Error) -> Element {
-        makeUnique()
-        guard let element = removePriority() else {
-            throw .empty
-        }
-        return element
-    }
-}
-
-extension Property_Primitives.Property.Inout.Typed
-where
-    Tag == Heap<Element>.Fixed.Remove,
-    Base == Heap<Element>.Fixed,
-    Element: Copyable & Comparison.`Protocol`
-{
-    /// Removes all elements from the heap (CoW-aware).
-    ///
-    /// The capacity remains unchanged (fixed-capacity heap).
-    ///
-    /// - Complexity: O(n)
-    @inlinable
-    public func all() {
-        base.value.makeUnique()
-        base.value._buffer.remove.all()
-    }
+    // Note: borrowing `forEach` is a plain member over the column's scoped
+    // borrowing access (ops module).
 }
 
 // MARK: - Peek (Copyable elements)
@@ -383,9 +371,10 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
-        makeUnique()
-        while !_buffer.isEmpty {
-            body(_buffer.remove.last())
+        _buffer.withUnique { column in
+            while !column.isEmpty {
+                body(column.remove.last())
+            }
         }
     }
 
@@ -405,9 +394,14 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
         while predicate: (borrowing Element) -> Bool,
         _ body: (consuming Element) -> Void
     ) {
-        makeUnique()
-        while let element = peek, predicate(element) {
-            body(take!)
+        let order = self.order
+        _buffer.withUnique { column in
+            while !column.isEmpty, predicate(column[.zero]) {
+                guard let element = Self.removePriority(from: &column, order: order) else {
+                    return
+                }
+                body(element)
+            }
         }
     }
 }
@@ -417,11 +411,15 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
     /// Creates a fixed heap from a sequence.
     ///
+    /// This is a constructing `Copyable` site: the inner `init(capacity:order:)`
+    /// resolves to the clone-capturing twin, so copies of the result can
+    /// restore uniqueness (CoW).
+    ///
     /// - Parameters:
     ///   - elements: The sequence of elements.
     ///   - capacity: Maximum number of elements. Must be non-negative.
     ///   - order: The ordering direction. Defaults to `.ascending` (min-heap).
-    /// - Throws: ``Fixed/Error/invalidCapacity`` if capacity is negative.
+    /// - Throws: ``Heap/Fixed/Error/invalidCapacity`` if capacity is negative.
     /// - Note: If elements exceeds capacity, only the first `capacity` elements are kept.
     /// - Complexity: O(n)
     @inlinable
@@ -435,7 +433,7 @@ extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
 
         for element in elements {
             if isFull { break }
-            _ = _buffer.append(element)
+            appendWithoutHeapify(element)
         }
 
         if count > .one {
@@ -455,69 +453,52 @@ extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
     /// - Complexity: O(k) where k is the number of removed elements.
     @inlinable
     public mutating func truncate(to newCount: Heap.Index.Count) {
-        guard newCount < count else { return }
-        while _buffer.count > newCount {
-            _ = _buffer.remove.last()
-        }
+        _buffer.withUnique { $0.truncate(to: newCount) }
     }
 }
 
-extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
-    /// Removes elements beyond the specified count (CoW-aware).
-    @inlinable
-    public mutating func truncate(to newCount: Heap.Index.Count) {
-        makeUnique()
-        guard newCount < count else { return }
-        while _buffer.count > newCount {
-            _ = _buffer.remove.last()
-        }
-    }
-}
-
-// MARK: - Span Access
-//
-// The read-only `span` is the `Span.`Protocol`` witness, co-located in
-// Heap.Fixed+Memory.Contiguous.Protocol.swift.
+// MARK: - Scoped Span Access
 
 extension Heap.Fixed where Element: ~Copyable & Comparison.`Protocol` {
-    /// A mutable view of the heap's elements.
+    /// Calls `body` with a read-only span over the heap's elements in heap
+    /// order (which is **not** sorted order).
+    ///
+    /// The scoped form replaces the former `span` property (the withdrawn
+    /// `Span.Protocol` witness): a returning span cannot be forwarded out of
+    /// the stored `Shared` column's class hop (the coroutine-window rule), so
+    /// the region view is scoped. Reads never need the uniqueness gate.
+    ///
+    /// - Complexity: O(1)
+    @inlinable
+    public func withSpan<R, Failure: Swift.Error>(
+        _ body: (Swift.Span<Element>) throws(Failure) -> R
+    ) throws(Failure) -> R {
+        try _buffer.withColumn { column throws(Failure) in
+            try body(column.span)
+        }
+    }
+
+    /// Calls `body` with a mutable span over the heap's elements
+    /// (CoW-checked FIRST: uniqueness is restored before any mutable view
+    /// exists).
+    ///
+    /// The scoped form replaces the former `mutableSpan` property (the
+    /// coroutine-window rule, as above). ONE body serves both element lanes:
+    /// the gate inside `withUnique` is the CoW restore on the
+    /// `Copyable`-element lane and a no-op on the statically-unique
+    /// `~Copyable`-element lane.
     ///
     /// - Warning: Modifying elements may break the heap invariant.
     ///   After modification, you may need to re-heapify.
     ///
-    /// Rebuilt over `Buffer.Linear.Bounded`'s form-α `mutableSpan()` *method*
-    /// (D1; the underlying property was dropped at the ⑤-(N) reparam — a generic
-    /// substrate cannot vend a forwarding mutable-span property). The `<E>` pin is
-    /// satisfied concretely (`_buffer`'s substrate is `Storage<Element>.Contiguous<Memory.Heap<Element>>`).
+    /// - Complexity: O(1), O(n) if a CoW copy is triggered
     @inlinable
-    public var mutableSpan: MutableSpan<Element> {
-        @_lifetime(&self)
-        mutating get {
-            _buffer.mutableSpan()
-        }
-        @_lifetime(&self)
-        _modify {
-            var span = _buffer.mutableSpan()
-            yield &span
-        }
-    }
-}
-
-extension Heap.Fixed where Element: Copyable & Comparison.`Protocol` {
-    /// A mutable view of the heap's elements (CoW-aware).
-    ///
-    /// Rebuilt over `Buffer.Linear.Bounded`'s form-α `mutableSpan()` *method* (D1).
-    @inlinable
-    public var mutableSpan: MutableSpan<Element> {
-        @_lifetime(&self)
-        mutating get {
-            _buffer.mutableSpan()
-        }
-        @_lifetime(&self)
-        _modify {
-            makeUnique()
-            var span = _buffer.mutableSpan()
-            yield &span
+    public mutating func withMutableSpan<R, Failure: Swift.Error>(
+        _ body: (inout Swift.MutableSpan<Element>) throws(Failure) -> R
+    ) throws(Failure) -> R {
+        try _buffer.withUnique { column throws(Failure) in
+            var span = column.mutableSpan
+            return try body(&span)
         }
     }
 }

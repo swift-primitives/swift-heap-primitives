@@ -9,16 +9,29 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Buffer_Linear_Primitives
+public import Buffer_Linear_Primitive
 public import Memory_Heap_Primitives
 public import Storage_Contiguous_Primitives
-import Storage_Contiguous_Primitives
-internal import Property_Primitives
+public import Column_Primitives
+public import Shared_Primitive
+import Index_Primitives
+
+// The `Copyable`-element extras: surfaces that COPY elements out (`peek`,
+// `unordered`, `element(at:)`), construct from copyable sequences, or drain
+// with ownership transfer. The former CoW SHADOWS of the base ops
+// (`push` / the explicit `ensureUnique` calls in `pop` / `take` / `drain`) are
+// deleted: the base bodies cross the `Shared` column through the `withUnique`
+// gate, which IS the CoW restore for `Copyable` elements — one body now serves
+// both lanes (the A-1 reshape).
 
 // MARK: - Sequence Init (Copyable only)
 
 extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// Creates a heap from a sequence using O(n) heapification.
+    ///
+    /// This is a constructing `Copyable` site: the column is wrapped through
+    /// the clone-capturing `Shared` constructor, so copies of the result can
+    /// restore uniqueness (CoW).
     ///
     /// - Parameters:
     ///   - elements: The sequence of elements.
@@ -27,7 +40,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public init(_ elements: some Swift.Sequence<Element>, order: Order = .ascending) {
         self.order = order
-        self._buffer = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: .zero)
+        self._buffer = Shared(Column.Heap<Element>(minimumCapacity: .zero))
 
         for element in elements {
             appendWithoutHeapify(element)
@@ -36,23 +49,6 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
         if count > .one {
             heapify()
         }
-    }
-}
-
-// MARK: - CoW-aware Public Operations (Copyable only)
-
-extension Heap where Element: Copyable & Comparison.`Protocol` {
-    /// Inserts an element into the heap (CoW-aware).
-    ///
-    /// This method shadows the base `push(_:)` when `Element: Copyable`,
-    /// providing copy-on-write semantics.
-    ///
-    /// - Parameter element: The element to insert.
-    /// - Complexity: O(log n)
-    @inlinable
-    public mutating func push(_ element: Element) {
-        _buffer.ensureUnique()
-        insert(element)
     }
 }
 
@@ -75,20 +71,24 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// Replaces the priority element and returns the old value.
     @usableFromInline
     package mutating func replacePriority(with replacement: Element) -> Element {
-        let removed = _buffer[.zero]
-        _buffer[.zero] = replacement
-        trickleDown(.zero)
-        return removed
+        let order = self.order
+        return _buffer.withUnique(consuming: replacement) { column, replacement in
+            let removed = column.replace(at: .zero, with: replacement)
+            Self.trickleDown(&column, at: .zero, order: order)
+            return removed
+        }
     }
 
     /// A read-only view into the underlying storage.
     ///
     /// The elements are in heap order, which is **not** sorted order.
+    /// The returned column is a fresh, independently-owned copy (the stored
+    /// `Shared` column cannot be handed out by value).
     ///
     /// - Complexity: O(n) to copy elements.
     @inlinable
-    public var unordered: Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear {
-        var result = Buffer<Storage<Element>.Contiguous<Memory.Heap<Element>>>.Linear(minimumCapacity: count)
+    public var unordered: Column.Heap<Element> {
+        var result = Column.Heap<Element>(minimumCapacity: count)
         var idx: Heap.Index = .zero
         let end = count.map(Ordinal.init)
         while idx < end {
@@ -123,10 +123,9 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     ///
     /// - Returns: The priority element.
     /// - Throws: `Heap.Error.empty` if the heap is empty.
-    /// - Complexity: O(log n)
+    /// - Complexity: O(log n), O(n) if a CoW copy is triggered
     @inlinable
     public mutating func pop() throws(Heap.Error) -> Element {
-        _buffer.ensureUnique()
         guard let element = removePriority() else {
             throw .empty
         }
@@ -152,8 +151,7 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     @inlinable
     public var take: Element? {
         mutating get {
-            _buffer.ensureUnique()
-            return removePriority()
+            removePriority()
         }
     }
 }
@@ -170,9 +168,10 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
     /// - Complexity: O(n) where n is the number of elements.
     @inlinable
     public mutating func drain(_ body: (consuming Element) -> Void) {
-        _buffer.ensureUnique()
-        while !_buffer.isEmpty {
-            body(_buffer.remove.last())
+        _buffer.withUnique { column in
+            while !column.isEmpty {
+                body(column.removeLast())
+            }
         }
     }
 }
@@ -196,9 +195,14 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
         while predicate: (borrowing Element) -> Bool,
         _ body: (consuming Element) -> Void
     ) {
-        _buffer.ensureUnique()
-        while let element = peek, predicate(element) {
-            body(take!)
+        let order = self.order
+        _buffer.withUnique { column in
+            while !column.isEmpty, predicate(column[.zero]) {
+                guard let element = Self.removePriority(from: &column, order: order) else {
+                    return
+                }
+                body(element)
+            }
         }
     }
 }
@@ -206,6 +210,11 @@ extension Heap where Element: Copyable & Comparison.`Protocol` {
 // MARK: - Equatable (Copyable only)
 
 extension Heap: Equatable where Element: Equatable & Copyable {
+    /// Compares two heaps for element-wise equality in heap order.
+    ///
+    /// Walks the live prefix through the column's seam subscript (the stored
+    /// `Shared` column has no returning span — the element-keyed walk mirrors
+    /// `Shared`'s own carriers).
     @inlinable
     public static func == (lhs: Self, rhs: Self) -> Bool {
         guard lhs.count == rhs.count else { return false }
@@ -223,6 +232,10 @@ extension Heap: Equatable where Element: Equatable & Copyable {
 // MARK: - Hashable (Copyable only)
 
 extension Heap: Hashable where Element: Hashable & Copyable {
+    /// Hashes the count, order, and elements of this heap, in heap order.
+    ///
+    /// Count is combined first so the hash agrees with the equality walk's
+    /// count guard.
     @inlinable
     public func hash(into hasher: inout Hasher) {
         hasher.combine(count)
