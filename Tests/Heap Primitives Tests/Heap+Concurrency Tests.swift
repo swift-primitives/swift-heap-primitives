@@ -20,10 +20,14 @@ import Testing
 // shared box mid-storm. Models are sorted reference arrays (ascending heap:
 // pop == running minimum).
 //
-// Sendable note: `Heap.swift:369` / `:392` spell `Element: Sendable` bare —
-// the same implicit-Copyable clause shape as W2-F1's storage tier and stack's
-// `Stack.swift:191` (third A-1 instance; systematic). Copyable-element heaps
-// only in this fan-out; recorded for the aggregated W3 report, not baked.
+// Sendable note (finding W3-F1, FIXED): `Heap.swift`'s two Sendable clauses
+// originally spelled `Element: Sendable` bare — implicitly `Copyable` — the
+// same clause shape as W2-F1's storage tier and stack's (third A-1 instance;
+// REPORT-arc-shared-soundness-W3 §1). The `~Copyable` suppression landed with
+// the principal-ratified clause pass; the regression lock lives in
+// `HeapSendableSurfaceTests` below. The CONCURRENCY suites still fan out
+// Copyable-element heaps only — siblings are copies, which is structural, not
+// the finding.
 
 @Suite("Heap concurrency (W3 rider)")
 struct HeapConcurrencyTests {
@@ -168,5 +172,49 @@ struct HeapFixedConcurrencyTests {
         #expect(sourceTop == 10)
         let sourceCount = Int(proto.count.underlying.rawValue)
         #expect(sourceCount == 3)
+    }
+}
+
+// MARK: - Sendable surface (the W3-F1 regression lock)
+
+/// Move-only Sendable element satisfying the heap's `Comparison.Protocol`
+/// bound (the `UniqueResource` fixture shape from Heap.Fixed Tests) — the
+/// previously-excluded instantiation, live since the clause fix (W3-F1,
+/// REPORT-arc-shared-soundness-W3 §1).
+private struct MoveOnlyProbe: ~Copyable, Sendable, Comparison_Primitives.Comparison.`Protocol` {
+    let id: Int
+    init(_ id: Int) { self.id = id }
+    static func < (lhs: borrowing MoveOnlyProbe, rhs: borrowing MoveOnlyProbe) -> Bool {
+        lhs.id < rhs.id
+    }
+    static func == (lhs: borrowing MoveOnlyProbe, rhs: borrowing MoveOnlyProbe) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+private func requireSendable<T: Sendable & ~Copyable>(_ value: borrowing T) {}
+
+@Suite("Heap Sendable surface (W3-F1 regression)")
+struct HeapSendableSurfaceTests {
+
+    @Test
+    func `sendable admits move-only elements on Heap and Heap-Fixed (W3-F1 regression)`() throws {
+        var moveOnly = Heap<MoveOnlyProbe>(order: .ascending)
+        moveOnly.push(MoveOnlyProbe(7))
+        // The conformances are declared `@unsafe` (their strip is the deferred
+        // [MEM-SAFE-024] sweep), so the use sites carry the marker.
+        unsafe requireSendable(moveOnly)
+
+        var fixed = try Heap<MoveOnlyProbe>.Fixed(capacity: 4, order: .ascending)
+        _ = fixed.push(MoveOnlyProbe(9))
+        unsafe requireSendable(fixed)
+
+        let copyable = Heap<Int>(order: .ascending)
+        unsafe requireSendable(copyable)
+
+        let top = moveOnly.withPriority { $0.id }
+        #expect(top == 7)
+        let fixedCount = Int(fixed.count.underlying.rawValue)
+        #expect(fixedCount == 1)
     }
 }

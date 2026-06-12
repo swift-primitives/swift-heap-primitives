@@ -366,7 +366,13 @@ extension Heap.Fixed: Copyable where Element: Copyable {}
 /// - Does not grant concurrent access to a live heap.
 /// - Does not synchronize push/pop; mutation requires exclusive access to the
 ///   heap value itself.
-extension Heap: @unsafe @unchecked Sendable where Element: Sendable {}
+///
+/// `Element: ~Copyable & Sendable` — the suppression is load-bearing: a bare
+/// `Element: Sendable` clause implicitly requires `Element: Copyable`, which
+/// excluded exactly the move-only handoff documented above (arc-1 finding
+/// W3-F1, REPORT-arc-shared-soundness-W3 §1; fix principal-ratified
+/// 2026-06-11).
+extension Heap: @unsafe @unchecked Sendable where Element: ~Copyable & Sendable {}
 
 /// `Heap.Fixed` is `Sendable` when its elements are `Sendable`.
 ///
@@ -389,7 +395,10 @@ extension Heap: @unsafe @unchecked Sendable where Element: Sendable {}
 /// - Not a shared, concurrent fixed-capacity queue.
 /// - Does not guarantee overflow safety under concurrent push; mutation
 ///   requires exclusive access to the heap value itself.
-extension Heap.Fixed: @unsafe @unchecked Sendable where Element: Sendable {}
+///
+/// `Element: ~Copyable & Sendable` — same load-bearing suppression as `Heap`'s
+/// conformance above (W3-F1).
+extension Heap.Fixed: @unsafe @unchecked Sendable where Element: ~Copyable & Sendable {}
 
 // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
 // (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
