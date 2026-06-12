@@ -135,50 +135,10 @@ struct HeapConcurrencyTests {
     }
 }
 
-@Suite("Heap.Fixed concurrency (W3 rider)")
-struct HeapFixedConcurrencyTests {
-
-    @Test
-    func `fixed siblings detach with capacity preserved and order intact`() async throws {
-        var proto = try Heap<Int>.Fixed(capacity: 16, order: .ascending)
-        proto.push(30)
-        proto.push(10)
-        proto.push(20)
-        let frozen = proto
-        let outcomes = await withTaskGroup(of: Bool.self, returning: [Bool].self) { group in
-            for t in 0..<8 {
-                group.addTask {
-                    var mine = frozen                    // sibling of the FIXED column
-                    for k in 0..<8 { mine.push(t &* 100 &+ 40 &+ k) }
-                    var model = [10, 20, 30]
-                    for k in 0..<8 { model.append(t &* 100 &+ 40 &+ k) }
-                    model.sort()
-                    let capacityHeld = (mine.capacity.underlying.rawValue == frozen.capacity.underlying.rawValue)
-                    var good = true
-                    for want in model {
-                        let got = try? mine.pop()
-                        good = good && (got == want)
-                    }
-                    return good && capacityHeld && mine.isEmpty
-                }
-            }
-            var out: [Bool] = []
-            for await ok in group { out.append(ok) }
-            return out
-        }
-        #expect(outcomes.count == 8)
-        #expect(outcomes.allSatisfy { $0 })
-        let sourceTop = proto.peek
-        #expect(sourceTop == 10)
-        let sourceCount = Int(proto.count.underlying.rawValue)
-        #expect(sourceCount == 3)
-    }
-}
-
 // MARK: - Sendable surface (the W3-F1 regression lock)
 
 /// Move-only Sendable element satisfying the heap's `Comparison.Protocol`
-/// bound (the `UniqueResource` fixture shape from Heap.Fixed Tests) — the
+/// bound (the `UniqueResource` fixture shape) — the
 /// previously-excluded instantiation, live since the clause fix (W3-F1,
 /// REPORT-arc-shared-soundness-W3 §1).
 private struct MoveOnlyProbe: ~Copyable, Sendable, Comparison_Primitives.Comparison.`Protocol` {
@@ -198,23 +158,18 @@ private func requireSendable<T: Sendable & ~Copyable>(_ value: borrowing T) {}
 struct HeapSendableSurfaceTests {
 
     @Test
-    func `sendable admits move-only elements on Heap and Heap-Fixed (W3-F1 regression)`() throws {
+    func `sendable admits move-only elements on Heap (W3-F1 regression)`() {
         var moveOnly = Heap<MoveOnlyProbe>(order: .ascending)
         moveOnly.push(MoveOnlyProbe(7))
         // The conformances are declared `@unsafe` (their strip is the deferred
         // [MEM-SAFE-024] sweep), so the use sites carry the marker.
         unsafe requireSendable(moveOnly)
 
-        var fixed = try Heap<MoveOnlyProbe>.Fixed(capacity: 4, order: .ascending)
-        _ = fixed.push(MoveOnlyProbe(9))
-        unsafe requireSendable(fixed)
 
         let copyable = Heap<Int>(order: .ascending)
         unsafe requireSendable(copyable)
 
         let top = moveOnly.withPriority { $0.id }
         #expect(top == 7)
-        let fixedCount = Int(fixed.count.underlying.rawValue)
-        #expect(fixedCount == 1)
     }
 }

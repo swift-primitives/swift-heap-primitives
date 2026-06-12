@@ -32,35 +32,9 @@ extension Heap.MinMax {
     }
 }
 
-// Note: Heap.MinMax.Fixed cannot have conditional Copyable conformance because
-// it's a nested type declared in an extension. The ~Copyable constraint from
-// Heap<Element> doesn't propagate properly to nested types in extensions.
-
-// MARK: - Sendable
-
-/// Sendable conformance for `Heap.MinMax.Fixed`.
-///
-/// ## Safety Invariant
-///
-/// `Heap.MinMax.Fixed` is `~Copyable`. The Sendable claim rests on the same
-/// unique-ownership argument as other `~Copyable` heap variants — transfer
-/// via move relinquishes the sender's access.
-///
-/// ## Intended Use
-///
-/// - Fixed-capacity double-ended priority queue built then transferred
-///   to a consuming actor or thread.
-/// - Embedded scheduler workloads with bounded capacity requirements.
-///
-/// ## Non-Goals
-///
-/// - Not a concurrent min-max queue; external synchronization required.
-extension Heap.MinMax.Fixed: @unchecked Sendable where Element: Sendable {}
-
-extension Heap.MinMax.Fixed {
-    /// Errors that can occur during fixed min-max heap operations.
-    public typealias Error = Heap.Fixed.Error
-}
+// The former `MinMax.Fixed` variant is DISSOLVED (Round M coda — the
+// variant-dissolution doctrine): bounded capacity returns column-composed,
+// consumer-pulled, at the heap-template round.
 
 // MARK: - Property Typealias
 

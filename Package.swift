@@ -16,9 +16,6 @@ let package = Package(
         .library(name: "Heap Primitive", targets: ["Heap Primitive"]),
         .library(name: "Heap Primitives", targets: ["Heap Primitives"]),
 
-        // MARK: - Fixed variant
-        .library(name: "Heap Fixed Primitive", targets: ["Heap Fixed Primitive"]),
-        .library(name: "Heap Fixed Primitives", targets: ["Heap Fixed Primitives"]),
 
         // MARK: - Static variant
 
@@ -79,8 +76,6 @@ let package = Package(
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
                 .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives"),
-                // Heap.Fixed is declared in this target (Heap.swift); its column is
-                // Column.Bounded — the bounded substrate is referenced here.
                 .product(name: "Buffer Linear Bounded Primitive", package: "swift-buffer-linear-primitives"),
                 .product(name: "Storage Contiguous Primitives", package: "swift-storage-primitives"),
                 .product(name: "Memory Heap Primitives", package: "swift-memory-heap-primitives"),
@@ -90,23 +85,6 @@ let package = Package(
             ]
         ),
 
-        // MARK: - Fixed type
-        .target(
-            name: "Heap Fixed Primitive",
-            dependencies: [
-                "Heap Primitive",
-                .product(name: "Column Primitives", package: "swift-column-primitives"),
-                .product(name: "Shared Primitive", package: "swift-shared-primitives"),
-                .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
-                .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Storage Contiguous Primitives", package: "swift-storage-primitives"),
-                .product(name: "Memory Heap Primitives", package: "swift-memory-heap-primitives"),
-                .product(name: "Buffer Linear Bounded Primitive", package: "swift-buffer-linear-primitives"),
-                .product(name: "Buffer Linear Bounded Primitives", package: "swift-buffer-linear-primitives"),
-                .product(name: "Memory Contiguous Primitives", package: "swift-memory-primitives"),
-                .product(name: "Property Primitives", package: "swift-property-primitives"),
-            ]
-        ),
 
         // MARK: - Static type
 
@@ -154,22 +132,6 @@ let package = Package(
         //     ]
         // ),
 
-        // MARK: - Fixed ops
-        .target(
-            name: "Heap Fixed Primitives",
-            dependencies: [
-                "Heap Fixed Primitive",
-                "Heap Primitive",
-                .product(name: "Column Primitives", package: "swift-column-primitives"),
-                .product(name: "Shared Primitive", package: "swift-shared-primitives"),
-                .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
-                .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Buffer Linear Bounded Primitive", package: "swift-buffer-linear-primitives"),
-                .product(name: "Buffer Linear Bounded Primitives", package: "swift-buffer-linear-primitives"),
-                .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
-                .product(name: "Property Primitives", package: "swift-property-primitives"),
-            ]
-        ),
 
         // MARK: - Static ops
 
@@ -227,8 +189,6 @@ let package = Package(
             name: "Heap Primitives",
             dependencies: [
                 "Heap Primitive",
-                "Heap Fixed Primitive",
-                "Heap Fixed Primitives",
                 "Heap Min Primitives",
                 "Heap Max Primitives",
                 // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small

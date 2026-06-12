@@ -12,12 +12,11 @@
 // exports.swift
 // Re-export internal modules for consumers.
 // Users import Heap_Primitives and get the binary-heap discipline: the base
-// Heap type + conformances (this module), plus the Fixed storage variant and
+// Heap type + conformances (this module), plus
 // the single-ended Min / Max stubs. Per [MOD-005] the base-ops plural doubles
 // as the package umbrella.
 
 @_exported public import Heap_Primitive
-@_exported public import Heap_Fixed_Primitives
 @_exported public import Heap_Min_Primitives
 @_exported public import Heap_Max_Primitives
 // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small

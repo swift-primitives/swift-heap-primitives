@@ -50,7 +50,6 @@ import Index_Primitives
 ///
 /// - ``Heap``: Dynamic, growable (this type)
 /// - ``Heap/Binary``: Typealias to `Heap` for API symmetry
-/// - ``Heap/Fixed``: Fixed capacity, heap-allocated
 /// - `Heap.MinMax`: Double-ended min-max heap (parked at the W5 quarantine;
 ///   restores at heap's full template round)
 ///
@@ -87,6 +86,9 @@ import Index_Primitives
 // WHY: structurally value-safe but the compiler cannot synthesize
 // WHY: Sendable due to a stored pointer / generic parameter shape.
 @safe
+/// The former `Fixed` and `MinMax.Fixed` variants are DISSOLVED (Round M coda —
+/// the variant-dissolution doctrine): bounded capacity returns column-composed,
+/// consumer-pulled, at the heap-template round — not as rebuilt variant nests.
 public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
     // MARK: - Order Enum
@@ -144,56 +146,6 @@ public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
         self._buffer = Shared(Column.Heap<Element>(minimumCapacity: .zero))
     }
 
-    // MARK: - Fixed Capacity Heap
-    // WHY: Category D — structural Sendable workaround; the type is
-    // WHY: structurally value-safe but the compiler cannot synthesize
-    // WHY: Sendable due to a stored pointer / generic parameter shape.
-    @safe
-    public struct Fixed: ~Copyable {
-        /// Errors that can occur during fixed heap operations.
-        public enum Error: Swift.Error, Sendable, Equatable {
-            /// The requested capacity is invalid (negative).
-            case invalidCapacity
-            /// An operation was attempted on an empty heap.
-            case empty
-            /// The heap is full and cannot accept more elements.
-            case overflow
-        }
-
-        /// Element storage: the `Shared` column over the fixed-capacity heap
-        /// buffer (`Column.Bounded<Element>` = `Buffer.Linear.Bounded` over
-        /// system-allocated contiguous storage).
-        ///
-        /// Conditional copyability flows from the column (`Shared<E, B>` is
-        /// `Copyable` iff `E` is), and value semantics ride the ratified CoW
-        /// box — the A-1 interim reshape (public element-generic API
-        /// preserved; the hand-rolled `ensureUnique` CoW is deleted).
-        @usableFromInline
-        package var _buffer: Shared<Element, Column.Bounded<Element>>
-
-        /// The ordering direction for this heap.
-        public let order: Order
-
-        /// The requested capacity (for overflow checking).
-        ///
-        /// The underlying storage may round its physical capacity up; this
-        /// stored bound is the heap's contract — `push` rejects at exactly
-        /// this count.
-        public let requestedCapacity: Heap.Index.Count
-    }
-
-    // MARK: - Push Outcome
-
-    /// Outcome of a push operation on a fixed heap.
-    public enum Push: ~Copyable {
-        /// Outcome of pushing an element.
-        public enum Outcome: ~Copyable {
-            /// The element was successfully inserted.
-            case inserted
-            /// The heap was full; the element is returned to the caller.
-            case overflow(Element)
-        }
-    }
 
     // MARK: - MinMax Heap (Declaration Only)
     //
@@ -263,64 +215,6 @@ extension Heap where Element: Copyable {
     }
 }
 
-// MARK: - Fixed Construction (Copyable twins — the clone-capturing sites)
-
-// BOTH twins live in extensions (not the struct body): a struct-body member of
-// the nested `Fixed` and a `where Element: Copyable` extension member mangle to
-// the SAME symbol on 6.3.2 (the redundant-with-default `Copyable` requirement
-// is dropped from the extension's mangled signature) — the extension/extension
-// split is the coexisting spelling (the stack lane's catalog-B7 hazard).
-
-extension Heap.Fixed where Element: ~Copyable {
-    /// Creates an empty fixed-capacity heap of move-only elements.
-    ///
-    /// The column is statically unique (no clone strategy exists for
-    /// `~Copyable` elements; the wrapper cannot be duplicated).
-    ///
-    /// - Parameters:
-    ///   - capacity: Maximum number of elements.
-    ///   - order: The ordering direction. Defaults to `.ascending` (min-heap).
-    /// - Throws: ``Heap/Fixed/Error/invalidCapacity`` if capacity is negative.
-    @inlinable
-    public init(
-        capacity: Int,
-        order: Heap.Order = .ascending
-    ) throws(Heap.Fixed.Error) {
-        guard capacity >= 0 else {
-            throw .invalidCapacity
-        }
-        // Boundary: Int → typed count. Cardinal(UInt(...)) is the canonical Int→Cardinal path.
-        let requested = Heap.Index.Count(_unchecked: Cardinal(UInt(capacity)))
-        self._buffer = Shared(Column.Bounded<Element>(minimumCapacity: requested))
-        self.order = order
-        self.requestedCapacity = requested
-    }
-}
-
-extension Heap.Fixed where Element: Copyable {
-    /// Creates an empty fixed-capacity heap (CoW-capable column; the
-    /// CAPACITY-PRESERVING clone strategy is captured here — a shrink-to-fit
-    /// copy would break the capacity contract after a CoW detach).
-    ///
-    /// - Parameters:
-    ///   - capacity: Maximum number of elements.
-    ///   - order: The ordering direction. Defaults to `.ascending` (min-heap).
-    /// - Throws: ``Heap/Fixed/Error/invalidCapacity`` if capacity is negative.
-    @inlinable
-    public init(
-        capacity: Int,
-        order: Heap.Order = .ascending
-    ) throws(Heap.Fixed.Error) {
-        guard capacity >= 0 else {
-            throw .invalidCapacity
-        }
-        // Boundary: Int → typed count. Cardinal(UInt(...)) is the canonical Int→Cardinal path.
-        let requested = Heap.Index.Count(_unchecked: Cardinal(UInt(capacity)))
-        self._buffer = Shared(Column.Bounded<Element>(minimumCapacity: requested))
-        self.order = order
-        self.requestedCapacity = requested
-    }
-}
 
 // MARK: - Conditional Copyable
 
@@ -331,11 +225,6 @@ extension Heap.Fixed where Element: Copyable {
 /// mutation restores uniqueness (the `withUnique` gate).
 extension Heap: Copyable where Element: Copyable {}
 
-/// `Heap.Fixed` is `Copyable` when its elements are `Copyable`.
-///
-/// Copyability flows from the stored column (as on the base type); the CoW
-/// detach clones CAPACITY-PRESERVINGLY.
-extension Heap.Fixed: Copyable where Element: Copyable {}
 
 // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
 // (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
@@ -374,31 +263,6 @@ extension Heap.Fixed: Copyable where Element: Copyable {}
 /// 2026-06-11).
 extension Heap: @unsafe @unchecked Sendable where Element: ~Copyable & Sendable {}
 
-/// `Heap.Fixed` is `Sendable` when its elements are `Sendable`.
-///
-/// ## Safety Invariant
-///
-/// The stored `Shared` column is mutated exclusively through its uniqueness
-/// gate (`withUnique` restores uniqueness FIRST), so a box shared between two
-/// `Copyable`-element heap values is never written while shared — the stdlib
-/// CoW-Sendable discipline. For `~Copyable` elements the heap is move-only:
-/// at most one owner exists, and the box moves with it.
-///
-/// ## Intended Use
-///
-/// - Transferring a pre-sized priority queue to a worker or actor.
-/// - Embedded/real-time contexts where capacity is bounded and the heap is
-///   constructed at startup then moved to its consumer.
-///
-/// ## Non-Goals
-///
-/// - Not a shared, concurrent fixed-capacity queue.
-/// - Does not guarantee overflow safety under concurrent push; mutation
-///   requires exclusive access to the heap value itself.
-///
-/// `Element: ~Copyable & Sendable` — same load-bearing suppression as `Heap`'s
-/// conformance above (W3-F1).
-extension Heap.Fixed: @unsafe @unchecked Sendable where Element: ~Copyable & Sendable {}
 
 // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
 // (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
@@ -406,7 +270,3 @@ extension Heap.Fixed: @unsafe @unchecked Sendable where Element: ~Copyable & Sen
 // /// Sendable conformance for `Heap.MinMax`.
 // extension Heap.MinMax: @unsafe @unchecked Sendable where Element: Sendable {}
 
-// MARK: - Push.Outcome Conditional Conformances
-
-extension Heap.Push.Outcome: Copyable where Element: Copyable {}
-extension Heap.Push.Outcome: Sendable where Element: Sendable {}
