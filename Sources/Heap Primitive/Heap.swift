@@ -88,6 +88,7 @@ import Index_Primitives
 /// The former `Fixed` and `MinMax.Fixed` variants are DISSOLVED (Round M coda —
 /// the variant-dissolution doctrine): bounded capacity returns column-composed,
 /// consumer-pulled, at the heap-template round — not as rebuilt variant nests.
+@frozen
 public struct Heap<Element: ~Copyable & Comparison.`Protocol`>: ~Copyable {
 
     // MARK: - Order Enum

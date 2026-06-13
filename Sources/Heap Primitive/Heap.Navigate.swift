@@ -35,6 +35,7 @@ extension Heap where Element: ~Copyable & Comparison.`Protocol` {
     ///     }
     /// }
     /// ```
+    @frozen
     public struct Navigate: Sendable, Hashable {
         /// Child position in the binary heap.
         public enum Child: Sendable, Hashable {
