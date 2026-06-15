@@ -1,6 +1,6 @@
 # .github/metadata.yaml
 # Triaged by AI-assisted bulk pass (2026-04-29).
-description: "Heap types for Swift."
+description: "Heap — a binary heap / priority queue with configurable min/max ordering (O(log n) push/pop, O(1) peek) over move-only or copyable elements."
 topics:
   - primitives
   - heap
