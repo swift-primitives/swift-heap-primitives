@@ -236,7 +236,7 @@ The interpretation of array indices as positions in a complete binary tree is pu
 | CoW mechanism | `ensureUnique()` |
 | Element init/move/deinit lifecycle | Via `Storage` |
 | Raw pointer access | `pointer(at:)` |
-| Contiguous memory guarantee | `Memory.Contiguous.Protocol` |
+| Contiguous memory guarantee | `Span.Protocol` |
 | Header state machine | `isEmpty`, `isFull` |
 | Indexed subscript | Direct pointer arithmetic (`_buffer[index]`) |
 | `swap(at:with:)` | Element exchange by index |

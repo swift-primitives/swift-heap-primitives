@@ -127,7 +127,6 @@ let package = Package(
         //         // Cleave-3 #12a/#5a: Heap.Small / Heap.MinMax.Small compose Buffer<Storage<E>.Small<n>>.Linear.
         //         .product(name: "Memory Small Primitives", package: "swift-memory-small-primitives"),
         //         .product(name: "Storage Primitive", package: "swift-storage-primitives"),
-        //         .product(name: "Memory Contiguous Primitives", package: "swift-memory-primitives"),
         //         .product(name: "Span Protocol Primitives", package: "swift-span-primitives"),
         //         .product(name: "Property Primitives", package: "swift-property-primitives"),
         //     ]
