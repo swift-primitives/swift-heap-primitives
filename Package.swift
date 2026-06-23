@@ -60,7 +60,10 @@ let package = Package(
         // (re-materializes when Shared gains those surfaces upstream) and the parked
         // MinMax targets; pruned per the 'dependency not used by any target' warnings.
         // .package(url: "https://github.com/swift-primitives/swift-iterator-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-memory-primitives.git", branch: "main"),
+        // Memory.Contiguous dissolution (2026-06-23): swift-memory-primitives' only
+        // consumer here was the `Memory Contiguous Primitives` product (now deleted);
+        // the live targets reach the `Memory` namespace via Memory_Heap_Primitives /
+        // Storage_Contiguous_Primitives, so the package dep is dropped ([MOD-025]).
         // .package(url: "https://github.com/swift-primitives/swift-span-primitives.git", branch: "main"),
         // .package(url: "https://github.com/swift-primitives/swift-memory-iterator-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-memory-heap-primitives.git", branch: "main"),
@@ -79,7 +82,6 @@ let package = Package(
                 .product(name: "Storage Contiguous Primitives", package: "swift-storage-primitives"),
                 .product(name: "Memory Heap Primitives", package: "swift-memory-heap-primitives"),
                 .product(name: "Buffer Linear Primitives", package: "swift-buffer-linear-primitives"),
-                .product(name: "Memory Contiguous Primitives", package: "swift-memory-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
             ]
         ),
