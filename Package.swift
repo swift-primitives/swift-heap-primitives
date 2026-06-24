@@ -15,39 +15,27 @@ let package = Package(
         // MARK: - Base
         .library(name: "Heap Primitive", targets: ["Heap Primitive"]),
         .library(name: "Heap Primitives", targets: ["Heap Primitives"]),
-
-
-        // MARK: - Static variant
-
-        // MARK: - Small variant
-
         // MARK: - Min variant
         .library(name: "Heap Min Primitive", targets: ["Heap Min Primitive"]),
         .library(name: "Heap Min Primitives", targets: ["Heap Min Primitives"]),
-
+        
         // MARK: - Max variant
         .library(name: "Heap Max Primitive", targets: ["Heap Max Primitive"]),
         .library(name: "Heap Max Primitives", targets: ["Heap Max Primitives"]),
-
+        
         // MARK: - MinMax variant
-        // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
-        // (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
-        // full template round.
-        // .library(name: "Heap MinMax Primitive", targets: ["Heap MinMax Primitive"]),
-        // .library(name: "Heap MinMax Primitives", targets: ["Heap MinMax Primitives"]),
-
+        .library(name: "Heap MinMax Primitive", targets: ["Heap MinMax Primitive"]),
+        .library(name: "Heap MinMax Primitives", targets: ["Heap MinMax Primitives"]),
+        
         // MARK: - Test Support
         .library(name: "Heap Primitives Test Support", targets: ["Heap Primitives Test Support"]),
     ],
     dependencies: [
-        // .package(url: "https://github.com/swift-primitives/swift-memory-small-primitives.git", branch: "main"),  // W5 QUARANTINE (2026-06-11): MinMax parks with memory-small (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's full template round
+        .package(url: "https://github.com/swift-primitives/swift-memory-small-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-comparison-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-column-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-shared-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-index-primitives.git", branch: "main"),
-        // W2 mesh: buffer packages on their  worktrees so every path to memory
-        // unifies on identity swift-memory-primitives (no url-form memory in the
-        // graph => no 'multiple similar targets' collision).
         .package(url: "https://github.com/swift-primitives/swift-buffer-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-buffer-linear-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-storage-primitives.git", branch: "main"),
@@ -55,21 +43,13 @@ let package = Package(
         .package(url: "https://github.com/swift-primitives/swift-input-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-sequence-primitives.git", branch: "main"),
-        // ⚠️ W5 QUARANTINE (2026-06-11): iterator / span / memory-iterator packages
-        // served only the withdrawn Iterable / Span.Protocol / Sequenceable lattice
-        // (re-materializes when Shared gains those surfaces upstream) and the parked
-        // MinMax targets; pruned per the 'dependency not used by any target' warnings.
-        // .package(url: "https://github.com/swift-primitives/swift-iterator-primitives.git", branch: "main"),
-        // 2026-06-23: swift-memory-primitives' only consumer here was a product
-        // that has since been deleted; the live targets reach the `Memory`
-        // namespace via Memory_Heap_Primitives / Storage_Contiguous_Primitives,
-        // so the package dep is dropped ([MOD-025]).
-        // .package(url: "https://github.com/swift-primitives/swift-span-primitives.git", branch: "main"),
-        // .package(url: "https://github.com/swift-primitives/swift-memory-iterator-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-iterator-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-span-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-memory-iterator-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-memory-heap-primitives.git", branch: "main"),
     ],
     targets: [
-
+        
         // MARK: - Base type (Heap dynamic/growable + Index / Navigate)
         .target(
             name: "Heap Primitive",
@@ -85,21 +65,21 @@ let package = Package(
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
             ]
         ),
-
-
+        
+        
         // MARK: - Static type
-
+        
         // MARK: - Small type
-
+        
         // MARK: - Min type (stub)
-        .target(
-            name: "Heap Min Primitive",
-            dependencies: [
-                "Heap Primitive",
-                .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
-            ]
-        ),
-
+            .target(
+                name: "Heap Min Primitive",
+                dependencies: [
+                    "Heap Primitive",
+                    .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
+                ]
+            ),
+        
         // MARK: - Max type (stub)
         .target(
             name: "Heap Max Primitive",
@@ -108,45 +88,45 @@ let package = Package(
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
             ]
         ),
-
+        
         // MARK: - MinMax type
         // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
         // (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
         // full template round.
-        // .target(
-        //     name: "Heap MinMax Primitive",
-        //     dependencies: [
-        //         "Heap Primitive",
-        //         .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
-        //         .product(name: "Index Primitives", package: "swift-index-primitives"),
-        //         .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives"),
-        //         .product(name: "Storage Contiguous Primitives", package: "swift-storage-primitives"),
-        //         .product(name: "Memory Heap Primitives", package: "swift-memory-heap-primitives"),
-        //         .product(name: "Buffer Linear Primitives", package: "swift-buffer-linear-primitives"),
-        //         .product(name: "Buffer Linear Bounded Primitive", package: "swift-buffer-linear-primitives"),
-        //         // Cleave-3 #12a/#5a: Heap.Small / Heap.MinMax.Small compose Buffer<Storage<E>.Small<n>>.Linear.
-        //         .product(name: "Memory Small Primitives", package: "swift-memory-small-primitives"),
-        //         .product(name: "Storage Primitive", package: "swift-storage-primitives"),
-        //         .product(name: "Span Protocol Primitives", package: "swift-span-primitives"),
-        //         .product(name: "Property Primitives", package: "swift-property-primitives"),
-        //     ]
-        // ),
-
-
+            .target(
+                name: "Heap MinMax Primitive",
+                dependencies: [
+                    "Heap Primitive",
+                    .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
+                    .product(name: "Index Primitives", package: "swift-index-primitives"),
+                    .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives"),
+                    .product(name: "Storage Contiguous Primitives", package: "swift-storage-primitives"),
+                    .product(name: "Memory Heap Primitives", package: "swift-memory-heap-primitives"),
+                    .product(name: "Buffer Linear Primitives", package: "swift-buffer-linear-primitives"),
+                    .product(name: "Buffer Linear Bounded Primitive", package: "swift-buffer-linear-primitives"),
+                    // Cleave-3 #12a/#5a: Heap.Small / Heap.MinMax.Small compose Buffer<Storage<E>.Small<n>>.Linear.
+                    .product(name: "Memory Small Primitives", package: "swift-memory-small-primitives"),
+                    .product(name: "Storage Primitive", package: "swift-storage-primitives"),
+                    .product(name: "Span Protocol Primitives", package: "swift-span-primitives"),
+                    .product(name: "Property Primitives", package: "swift-property-primitives"),
+                ]
+            ),
+        
+        
         // MARK: - Static ops
-
+        
         // MARK: - Small ops
-
+        
         // MARK: - Min ops (stub conformances)
-        .target(
-            name: "Heap Min Primitives",
-            dependencies: [
-                "Heap Min Primitive",
-                "Heap Primitive",
-                .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
-            ]
-        ),
-
+            .target(
+                name: "Heap Min Primitives",
+                dependencies: [
+                    "Heap Min Primitive",
+                    "Heap Primitive",
+                    .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
+                ]
+            ),
+        
         // MARK: - Max ops (stub conformances)
         .target(
             name: "Heap Max Primitives",
@@ -156,34 +136,34 @@ let package = Package(
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
             ]
         ),
-
+        
         // MARK: - MinMax ops
         // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
         // (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
         // full template round.
-        // .target(
-        //     name: "Heap MinMax Primitives",
-        //     dependencies: [
-        //         "Heap MinMax Primitive",
-        //         "Heap Primitive",
-        //         .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
-        //         .product(name: "Index Primitives", package: "swift-index-primitives"),
-        //         .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives"),
-        //         .product(name: "Storage Contiguous Primitives", package: "swift-storage-primitives"),
-        //         .product(name: "Memory Heap Primitives", package: "swift-memory-heap-primitives"),
-        //         .product(name: "Buffer Linear Primitives", package: "swift-buffer-linear-primitives"),
-        //         .product(name: "Buffer Linear Bounded Primitive", package: "swift-buffer-linear-primitives"),
-        //         // Cleave-3 #12a/#5a: Heap.Small / Heap.MinMax.Small compose Buffer<Storage<E>.Small<n>>.Linear.
-        //         .product(name: "Memory Small Primitives", package: "swift-memory-small-primitives"),
-        //         .product(name: "Storage Primitive", package: "swift-storage-primitives"),
-        //         .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
-        //         .product(name: "Iterable", package: "swift-iterator-primitives"),
-        //         .product(name: "Iterator Chunk Primitives", package: "swift-iterator-primitives"),
-        //         .product(name: "Memory Iterator Primitives", package: "swift-memory-iterator-primitives"),
-        //         .product(name: "Property Primitives", package: "swift-property-primitives"),
-        //     ]
-        // ),
-
+            .target(
+                name: "Heap MinMax Primitives",
+                dependencies: [
+                    "Heap MinMax Primitive",
+                    "Heap Primitive",
+                    .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
+                    .product(name: "Index Primitives", package: "swift-index-primitives"),
+                    .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives"),
+                    .product(name: "Storage Contiguous Primitives", package: "swift-storage-primitives"),
+                    .product(name: "Memory Heap Primitives", package: "swift-memory-heap-primitives"),
+                    .product(name: "Buffer Linear Primitives", package: "swift-buffer-linear-primitives"),
+                    .product(name: "Buffer Linear Bounded Primitive", package: "swift-buffer-linear-primitives"),
+                    // Cleave-3 #12a/#5a: Heap.Small / Heap.MinMax.Small compose Buffer<Storage<E>.Small<n>>.Linear.
+                    .product(name: "Memory Small Primitives", package: "swift-memory-small-primitives"),
+                    .product(name: "Storage Primitive", package: "swift-storage-primitives"),
+                    .product(name: "Sequence Primitives", package: "swift-sequence-primitives"),
+                    .product(name: "Iterable", package: "swift-iterator-primitives"),
+                    .product(name: "Iterator Chunk Primitives", package: "swift-iterator-primitives"),
+                    .product(name: "Memory Iterator Primitives", package: "swift-memory-iterator-primitives"),
+                    .product(name: "Property Primitives", package: "swift-property-primitives"),
+                ]
+            ),
+        
         // MARK: - Base ops + Umbrella ([MOD-005] dual-role: base conformances + re-export of all variants)
         .target(
             name: "Heap Primitives",
@@ -194,8 +174,8 @@ let package = Package(
                 // ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
                 // (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at
                 // heap's full template round.
-                // "Heap MinMax Primitive",
-                // "Heap MinMax Primitives",
+                "Heap MinMax Primitive",
+                "Heap MinMax Primitives",
                 .product(name: "Column Primitives", package: "swift-column-primitives"),
                 .product(name: "Shared Primitive", package: "swift-shared-primitives"),
                 .product(name: "Comparison Primitives", package: "swift-comparison-primitives"),
@@ -208,7 +188,7 @@ let package = Package(
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
             ]
         ),
-
+        
         // MARK: - Tests
         .testTarget(
             name: "Heap Primitives Tests",
@@ -218,7 +198,7 @@ let package = Package(
                 .product(name: "Index Primitives Test Support", package: "swift-index-primitives"),
             ]
         ),
-
+        
         // MARK: - Test Support
         .target(
             name: "Heap Primitives Test Support",
@@ -249,8 +229,8 @@ for target in package.targets where ![.system, .binary, .plugin, .macro].contain
         .enableUpcomingFeature("InferIsolatedConformances"),
         .enableUpcomingFeature("LifetimeDependence"),
     ]
-
+    
     let package: [SwiftSetting] = []
-
+    
     target.swiftSettings = (target.swiftSettings ?? []) + ecosystem + package
 }
