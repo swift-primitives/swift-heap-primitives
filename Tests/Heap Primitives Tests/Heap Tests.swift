@@ -10,269 +10,118 @@
 // ===----------------------------------------------------------------------===//
 
 import Testing
-
+import Comparison_Primitives
+import Index_Primitives
 @testable import Heap_Primitives
 
-// MARK: - Single-Ended Heap Tests
+// MARK: - Fixtures
 
-@Suite("Heap (Single-Ended)")
-struct HeapSingleEndedTests {
-    @Test
-    func `Min-heap ordering (ascending)`() throws {
-        var heap = Heap<Int>(order: .ascending)
-        heap.push(5)
-        heap.push(3)
-        heap.push(7)
-        heap.push(1)
-
-        #expect(heap.peek == 1)  // Min at top
-        #expect(try heap.pop() == 1)
-        #expect(try heap.pop() == 3)
-        #expect(try heap.pop() == 5)
-        #expect(try heap.pop() == 7)
-        #expect(heap.isEmpty == true)
+/// A move-only element that conforms `Comparison.Protocol` (the borrowing `<`),
+/// proving the tower carries `~Copyable` elements through push/pop/min.
+private struct Job: ~Copyable, Comparison.`Protocol` {
+    let priority: Int
+    init(_ priority: Int) { self.priority = priority }
+    static func < (lhs: borrowing Job, rhs: borrowing Job) -> Bool {
+        lhs.priority < rhs.priority
     }
-
-    @Test
-    func `Max-heap ordering (descending)`() throws {
-        var heap = Heap<Int>(order: .descending)
-        heap.push(5)
-        heap.push(3)
-        heap.push(7)
-        heap.push(1)
-
-        #expect(heap.peek == 7)  // Max at top
-        #expect(try heap.pop() == 7)
-        #expect(try heap.pop() == 5)
-        #expect(try heap.pop() == 3)
-        #expect(try heap.pop() == 1)
-        #expect(heap.isEmpty == true)
-    }
-
-    @Test
-    func `Peek does not remove`() {
-        var heap = Heap<Int>(order: .ascending)
-        heap.push(3)
-        heap.push(1)
-        heap.push(2)
-
-        #expect(heap.peek == 1)
-        #expect(heap.peek == 1)
-        #expect(Int(bitPattern: heap.count) == 3)
-    }
-
-    @Test
-    func `Empty heap`() {
-        var heap = Heap<Int>(order: .ascending)
-        #expect(heap.isEmpty == true)
-        #expect(heap.peek == nil)
-        #expect(heap.take == nil)
-    }
-
-    @Test
-    func `Single element`() throws {
-        var heap = Heap<Int>(order: .ascending)
-        heap.push(42)
-        #expect(heap.isEmpty == false)
-        #expect(Int(bitPattern: heap.count) == 1)
-        #expect(heap.peek == 42)
-        #expect(try heap.pop() == 42)
-        #expect(heap.isEmpty == true)
-    }
-
-    @Test
-    func `Init from sequence`() throws {
-        var heap = Heap<Int>([5, 3, 7, 1], order: .ascending)
-
-        #expect(Int(bitPattern: heap.count) == 4)
-        #expect(try heap.pop() == 1)
-        #expect(try heap.pop() == 3)
-        #expect(try heap.pop() == 5)
-        #expect(try heap.pop() == 7)
-    }
-
-    @Test
-    func `Duplicate elements`() {
-        var heap = Heap<Int>(order: .ascending)
-        heap.push(5)
-        heap.push(5)
-        heap.push(5)
-
-        #expect(heap.take == 5)
-        #expect(heap.take == 5)
-        #expect(heap.take == 5)
-        #expect(heap.take == nil)
-    }
-    @Test
-    func `drain(while:) drains some elements in priority order`() {
-        var heap = Heap<Int>([5, 3, 8, 1, 4], order: .ascending)
-        var drained: [Int] = []
-        heap.drain(while: { $0 < 5 }) { drained.append($0) }
-        #expect(drained == [1, 3, 4])
-        #expect(Int(bitPattern: heap.count) == 2)
-    }
-
-    @Test
-    func `drain(while:) drains zero elements when predicate is immediately false`() {
-        var heap = Heap<Int>([5, 3, 8], order: .ascending)
-        var drained: [Int] = []
-        heap.drain(while: { $0 > 100 }) { drained.append($0) }
-        #expect(drained.isEmpty)
-        #expect(Int(bitPattern: heap.count) == 3)
-    }
-
-    @Test
-    func `drain(while:) drains all elements when predicate is always true`() {
-        var heap = Heap<Int>([5, 3, 8, 1], order: .ascending)
-        var drained: [Int] = []
-        heap.drain(while: { _ in true }) { drained.append($0) }
-        #expect(drained == [1, 3, 5, 8])
-        #expect(heap.isEmpty)
-    }
-
-    @Test
-    func `drain(while:) on empty heap`() {
-        var heap = Heap<Int>(order: .ascending)
-        var drained: [Int] = []
-        heap.drain(while: { _ in true }) { drained.append($0) }
-        #expect(drained.isEmpty)
+    static func == (lhs: borrowing Job, rhs: borrowing Job) -> Bool {
+        lhs.priority == rhs.priority
     }
 }
 
-// MARK: - MinMax Heap Tests
+// MARK: - Heap (binary MIN priority queue — the ADT-tower W2 shape)
+//
+// The canonical `Heap<E>` rides the DIRECT heap column, so it is MOVE-ONLY for every
+// element (Copyable or not). Observations are bound to locals before `#expect` — the
+// property-access `#expect` form would otherwise require the move-only value to copy.
 
-// ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
-// (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
-// full template round. The gate self-restores when the MinMax targets
-// return (canImport needs a CLEAN build to re-evaluate).
-#if canImport(Heap_MinMax_Primitives)
+@Suite("Heap (binary min priority queue)")
+struct HeapTests {
 
-@Suite("Heap.MinMax (Double-Ended)")
-struct HeapMinMaxTests {
-    @Test
-    func `MinMax heap provides both min and max`() throws {
-        var heap: Heap<Int>.MinMax = [5, 3, 7, 1, 9]
-
-        #expect(heap.peek.min == 1)
-        #expect(heap.peek.max == 9)
-
-        #expect(try heap.min.pop() == 1)
-        #expect(try heap.max.pop() == 9)
-        #expect(heap.peek.min == 3)
-        #expect(heap.peek.max == 7)
+    @Test("empty heap reports isEmpty and count 0")
+    func emptyState() {
+        let heap = Heap<Int>()
+        let empty = heap.isEmpty
+        let count = heap.count
+        #expect(empty)
+        #expect(count == Index<Int>.Count(0))
     }
 
-    @Test
-    func `Pop min in order`() throws {
-        var heap: Heap<Int>.MinMax = [5, 3, 7, 1]
+    @Test("push then pop yields elements in ascending (min-first) order")
+    func minOrdering() {
+        var heap = Heap<Int>()
+        for value in [42, 3, 25, 7, 3, 19] { heap.push(value) }
+        let nonEmpty = !heap.isEmpty
+        let count = heap.count
+        let minimum = heap.min
+        #expect(nonEmpty)
+        #expect(count == Index<Int>.Count(6))
+        #expect(minimum == 3)
 
-        #expect(try heap.min.pop() == 1)
-        #expect(try heap.min.pop() == 3)
-        #expect(try heap.min.pop() == 5)
-        #expect(try heap.min.pop() == 7)
-        #expect(heap.isEmpty == true)
-    }
-
-    @Test
-    func `Pop max in order`() throws {
-        var heap: Heap<Int>.MinMax = [5, 3, 7, 1]
-
-        #expect(try heap.max.pop() == 7)
-        #expect(try heap.max.pop() == 5)
-        #expect(try heap.max.pop() == 3)
-        #expect(try heap.max.pop() == 1)
-        #expect(heap.isEmpty == true)
-    }
-
-    @Test
-    func `Peek does not remove`() {
-        let heap: Heap<Int>.MinMax = [3, 1, 2]
-
-        #expect(heap.peek.min == 1)
-        #expect(heap.peek.min == 1)
-        #expect(heap.peek.max == 3)
-        #expect(heap.peek.max == 3)
-        #expect(Int(bitPattern: heap.count) == 3)
-    }
-
-    @Test
-    func `Empty heap`() {
-        var heap = Heap<Int>.MinMax()
-        #expect(heap.isEmpty == true)
-        #expect(heap.peek.min == nil)
-        #expect(heap.peek.max == nil)
-        #expect(heap.min.take == nil)
-        #expect(heap.max.take == nil)
-    }
-
-    @Test
-    func `Single element`() throws {
-        var heap: Heap<Int>.MinMax = [42]
-        #expect(heap.isEmpty == false)
-        #expect(Int(bitPattern: heap.count) == 1)
-        #expect(heap.peek.min == 42)
-        #expect(heap.peek.max == 42)
-        #expect(try heap.min.pop() == 42)
-        #expect(heap.isEmpty == true)
-    }
-
-    @Test
-    func `Duplicate elements`() {
-        var heap: Heap<Int>.MinMax = [5, 5, 5]
-
-        #expect(heap.min.take == 5)
-        #expect(heap.min.take == 5)
-        #expect(heap.min.take == 5)
-        #expect(heap.min.take == nil)
-    }
-
-    @Test
-    func `Alternating min/max pops`() throws {
-        var heap: Heap<Int>.MinMax = [1, 2, 3, 4, 5]
-
-        #expect(try heap.min.pop() == 1)
-        #expect(try heap.max.pop() == 5)
-        #expect(try heap.min.pop() == 2)
-        #expect(try heap.max.pop() == 4)
-        #expect(try heap.min.pop() == 3)
-        #expect(heap.isEmpty == true)
-    }
-
-    @Test
-    func `drain(while:from: .min) drains smallest elements`() {
-        var heap: Heap<Int>.MinMax = [5, 3, 8, 1, 4]
         var drained: [Int] = []
-        heap.drain(while: { $0 < 5 }, from: .min) { drained.append($0) }
-        #expect(drained == [1, 3, 4])
-        #expect(Int(bitPattern: heap.count) == 2)
+        while !heap.isEmpty { drained.append(heap.pop()) }
+        let empty = heap.isEmpty
+        #expect(drained == [3, 3, 7, 19, 25, 42])
+        #expect(empty)
     }
 
-    @Test
-    func `drain(while:from: .max) drains largest elements`() {
-        var heap: Heap<Int>.MinMax = [5, 3, 8, 1, 4]
-        var drained: [Int] = []
-        heap.drain(while: { $0 > 4 }, from: .max) { drained.append($0) }
-        #expect(drained == [8, 5])
-        #expect(Int(bitPattern: heap.count) == 3)
+    @Test("min tracks the running minimum as elements arrive")
+    func runningMinimum() {
+        var heap = Heap<Int>()
+        heap.push(9); let m0 = heap.min; #expect(m0 == 9)
+        heap.push(4); let m1 = heap.min; #expect(m1 == 4)
+        heap.push(8); let m2 = heap.min; #expect(m2 == 4)
+        heap.push(1); let m3 = heap.min; #expect(m3 == 1)
+        let popped = heap.pop()
+        let m4 = heap.min
+        #expect(popped == 1)
+        #expect(m4 == 4)
     }
 
-    @Test
-    func `drain(while:from:) drains zero elements when predicate is immediately false`() {
-        var heap: Heap<Int>.MinMax = [5, 3, 8]
-        var drained: [Int] = []
-        heap.drain(while: { $0 > 100 }, from: .min) { drained.append($0) }
-        #expect(drained.isEmpty)
-        #expect(Int(bitPattern: heap.count) == 3)
+    @Test("single-element heap: push, min, pop")
+    func singleElement() {
+        var heap = Heap<Int>()
+        heap.push(17)
+        let count = heap.count
+        let minimum = heap.min
+        #expect(count == Index<Int>.Count(1))
+        #expect(minimum == 17)
+        let popped = heap.pop()
+        let empty = heap.isEmpty
+        #expect(popped == 17)
+        #expect(empty)
     }
 
-    @Test
-    func `drain(while:from:) drains all elements`() {
-        var heap: Heap<Int>.MinMax = [5, 3, 8, 1]
-        var drained: [Int] = []
-        heap.drain(while: { _ in true }, from: .min) { drained.append($0) }
-        #expect(drained == [1, 3, 5, 8])
-        #expect(heap.isEmpty)
+    @Test("~Copyable elements flow through push/pop/min")
+    func moveOnlyElements() {
+        var heap = Heap<Job>()
+        heap.push(Job(5))
+        heap.push(Job(1))
+        heap.push(Job(3))
+        let peeked = heap.min.priority
+        #expect(peeked == 1)
+        let first = heap.pop().priority
+        let second = heap.pop().priority
+        let third = heap.pop().priority
+        let empty = heap.isEmpty
+        #expect(first == 1)
+        #expect(second == 3)
+        #expect(third == 5)
+        #expect(empty)
+    }
+
+    @Test("growth past the initial capacity preserves the heap invariant")
+    func growthPreservesInvariant() {
+        var heap = Heap<Int>(minimumCapacity: Index<Int>.Count(2))
+        // Push descending so nearly every insert sifts to the root, forcing regrowth.
+        for value in stride(from: 64, through: 1, by: -1) { heap.push(value) }
+        let count = heap.count
+        #expect(count == Index<Int>.Count(64))
+        var previous = Int.min
+        while !heap.isEmpty {
+            let next = heap.pop()
+            #expect(next >= previous)
+            previous = next
+        }
     }
 }
-
-#endif  // canImport(Heap_MinMax_Primitives)

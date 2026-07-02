@@ -10,16 +10,13 @@
 // ===----------------------------------------------------------------------===//
 
 // exports.swift
-// Re-export internal modules for consumers.
-// Users import Heap_Primitives and get the binary-heap discipline: the base
-// Heap type + conformances (this module), plus
-// the single-ended Min / Max stubs. Per [MOD-005] the base-ops plural doubles
-// as the package umbrella.
+// The package umbrella ([MOD-005]): consumers import `Heap_Primitives` and get the
+// binary min-heap ADT — the bound-free carrier `__Heap<S>` + the canonical front
+// door `Heap<E>` (the ADT-tower W2 shape).
+//
+// The former Min / Max single-ended stubs are DELETED (they were non-functional
+// `fatalError` placeholders; min IS the canonical `Heap`). `Heap.MinMax` is PARKED
+// (see "Experiments/Heap MinMax (parked)/") as a future sibling for the heap-template
+// round — deleting the stubs did NOT delete the MinMax plan.
 
 @_exported public import Heap_Primitive
-@_exported public import Heap_Min_Primitives
-@_exported public import Heap_Max_Primitives
-// ⚠️ W5 QUARANTINE (2026-06-11): MinMax parks with memory-small
-// (pre-W1 Memory.Inline<E,n>) per the W5-5 ruling; restores at heap's
-// full template round.
-// @_exported public import Heap_MinMax_Primitives
