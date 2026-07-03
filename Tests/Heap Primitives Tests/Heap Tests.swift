@@ -59,10 +59,12 @@ struct HeapTests {
         #expect(minimum == 3)
 
         var drained: [Int] = []
-        while !heap.isEmpty { drained.append(heap.pop()) }
+        while let next = heap.pop() { drained.append(next) }
         let empty = heap.isEmpty
+        let overDrain = heap.pop()          // pop on empty -> nil (the convention)
         #expect(drained == [3, 3, 7, 19, 25, 42])
         #expect(empty)
+        #expect(overDrain == nil)
     }
 
     @Test("min tracks the running minimum as elements arrive")
@@ -74,7 +76,7 @@ struct HeapTests {
         heap.push(1); let m3 = heap.min; #expect(m3 == 1)
         let popped = heap.pop()
         let m4 = heap.min
-        #expect(popped == 1)
+        #expect(popped == 1)          // Int? == Int-literal (Optional promotion)
         #expect(m4 == 4)
     }
 
@@ -90,6 +92,8 @@ struct HeapTests {
         let empty = heap.isEmpty
         #expect(popped == 17)
         #expect(empty)
+        let overDrain = heap.pop()
+        #expect(overDrain == nil)
     }
 
     @Test("~Copyable elements flow through push/pop/min")
@@ -100,13 +104,11 @@ struct HeapTests {
         heap.push(Job(3))
         let peeked = heap.min.priority
         #expect(peeked == 1)
-        let first = heap.pop().priority
-        let second = heap.pop().priority
-        let third = heap.pop().priority
+        // Consuming-unwrap the `~Copyable` Job? each pop (no borrow of Element?).
+        var priorities: [Int] = []
+        while let job = heap.pop() { priorities.append(job.priority) }
         let empty = heap.isEmpty
-        #expect(first == 1)
-        #expect(second == 3)
-        #expect(third == 5)
+        #expect(priorities == [1, 3, 5])
         #expect(empty)
     }
 
@@ -118,8 +120,7 @@ struct HeapTests {
         let count = heap.count
         #expect(count == Index<Int>.Count(64))
         var previous = Int.min
-        while !heap.isEmpty {
-            let next = heap.pop()
+        while let next = heap.pop() {
             #expect(next >= previous)
             previous = next
         }

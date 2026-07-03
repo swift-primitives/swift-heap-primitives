@@ -26,6 +26,15 @@ extension Bench {
     ///   (`opsPerBatch = reps * n`); the extract-min cost is `drain.cycle - insert.zero`.
     ///
     /// `peek` is folded in as an observed `min` read after the build (an O(1) borrow).
+    ///
+    /// ATTRIBUTION (the insert tax): tower `insert.zero` runs ~1.3–1.9× stdlib
+    /// `Array.append`. Two contributors, both honest: (a) the typed-slot append path
+    /// (count-ledger + `initialize(at:to:)` seam vs stdlib's raw append) and (b) the
+    /// `exchange`-based sift — each swap is move+move+initialize+initialize, ~2× the
+    /// seam traffic of a classical hole-shift sift (which writes each displaced element
+    /// once). A hole-shift siftUp/siftDown is a LEDGERED measured follow-up, not this
+    /// wave. `extract-min` (drain.cycle − insert.zero) is at parity with stdlib at
+    /// scale — the seam ops fully specialize (gate-4: 0 witness_method).
     static func heapCases() -> [Result] {
         var results: [Result] = []
         for n in sizes {

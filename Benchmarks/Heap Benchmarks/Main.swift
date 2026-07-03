@@ -70,6 +70,12 @@ enum Main {
         lines.append("unit: ns/op, median across \(Bench.samples) samples (cv%); per-op = batch / opsPerBatch")
         lines.append("insert.zero: one op = one push · drain.cycle: one op = one push+pop element lifecycle")
         lines.append("extract-min cost ≈ drain.cycle − insert.zero")
+        lines.append("NOTE: the insert tax vs stdlib (~1.3–1.9×) is attributable to BOTH (a) the")
+        lines.append("      typed-slot append path (count-ledger + initialize seam) AND (b) exchange-")
+        lines.append("      based sifting — each swap is move+move+initialize+initialize, ~2× the seam")
+        lines.append("      traffic of a classical hole-shift sift. Hole-shift is a LEDGERED measured")
+        lines.append("      follow-up (not this wave). extract-min is at parity with stdlib at scale,")
+        lines.append("      confirming the seam ops fully specialize (0 witness_method).")
         return lines.joined(separator: "\n")
     }
 

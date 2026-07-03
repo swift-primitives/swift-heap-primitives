@@ -94,6 +94,11 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
 
     /// Borrowing access to the minimum element.
     ///
+    /// Precondition-gated (traps on empty), NOT Optional-returning: there is no
+    /// Optional *borrow* of a `~Copyable` element (an `Element?` borrow is
+    /// structurally unavailable), so `min` cannot vend `Element?` by borrow —
+    /// unlike `pop`, which consumes and returns `Element?`. Guard with `isEmpty`.
+    ///
     /// - Precondition: The heap must not be empty.
     @inlinable
     public var min: S.Element {
@@ -111,6 +116,9 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
     }
 
     /// Exchanges two initialized slots through the seam's move/initialize transitions.
+    ///
+    /// - Precondition: the caller must have gated `prepareForMutation()` (CoW
+    ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
     mutating func exchange(_ i: Index<S.Element>, _ j: Index<S.Element>) {
         let a = column.move(at: i)
@@ -120,6 +128,9 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
     }
 
     /// Restores the heap invariant upward from raw slot `k`.
+    ///
+    /// - Precondition: the caller must have gated `prepareForMutation()` (CoW
+    ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
     mutating func siftUp(from k: Int) {
         var child = k
@@ -133,6 +144,9 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
     }
 
     /// Restores the heap invariant downward from the root over `n` live slots.
+    ///
+    /// - Precondition: the caller must have gated `prepareForMutation()` (CoW
+    ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
     mutating func siftDown(over n: Int) {
         var parent = 0
@@ -148,12 +162,20 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
         }
     }
 
-    /// Removes and returns the minimum element (seam-generic; no growth involved).
+    /// Removes and returns the minimum element, or `nil` if the heap is empty
+    /// (seam-generic; no growth involved).
+    ///
+    /// Returns `Element?` — the tower-wide remove-from-empty convention
+    /// (adt-tower.md:1247; the landed `Queue.dequeue()` model). This supersedes
+    /// both the shape-E `throws(Heap.Error)` and the worked example's crashing
+    /// precondition (the experiment stays frozen; only the in-tree reshape adopts
+    /// the Optional return). Consuming an `Element?` is available even for
+    /// `~Copyable` elements (unlike a borrow — see `min`).
     @inlinable
-    public mutating func pop() -> S.Element {
-        precondition(!isEmpty, "pop on an empty heap")
-        column.prepareForMutation()
+    public mutating func pop() -> S.Element? {
         let n = Int(count.underlying.rawValue)
+        if n == 0 { return nil }
+        column.prepareForMutation()
         if n == 1 { return column.move(at: slot(0)) }
         let root = column.move(at: slot(0))
         let last = column.move(at: slot(n - 1))
