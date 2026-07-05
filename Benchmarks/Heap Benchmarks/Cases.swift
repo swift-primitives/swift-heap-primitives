@@ -84,7 +84,7 @@ extension Bench {
                     for _ in 0..<reps {
                         var h = TowerHeap()
                         for v in values { h.push(v &+ seed) }
-                        while !h.isEmpty { acc &+= h.pop() }
+                        while let v = h.pop() { acc &+= v }
                     }
                     sink(acc)
                 }
