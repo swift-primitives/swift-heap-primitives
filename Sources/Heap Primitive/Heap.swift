@@ -83,8 +83,7 @@ extension __Heap: Sendable where S: Sendable & ~Copyable {}
 
 // MARK: 2. Semantic ops — written ONCE over the seams (any conforming column)
 
-extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
-    S.Count == Index<S.Element>.Count {
+extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol` {
 
     @inlinable
     public var count: Index<S.Element>.Count { column.count }
@@ -107,7 +106,7 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
 }
 
 extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
-    S.Count == Index<S.Element>.Count, S.Element: Comparison.`Protocol` {
+    S.Element: Comparison.`Protocol` {
 
     /// Runtime slot coordinate (heap-order arithmetic happens in raw `Int`).
     @inlinable
