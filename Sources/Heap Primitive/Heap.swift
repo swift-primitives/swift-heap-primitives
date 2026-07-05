@@ -173,7 +173,7 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
     /// `~Copyable` elements (unlike a borrow — see `min`).
     @inlinable
     public mutating func pop() -> S.Element? {
-        let n = Int(count.underlying.rawValue)
+        let n = Int(clamping: count)
         if n == 0 { return nil }
         column.prepareForMutation()
         if n == 1 { return column.move(at: slot(0)) }
@@ -203,6 +203,6 @@ extension __Heap where S: ~Copyable {
         _ element: consuming E
     ) where S == Buffer<Storage<Memory.Allocator<Resource>>.Contiguous<E>>.Linear {
         column.append(element)
-        siftUp(from: Int(count.underlying.rawValue) - 1)
+        siftUp(from: Int(clamping: count) - 1)
     }
 }
