@@ -20,7 +20,7 @@
 //      `Heap<E>` in Heap.FrontDoor.swift, [DS-028]);
 //   2. semantic ops written ONCE over the Store/Buffer seams (the [DS-024]
 //      ledger laws keep `count` honest through them), CoW-correct via
-//      `prepareForMutation()`, FULL ~Copyable element support via
+//      `unshare()`, FULL ~Copyable element support via
 //      `Comparison.Protocol`;
 //   3. growth written ONCE, pinned to the linear column GENERIC over the
 //      allocation (`Resource: Memory.Growable` — the [DS-029] form-2 re-point;
@@ -117,7 +117,7 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
 
     /// Exchanges two initialized slots through the seam's move/initialize transitions.
     ///
-    /// - Precondition: the caller must have gated `prepareForMutation()` (CoW
+    /// - Precondition: the caller must have gated `unshare()` (CoW
     ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
     mutating func exchange(_ i: Index<S.Element>, _ j: Index<S.Element>) {
@@ -129,7 +129,7 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
 
     /// Restores the heap invariant upward from raw slot `k`.
     ///
-    /// - Precondition: the caller must have gated `prepareForMutation()` (CoW
+    /// - Precondition: the caller must have gated `unshare()` (CoW
     ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
     mutating func siftUp(from k: Int) {
@@ -145,7 +145,7 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
 
     /// Restores the heap invariant downward from the root over `n` live slots.
     ///
-    /// - Precondition: the caller must have gated `prepareForMutation()` (CoW
+    /// - Precondition: the caller must have gated `unshare()` (CoW
     ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
     mutating func siftDown(over n: Int) {
@@ -175,7 +175,7 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
     public mutating func pop() -> S.Element? {
         let n = Int(clamping: count)
         if n == 0 { return nil }
-        column.prepareForMutation()
+        column.unshare()
         if n == 1 { return column.move(at: slot(0)) }
         let root = column.move(at: slot(0))
         let last = column.move(at: slot(n - 1))
