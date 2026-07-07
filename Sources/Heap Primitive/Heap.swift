@@ -34,16 +34,16 @@
 // sibling for the heap-template round (its source is retained in-tree, out of
 // the build graph — unchanged plan).
 
-public import Comparison_Primitives
-public import Store_Protocol_Primitives
-public import Buffer_Protocol_Primitives
-public import Buffer_Primitive
 public import Buffer_Linear_Primitive
-public import Storage_Primitive
-public import Storage_Contiguous_Primitives
+public import Buffer_Primitive
+public import Buffer_Protocol_Primitives
+public import Comparison_Primitives
+public import Index_Primitives
 public import Memory_Allocator_Primitive
 public import Memory_Allocator_Protocol_Primitives
-public import Index_Primitives
+public import Storage_Contiguous_Primitives
+public import Storage_Primitive
+public import Store_Protocol_Primitives
 
 // MARK: 1. The carrier (thin, bound-free; hoisted per [API-IMPL-009])
 
@@ -59,12 +59,14 @@ public import Index_Primitives
 /// Copyability flows from the column: `__Heap<S>` is `Copyable` exactly when `S` is
 /// (the default direct column is move-only by design; the `Shared` CoW column, when a
 /// consumer pulls it, is `Copyable` iff its element is).
-@_documentation(visibility: public)   // symbolgraph-extract drops __-prefixed decls otherwise
+@_documentation(visibility: public)  // symbolgraph-extract drops __-prefixed decls otherwise
 @frozen
 public struct __Heap<S: ~Copyable>: ~Copyable {
 
     /// The storage column — a move-only buffer (the default ownership column) or a
-    /// `Shared` CoW column. The ADT is a thin semantic discipline over it; it carries
+    /// `Shared` CoW column.
+    ///
+    /// The ADT is a thin semantic discipline over it; it carries
     /// NO deinit (teardown lives in the leaf's oracle / the shared box's drain).
     @usableFromInline
     package var column: S
@@ -85,9 +87,11 @@ extension __Heap: Sendable where S: Sendable & ~Copyable {}
 
 extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol` {
 
+    /// The number of elements currently stored in the heap.
     @inlinable
     public var count: Index<S.Element>.Count { column.count }
 
+    /// Whether the heap contains no elements.
     @inlinable
     public var isEmpty: Bool { column.isEmpty }
 
@@ -105,8 +109,12 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol` {
     }
 }
 
-extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
-    S.Element: Comparison.`Protocol` {
+extension __Heap
+where
+    S: ~Copyable,
+    S: Store.`Protocol` & Buffer.`Protocol`,
+    S.Element: Comparison.`Protocol`
+{
 
     /// Runtime slot coordinate (heap-order arithmetic happens in raw `Int`).
     @inlinable
@@ -135,10 +143,9 @@ extension __Heap where S: ~Copyable, S: Store.`Protocol` & Buffer.`Protocol`,
         var child = k
         while child > 0 {
             let parent = (child - 1) / 2
-            if column[slot(child)] < column[slot(parent)] {
-                exchange(slot(child), slot(parent))
-                child = parent
-            } else { break }
+            guard column[slot(child)] < column[slot(parent)] else { break }
+            exchange(slot(child), slot(parent))
+            child = parent
         }
     }
 
@@ -202,6 +209,12 @@ extension __Heap where S: ~Copyable {
         _ element: consuming E
     ) where S == Buffer<Storage<Memory.Allocator<Resource>>.Contiguous<E>>.Linear {
         column.append(element)
+        // reason: precondition-free — `append` just grew the column by one, so the
+        // count is at least one here; this computes the raw-Int slot of the new
+        // last element. No typed Cardinal/Ordinal "last slot" helper exists in
+        // Index_Primitives — escalating per [INFRA-025] rather than inventing one
+        // ad hoc (swift-stack-primitives Stack.swift:118 mirrors this shape).
+        // swiftlint:disable:next cardinal_count_minus_one_evasion
         siftUp(from: Int(clamping: count) - 1)
     }
 }

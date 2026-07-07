@@ -9,16 +9,16 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import Testing
-import Buffer_Primitives_Test_Support
-import Buffer_Primitive
 import Buffer_Linear_Primitive
-import Storage_Primitive
-import Storage_Contiguous_Primitives
+import Buffer_Primitive
+import Buffer_Primitives_Test_Support
+import Heap_Primitives
+import Index_Primitives
 import Memory_Allocator_Primitive
 import Memory_Heap_Primitives
-import Index_Primitives
-import Heap_Primitives
+import Storage_Contiguous_Primitives
+import Storage_Primitive
+import Testing
 
 // MARK: - [DS-024] Seam.Ledger law — per front-door column
 

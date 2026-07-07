@@ -9,9 +9,10 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import Testing
 import Comparison_Primitives
 import Index_Primitives
+import Testing
+
 @testable import Heap_Primitives
 
 // MARK: - Fixtures
@@ -21,10 +22,10 @@ import Index_Primitives
 private struct Job: ~Copyable, Comparison.`Protocol` {
     let priority: Int
     init(_ priority: Int) { self.priority = priority }
-    static func < (lhs: borrowing Job, rhs: borrowing Job) -> Bool {
+    static func < (lhs: borrowing Self, rhs: borrowing Self) -> Bool {
         lhs.priority < rhs.priority
     }
-    static func == (lhs: borrowing Job, rhs: borrowing Job) -> Bool {
+    static func == (lhs: borrowing Self, rhs: borrowing Self) -> Bool {
         lhs.priority == rhs.priority
     }
 }
@@ -61,7 +62,7 @@ struct HeapTests {
         var drained: [Int] = []
         while let next = heap.pop() { drained.append(next) }
         let empty = heap.isEmpty
-        let overDrain = heap.pop()          // pop on empty -> nil (the convention)
+        let overDrain = heap.pop()  // pop on empty -> nil (the convention)
         #expect(drained == [3, 3, 7, 19, 25, 42])
         #expect(empty)
         #expect(overDrain == nil)
@@ -70,13 +71,21 @@ struct HeapTests {
     @Test("min tracks the running minimum as elements arrive")
     func runningMinimum() {
         var heap = Heap<Int>()
-        heap.push(9); let m0 = heap.min; #expect(m0 == 9)
-        heap.push(4); let m1 = heap.min; #expect(m1 == 4)
-        heap.push(8); let m2 = heap.min; #expect(m2 == 4)
-        heap.push(1); let m3 = heap.min; #expect(m3 == 1)
+        heap.push(9)
+        let m0 = heap.min
+        #expect(m0 == 9)
+        heap.push(4)
+        let m1 = heap.min
+        #expect(m1 == 4)
+        heap.push(8)
+        let m2 = heap.min
+        #expect(m2 == 4)
+        heap.push(1)
+        let m3 = heap.min
+        #expect(m3 == 1)
         let popped = heap.pop()
         let m4 = heap.min
-        #expect(popped == 1)          // Int? == Int-literal (Optional promotion)
+        #expect(popped == 1)  // Int? == Int-literal (Optional promotion)
         #expect(m4 == 4)
     }
 
