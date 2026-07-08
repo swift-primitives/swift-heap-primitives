@@ -118,7 +118,7 @@ where
 
     /// Runtime slot coordinate (heap-order arithmetic happens in raw `Int`).
     @inlinable
-    func slot(_ k: Int) -> Index<S.Element> {
+    package func slot(_ k: Int) -> Index<S.Element> {
         Index(Ordinal(UInt(k)))
     }
 
@@ -127,7 +127,7 @@ where
     /// - Precondition: the caller must have gated `unshare()` (CoW
     ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
-    mutating func exchange(_ i: Index<S.Element>, _ j: Index<S.Element>) {
+    package mutating func exchange(_ i: Index<S.Element>, _ j: Index<S.Element>) {
         let a = column.move(at: i)
         let b = column.move(at: j)
         column.initialize(at: i, to: b)
@@ -139,7 +139,7 @@ where
     /// - Precondition: the caller must have gated `unshare()` (CoW
     ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
-    mutating func siftUp(from k: Int) {
+    package mutating func siftUp(from k: Int) {
         var child = k
         while child > 0 {
             let parent = (child - 1) / 2
@@ -154,7 +154,7 @@ where
     /// - Precondition: the caller must have gated `unshare()` (CoW
     ///   uniqueness) before invoking — this helper mutates the column in place.
     @inlinable
-    mutating func siftDown(over n: Int) {
+    package mutating func siftDown(over n: Int) {
         var parent = 0
         while true {
             let l = 2 * parent + 1
